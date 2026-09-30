@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /billing
+Disallow: /checkout
+Disallow: /dashboard
+Disallow: /login
+Disallow: /profile
+Disallow: /register
