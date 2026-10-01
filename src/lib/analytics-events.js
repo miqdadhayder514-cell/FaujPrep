@@ -12,6 +12,9 @@ export const ANALYTICS_EVENTS = Object.freeze({
   MOCK_TEST_VIEWED: 'MOCK_TEST_VIEWED',
   MOCK_TEST_STARTED: 'MOCK_TEST_STARTED',
   MOCK_TEST_COMPLETED: 'MOCK_TEST_COMPLETED',
+  PMA_PAPER_VIEW: 'PMA_PAPER_VIEW',
+  PMA_PAPER_STARTED: 'PMA_PAPER_STARTED',
+  PMA_PAPER_COMPLETED: 'PMA_PAPER_COMPLETED',
   STUDY_MATERIAL_VIEWED: 'STUDY_MATERIAL_VIEWED',
   CURRENT_AFFAIRS_VIEWED: 'CURRENT_AFFAIRS_VIEWED',
   ISSB_MODULE_VIEWED: 'ISSB_MODULE_VIEWED',
@@ -38,6 +41,9 @@ const CLIENT_EVENT_NAMES = new Set([
   ANALYTICS_EVENTS.MOCK_TEST_VIEWED,
   ANALYTICS_EVENTS.MOCK_TEST_STARTED,
   ANALYTICS_EVENTS.MOCK_TEST_COMPLETED,
+  ANALYTICS_EVENTS.PMA_PAPER_VIEW,
+  ANALYTICS_EVENTS.PMA_PAPER_STARTED,
+  ANALYTICS_EVENTS.PMA_PAPER_COMPLETED,
   ANALYTICS_EVENTS.STUDY_MATERIAL_VIEWED,
   ANALYTICS_EVENTS.CURRENT_AFFAIRS_VIEWED,
   ANALYTICS_EVENTS.ISSB_MODULE_VIEWED,
@@ -52,6 +58,9 @@ const EVENT_PROPERTY_KEYS = {
   MOCK_TEST_VIEWED: ['difficulty', 'duration_minutes', 'question_count'],
   MOCK_TEST_STARTED: ['difficulty', 'duration_minutes', 'question_count'],
   MOCK_TEST_COMPLETED: ['difficulty', 'duration_minutes', 'question_count'],
+  PMA_PAPER_VIEW: ['difficulty', 'duration_minutes', 'question_count', 'paper_category'],
+  PMA_PAPER_STARTED: ['difficulty', 'duration_minutes', 'question_count', 'paper_category'],
+  PMA_PAPER_COMPLETED: ['difficulty', 'duration_minutes', 'question_count', 'paper_category', 'completion_status'],
   SEARCH_PERFORMED: ['result_count', 'content_type_filter', 'branch_filter', 'subject_filter'],
   CHECKOUT_STARTED: ['plan_slug'],
 };
@@ -71,6 +80,8 @@ export function sanitizeAnalyticsProperties(eventName, properties = {}) {
       if (normalized) sanitized[key] = normalized;
     } else if (typeof value === 'number' && Number.isFinite(value)) {
       sanitized[key] = Math.max(0, Math.min(1000, Math.trunc(value)));
+    } else if (typeof value === 'boolean') {
+      sanitized[key] = value;
     }
   }
   return sanitized;

@@ -26,3 +26,19 @@ test('event sanitizer rejects system events and non-object properties', () => {
   assert.deepEqual(sanitizeAnalyticsProperties(ANALYTICS_EVENTS.PAYMENT_SUBMITTED, { plan_slug: 'pro' }), {});
   assert.deepEqual(sanitizeAnalyticsProperties(ANALYTICS_EVENTS.SEARCH_PERFORMED, ['secret']), {});
 });
+
+test('PMA paper events accept useful paper metadata without storing arbitrary identifiers', () => {
+  assert.equal(isClientAnalyticsEvent(ANALYTICS_EVENTS.PMA_PAPER_VIEW), true);
+  assert.equal(isClientAnalyticsEvent(ANALYTICS_EVENTS.PMA_PAPER_STARTED), true);
+  assert.equal(isClientAnalyticsEvent(ANALYTICS_EVENTS.PMA_PAPER_COMPLETED), true);
+  assert.deepEqual(sanitizeAnalyticsProperties(ANALYTICS_EVENTS.PMA_PAPER_COMPLETED, {
+    paper_category: 'Non-Verbal Intelligence',
+    question_count: 50,
+    completion_status: 'COMPLETED',
+    paper_id: 'not-a-property',
+  }), {
+    paper_category: 'Non-Verbal Intelligence',
+    question_count: 50,
+    completion_status: 'COMPLETED',
+  });
+});

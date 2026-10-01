@@ -363,11 +363,12 @@ export default function App() {
     ? backendData.mockTests.map((test) => ({
         id: test.id,
         title: test.title,
-        force: test.branch_id ? 'Database' : 'All',
-        category: 'Mock Test',
+        force: test.branch_id ? (backendData.branches.find((branch) => branch.id === test.branch_id)?.name.includes('Army') ? 'Army' : backendData.branches.find((branch) => branch.id === test.branch_id)?.name || 'All') : 'All',
+        category: test.category || 'Mock Test',
         difficulty: test.difficulty || 'Medium',
         questionsCount: test.total_questions,
         duration: `${test.duration_minutes} mins`,
+        mockTestSlug: test.slug,
       }))
     : PRACTICE_BANK;
   const resourceCatalog = backendConfigured
@@ -1136,11 +1137,17 @@ export default function App() {
         addToast('This mock test has no questions yet.', 'info');
         return;
       }
-      trackAnalyticsEvent(ANALYTICS_EVENTS.MOCK_TEST_STARTED, {
+      const isPmaPaper = mock.slug?.startsWith('pma-');
+      trackAnalyticsEvent(isPmaPaper ? ANALYTICS_EVENTS.PMA_PAPER_STARTED : ANALYTICS_EVENTS.MOCK_TEST_STARTED, {
         pagePath: window.location.pathname,
         entityType: 'mock_test',
         entityId: mock.id,
-        properties: { difficulty: mock.difficulty, duration_minutes: mock.duration_minutes, question_count: questions.length },
+        properties: {
+          difficulty: mock.difficulty,
+          duration_minutes: mock.duration_minutes,
+          question_count: questions.length,
+          ...(isPmaPaper ? { paper_category: mock.category } : {}),
+        },
       });
       setPracticeSession({
         mode: 'mock',
@@ -1151,6 +1158,7 @@ export default function App() {
         score: 0,
         attemptId: attempt.attempt_id,
         mockTestId: mock.id,
+        paperCategory: mock.category,
         expiresAt: Date.now() + (attempt.duration_minutes * 60 * 1000),
         questionStartedAt: Date.now(),
       });
@@ -1223,11 +1231,15 @@ export default function App() {
         await saveMockTestAnswer(practiceSession.attemptId, currentQuestion.question_id || currentQuestion.id, mockAnswers[currentQuestion.question_id || currentQuestion.id], Math.round((Date.now() - (practiceSession.questionStartedAt || Date.now())) / 1000));
       }
       const result = await submitMockTest(practiceSession.attemptId, null);
-      trackAnalyticsEvent(ANALYTICS_EVENTS.MOCK_TEST_COMPLETED, {
+      const isPmaPaper = practiceSession.mockTestId && backendData.mockTests.find((test) => test.id === practiceSession.mockTestId)?.slug?.startsWith('pma-');
+      trackAnalyticsEvent(isPmaPaper ? ANALYTICS_EVENTS.PMA_PAPER_COMPLETED : ANALYTICS_EVENTS.MOCK_TEST_COMPLETED, {
         pagePath: window.location.pathname,
         entityType: 'mock_test',
         entityId: practiceSession.mockTestId,
-        properties: { question_count: practiceSession.questions.length },
+        properties: {
+          question_count: practiceSession.questions.length,
+          ...(isPmaPaper ? { paper_category: practiceSession.paperCategory, completion_status: 'COMPLETED' } : {}),
+        },
       });
       let mockReview = [];
       try { mockReview = await getMockTestReview(practiceSession.attemptId); } catch (reviewError) { addToast(reviewError.message || 'Result review is unavailable.', 'error'); }
@@ -1347,7 +1359,7 @@ export default function App() {
       if (content) contentEvent = ANALYTICS_EVENTS.SUBJECT_VIEWED;
     } else if (currentPage === 'mock-detail') {
       content = backendData.mockTests.find((item) => item.slug === selectedForceId);
-      if (content) contentEvent = ANALYTICS_EVENTS.MOCK_TEST_VIEWED;
+      if (content) contentEvent = content.slug?.startsWith('pma-') ? ANALYTICS_EVENTS.PMA_PAPER_VIEW : ANALYTICS_EVENTS.MOCK_TEST_VIEWED;
     } else if (currentPage === 'study-material-detail') {
       content = studyMaterialDetailState.item;
       if (content && !content.is_premium) contentEvent = ANALYTICS_EVENTS.STUDY_MATERIAL_VIEWED;
@@ -1366,6 +1378,7 @@ export default function App() {
           EXAM_VIEWED: 'exam',
           SUBJECT_VIEWED: 'subject',
           MOCK_TEST_VIEWED: 'mock_test',
+          PMA_PAPER_VIEW: 'mock_test',
           STUDY_MATERIAL_VIEWED: 'study_material',
           CURRENT_AFFAIRS_VIEWED: 'current_affair',
           ISSB_MODULE_VIEWED: 'issb_module',
@@ -1374,8 +1387,13 @@ export default function App() {
           pagePath: pathname,
           entityType,
           entityId: content.id,
-          properties: contentEvent === ANALYTICS_EVENTS.MOCK_TEST_VIEWED
-            ? { difficulty: content.difficulty, duration_minutes: content.duration_minutes, question_count: content.total_questions }
+          properties: [ANALYTICS_EVENTS.MOCK_TEST_VIEWED, ANALYTICS_EVENTS.PMA_PAPER_VIEW].includes(contentEvent)
+            ? {
+                difficulty: content.difficulty,
+                duration_minutes: content.duration_minutes,
+                question_count: content.total_questions,
+                ...(contentEvent === ANALYTICS_EVENTS.PMA_PAPER_VIEW ? { paper_category: content.category } : {}),
+              }
             : {},
           dedupeKey: contentKey,
         });
@@ -2961,6 +2979,10 @@ export default function App() {
               <option value="English">English</option>
               <option value="General Knowledge">General Knowledge</option>
               <option value="Verbal">Verbal Reasoning</option>
+              <option value="Verbal Intelligence">Verbal Intelligence</option>
+              <option value="Non-Verbal Intelligence">Non-Verbal Intelligence</option>
+              <option value="Analogy">Analogy</option>
+              <option value="Mathematical Series">Mathematical Series</option>
             </select>
           </div>
 
@@ -3009,8 +3031,8 @@ export default function App() {
               </div>
             </div>
 
-            <button
-              onClick={() => startPracticeSession(item)}
+              <button
+                onClick={() => item.mockTestSlug ? navigateTo('mock-detail', item.mockTestSlug) : startPracticeSession(item)}
               className="w-full py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 font-semibold text-xs transition"
             >
               {practiceSessionLoading ? 'Loading Questions...' : 'Start Practice Session'}
@@ -3102,7 +3124,8 @@ export default function App() {
           <select value={mockPremiumFilter} onChange={(event) => setMockPremiumFilter(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="All">Free and premium</option><option value="Free">Free only</option><option value="Premium">Premium only</option></select>
         </div>
         {!backendConfigured && <div className="p-8 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-sm text-amber-200">Configure Supabase to load mock tests.</div>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{filteredMockTests.map((mock) => <div key={mock.id} className="p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 flex flex-col justify-between"><div className="space-y-4"><div className="flex items-center justify-between"><span className="text-xs font-mono uppercase bg-emerald-950 border border-emerald-800 text-emerald-400 px-2.5 py-1 rounded">{branchName(mock.branch_id)}</span><Clock className="w-5 h-5 text-slate-400" /></div><h3 className="text-xl font-bold text-slate-100">{mock.title}</h3><p className="text-xs text-slate-400">{mock.description || 'Database-backed timed preparation test.'}</p><div className="grid grid-cols-2 gap-3 text-xs text-slate-300 font-mono bg-slate-950 p-4 rounded-xl border border-slate-800"><span>{mock.total_questions} Questions</span><span>{mock.duration_minutes} Minutes</span><span>{examName(mock.exam_id)}</span><span>{mock.difficulty || 'Practice'}</span></div></div><button onClick={() => navigateTo('mock-detail', mock.slug)} className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">View Test Details</button></div>)}</div>
+        {filteredMockTests.some((mock) => mock.slug?.startsWith('pma-')) && <section className="space-y-4"><h2 className="text-2xl font-bold text-slate-100">PMA Long Course Initial Test</h2><p className="text-sm text-slate-400">Dedicated verbal, non-verbal, analogy, and mathematical-series papers.</p></section>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{filteredMockTests.map((mock) => <div key={mock.id} className="p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 flex flex-col justify-between"><div className="space-y-4"><div className="flex items-center justify-between"><span className="text-xs font-mono uppercase bg-emerald-950 border border-emerald-800 text-emerald-400 px-2.5 py-1 rounded">{branchName(mock.branch_id)}</span><Clock className="w-5 h-5 text-slate-400" /></div><h3 className="text-xl font-bold text-slate-100">{mock.title}</h3><p className="text-xs text-slate-400">{mock.description || 'Database-backed timed preparation test.'}</p><div className="grid grid-cols-2 gap-3 text-xs text-slate-300 font-mono bg-slate-950 p-4 rounded-xl border border-slate-800"><span>{mock.total_questions} Questions</span><span>{mock.duration_minutes} Minutes</span><span>{examName(mock.exam_id)}</span><span>{mock.category || mock.difficulty || 'Practice'}</span></div></div><button onClick={() => navigateTo('mock-detail', mock.slug)} className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">View Test Details</button></div>)}</div>
         {backendConfigured && !filteredMockTests.length && <p className="p-8 rounded-2xl bg-slate-900 border border-dashed border-slate-800 text-sm text-slate-400">No mock tests match these filters.</p>}
       </div>
     );

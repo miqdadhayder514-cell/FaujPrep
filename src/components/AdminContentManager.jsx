@@ -57,6 +57,12 @@ const emptyQuestion = {
   correct_option: 'A',
   explanation: '',
   source: '',
+  source_type: 'ORIGINAL_VARIATION',
+  source_reference: '',
+  content_key: '',
+  category: '',
+  priority: 'MEDIUM',
+  visual_data: null,
   image_url: '',
   is_active: true,
   is_verified: false,
@@ -66,6 +72,7 @@ const emptyMockTest = {
   title: '',
   slug: '',
   description: '',
+  category: '',
   branch_id: '',
   exam_id: '',
   duration_minutes: 30,
@@ -134,13 +141,15 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
     activeISSBModules: 0,
   });
 
-  const [questionState, setQuestionState] = useState({ items: [], loading: true, error: '', search: '', subjectId: 'All', topicId: 'All', difficulty: 'All', status: 'All', page: 1, hasMore: false });
+  const [questionState, setQuestionState] = useState({ items: [], loading: true, error: '', search: '', subjectId: 'All', topicId: 'All', difficulty: 'All', priority: 'All', category: 'All', paperId: 'All', status: 'All', page: 1, hasMore: false });
+  const [questionPapers, setQuestionPapers] = useState([]);
   const [mockState, setMockState] = useState({ items: [], loading: true, error: '', search: '', branchId: 'All', examId: 'All', difficulty: 'All', status: 'All', page: 1, hasMore: false });
   const [materialState, setMaterialState] = useState({ items: [], loading: true, error: '', search: '', subjectId: 'All', topicId: 'All', branchId: 'All', materialType: 'All', status: 'All', page: 1, hasMore: false });
   const [affairState, setAffairState] = useState({ items: [], loading: true, error: '', search: '', category: 'All', status: 'All', page: 1, hasMore: false });
   const [issbState, setIssbState] = useState({ items: [], loading: true, error: '', search: '', status: 'All', page: 1, hasMore: false });
 
   const [questionForm, setQuestionForm] = useState(emptyQuestion);
+  const [visualDataText, setVisualDataText] = useState('');
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [questionTopics, setQuestionTopics] = useState([]);
 
@@ -206,6 +215,9 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
         subjectId: questionState.subjectId,
         topicId: questionState.topicId,
         difficulty: questionState.difficulty,
+        priority: questionState.priority,
+        category: questionState.category,
+        paperId: questionState.paperId,
         status: questionState.status,
         page,
       });
@@ -222,6 +234,12 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
       addToast(error.message || 'Unable to load questions.', 'error');
     }
   };
+
+  useEffect(() => {
+    getAdminMockTests({ page: 1, pageSize: 100 }).then((response) => setQuestionPapers(response.items)).catch((error) => {
+      addToast(error.message || 'Unable to load question paper filters.', 'error');
+    });
+  }, []);
 
   const loadMockTests = async (page = 1) => {
     setMockState((previous) => ({ ...previous, loading: true, error: '' }));
@@ -336,7 +354,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
     if (activeTab === 'questions') {
       loadQuestions(1);
     }
-  }, [activeTab, questionState.search, questionState.subjectId, questionState.topicId, questionState.difficulty, questionState.status]);
+  }, [activeTab, questionState.search, questionState.subjectId, questionState.topicId, questionState.difficulty, questionState.priority, questionState.category, questionState.paperId, questionState.status]);
 
   useEffect(() => {
     if (activeTab === 'mock-tests') {
@@ -381,14 +399,17 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
   const handleQuestionSubmit = async (event) => {
     event.preventDefault();
     try {
+      const visualData = visualDataText.trim() ? JSON.parse(visualDataText) : null;
+      const questionPayload = { ...questionForm, visual_data: visualData, topic_id: questionForm.topic_id || null };
       if (editingQuestionId) {
-        await updateAdminQuestion(editingQuestionId, { ...questionForm, topic_id: questionForm.topic_id || null });
+        await updateAdminQuestion(editingQuestionId, questionPayload);
         addToast('Question updated.', 'success');
       } else {
-        await createAdminQuestion({ ...questionForm, topic_id: questionForm.topic_id || null });
+        await createAdminQuestion(questionPayload);
         addToast('Question created.', 'success');
       }
       setQuestionForm(emptyQuestion);
+      setVisualDataText('');
       setEditingQuestionId(null);
       await loadQuestions(1);
       await loadStats();
@@ -505,6 +526,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
               <option value="MCQ">MCQ</option>
               <option value="TRUE_FALSE">True / False</option>
               <option value="DESCRIPTIVE">Descriptive</option>
+              <option value="NON_VERBAL">Non-verbal visual</option>
             </select>
             <select value={questionForm.correct_option} onChange={(event) => setQuestionForm((previous) => ({ ...previous, correct_option: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
               <option value="A">Correct: A</option>
@@ -523,6 +545,21 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
             <input value={questionForm.source || ''} onChange={(event) => setQuestionForm((previous) => ({ ...previous, source: event.target.value }))} placeholder="Source" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
             <input value={questionForm.image_url || ''} onChange={(event) => setQuestionForm((previous) => ({ ...previous, image_url: event.target.value }))} placeholder="Image URL" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input value={questionForm.category || ''} onChange={(event) => setQuestionForm((previous) => ({ ...previous, category: event.target.value }))} placeholder="Category / topic" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+            <select value={questionForm.priority || 'MEDIUM'} onChange={(event) => setQuestionForm((previous) => ({ ...previous, priority: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="HIGH">High priority</option><option value="MEDIUM">Medium priority</option><option value="LOW">Low priority</option></select>
+            <select value={questionForm.source_type || 'ORIGINAL_VARIATION'} onChange={(event) => setQuestionForm((previous) => ({ ...previous, source_type: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="PAST_PAPER_REPORTED">Reported past-paper item</option><option value="PAST_PAPER_PATTERN">Past-paper pattern</option><option value="CANDIDATE_RECALLED">Candidate recalled</option><option value="PREPARATION_PATTERN">Preparation pattern</option><option value="ORIGINAL_VARIATION">Original variation</option></select>
+            <input value={questionForm.source_reference || ''} onChange={(event) => setQuestionForm((previous) => ({ ...previous, source_reference: event.target.value }))} placeholder="Source reference (URL or note)" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+            <input value={questionForm.content_key || ''} onChange={(event) => setQuestionForm((previous) => ({ ...previous, content_key: event.target.value }))} placeholder="Stable content key" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+          </div>
+          <textarea value={visualDataText} onChange={(event) => {
+            setVisualDataText(event.target.value);
+            try {
+              setQuestionForm((previous) => ({ ...previous, visual_data: event.target.value.trim() ? JSON.parse(event.target.value) : null }));
+            } catch {
+              return;
+            }
+          }} rows="5" placeholder="Structured visual JSON" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-100" />
           <textarea value={questionForm.explanation || ''} onChange={(event) => setQuestionForm((previous) => ({ ...previous, explanation: event.target.value }))} rows="2" placeholder="Explanation" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={questionForm.is_active} onChange={(event) => setQuestionForm((previous) => ({ ...previous, is_active: event.target.checked }))} /> Active</label>
@@ -530,7 +567,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
           </div>
           <div className="flex gap-3">
             <button type="submit" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"><Plus className="w-4 h-4" />{editingQuestionId ? 'Save question' : 'Create question'}</button>
-            {editingQuestionId && <button type="button" onClick={() => { setEditingQuestionId(null); setQuestionForm(emptyQuestion); }} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs">Cancel</button>}
+            {editingQuestionId && <button type="button" onClick={() => { setEditingQuestionId(null); setQuestionForm(emptyQuestion); setVisualDataText(''); }} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs">Cancel</button>}
           </div>
         </form>
       </div>
@@ -553,6 +590,17 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
               <option value="MEDIUM">Medium</option>
               <option value="HARD">Hard</option>
             </select>
+            <select value={questionState.paperId} onChange={(event) => setQuestionState((previous) => ({ ...previous, paperId: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
+              <option value="All">All papers</option>
+              {questionPapers.map((paper) => <option key={paper.id} value={paper.id}>{paper.title}</option>)}
+            </select>
+            <input value={questionState.category === 'All' ? '' : questionState.category} onChange={(event) => setQuestionState((previous) => ({ ...previous, category: event.target.value || 'All' }))} placeholder="Filter category" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+            <select value={questionState.priority} onChange={(event) => setQuestionState((previous) => ({ ...previous, priority: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
+              <option value="All">All priorities</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
             <select value={questionState.status} onChange={(event) => setQuestionState((previous) => ({ ...previous, status: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
               <option value="All">All status</option>
               <option value="ACTIVE">Active</option>
@@ -570,6 +618,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
                   <div className="flex gap-2">
                     <button type="button" onClick={() => {
                       setEditingQuestionId(question.id);
+                      setVisualDataText(question.visual_data ? JSON.stringify(question.visual_data, null, 2) : '');
                       setQuestionForm({
                         ...emptyQuestion,
                         subject_id: question.subject_id || '',
@@ -584,6 +633,12 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
                         correct_option: question.correct_option || 'A',
                         explanation: question.explanation || '',
                         source: question.source || '',
+                        source_type: question.source_type || 'ORIGINAL_VARIATION',
+                        source_reference: question.source_reference || '',
+                        content_key: question.content_key || '',
+                        category: question.category || '',
+                        priority: question.priority || 'MEDIUM',
+                        visual_data: question.visual_data || null,
                         image_url: question.image_url || '',
                         is_active: Boolean(question.is_active),
                         is_verified: Boolean(question.is_verified),
@@ -598,6 +653,9 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
                 <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-slate-400">
                   <span>{question.difficulty}</span>
                   <span>{question.question_type}</span>
+                  <span>{question.category || 'Uncategorised'}</span>
+                  <span>{question.priority || 'No priority'}</span>
+                  <span>{question.source_type || 'No source type'}</span>
                   <span>{question.is_active ? 'Active' : 'Inactive'}</span>
                   <span>{question.is_verified ? 'Verified' : 'Unverified'}</span>
                 </div>
@@ -619,6 +677,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
             <input value={mockForm.title} onChange={(event) => setMockForm((previous) => ({ ...previous, title: event.target.value, slug: previous.slug || slugify(event.target.value) }))} placeholder="Mock test title" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" required />
             <input value={mockForm.slug || ''} onChange={(event) => setMockForm((previous) => ({ ...previous, slug: event.target.value }))} placeholder="Slug" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           </div>
+          <input value={mockForm.category || ''} onChange={(event) => setMockForm((previous) => ({ ...previous, category: event.target.value }))} placeholder="Paper category" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <select value={mockForm.branch_id} onChange={(event) => setMockForm((previous) => ({ ...previous, branch_id: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
               <option value="">Select branch</option>
@@ -673,6 +732,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
                     <p className="font-semibold text-slate-200">{mock.title}</p>
                     <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-mono uppercase text-slate-400">
                       <span>{mock.difficulty}</span>
+                      <span>{mock.category || 'Uncategorised'}</span>
                       <span>{mock.total_questions} questions</span>
                       <span>{mock.is_active ? 'Active' : 'Inactive'}</span>
                     </div>

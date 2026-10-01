@@ -33,7 +33,7 @@ export async function getSubjectsForBranch(branchId) {
   if (subjectsError) throw subjectsError;
   return subjects || [];
 }
-export const getMockTests = () => read('mock_tests', 'id,title,slug,description,branch_id,exam_id,duration_minutes,total_questions,difficulty,is_premium,is_active', { order: ['created_at', false] });
+export const getMockTests = () => read('mock_tests', 'id,title,slug,description,branch_id,exam_id,duration_minutes,total_questions,difficulty,category,is_premium,is_active', { order: ['created_at', false] });
 export const getStudyMaterials = () => read('study_materials', 'id,title,slug,description,content,material_type,subject_id,topic_id,branch_id,cover_image_url,pdf_url,is_premium,is_published,created_at,updated_at,subjects(id,name,slug),topics(id,name,slug),military_branches(id,name,slug)', { eq: ['is_published', true], order: ['created_at', false] });
 export const getCurrentAffairs = () => read('current_affairs', 'id,title,slug,summary,content,category,published_at,source_name,source_url,image_url,is_published', { eq: ['is_published', true], order: ['published_at', false] });
 export async function getStudyMaterialsPage({ branchId = 'All', subjectId = 'All', topicId = 'All', materialType = 'All', searchTerm = '', page = 1, pageSize = 9 } = {}) {
@@ -131,7 +131,7 @@ export async function getISSBModuleBySlug(slug) {
   if (error && error.code !== 'PGRST116') throw error;
   return data || null;
 }
-export const getMockTestQuestions = (mockTestId) => read('public_mock_test_questions', 'mock_test_id,question_id,question_number,subject_id,topic_id,question_text,question_type,difficulty,option_a,option_b,option_c,option_d,explanation,image_url', { eq: ['mock_test_id', mockTestId], order: ['question_number', true] });
+export const getMockTestQuestions = (mockTestId) => read('public_mock_test_questions', 'mock_test_id,question_id,question_number,subject_id,topic_id,question_text,question_type,difficulty,option_a,option_b,option_c,option_d,image_url,category,priority,visual_data', { eq: ['mock_test_id', mockTestId], order: ['question_number', true] });
 
 export async function searchContent({ term: searchTerm, contentType = 'All', branchId = 'All', subjectId = 'All', topicId = 'All', difficulty = 'All', page = 1, pageSize = 8 } = {}) {
   if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
@@ -147,7 +147,7 @@ export async function searchContent({ term: searchTerm, contentType = 'All', bra
   if (wants('Exam')) { let query = supabase.from('exams').select('id,name,slug,short_description,branch_id,difficulty').eq('is_active', true).ilike('name', pattern); if (branchId !== 'All') query = query.eq('branch_id', branchId); requests.push(query.range(start, end).then((result) => ({ type: 'Exam', result }))); }
   if (wants('Subject')) requests.push(supabase.from('subjects').select('id,name,slug,description').eq('is_active', true).ilike('name', pattern).range(start, end).then((result) => ({ type: 'Subject', result })));
   if (wants('Topic')) { let query = supabase.from('topics').select('id,name,slug,description,difficulty,subject_id,subjects(slug)').eq('is_active', true).ilike('name', pattern); if (subjectId !== 'All') query = query.eq('subject_id', subjectId); if (difficulty !== 'All') query = query.eq('difficulty', difficulty); requests.push(query.range(start, end).then((result) => ({ type: 'Topic', result }))); }
-  if (wants('Mock Test')) { let query = supabase.from('mock_tests').select('id,title,slug,description,difficulty,is_premium,branch_id,exam_id').eq('is_active', true).ilike('title', pattern); if (branchId !== 'All') query = query.eq('branch_id', branchId); if (difficulty !== 'All') query = query.eq('difficulty', difficulty); requests.push(query.range(start, end).then((result) => ({ type: 'Mock Test', result }))); }
+  if (wants('Mock Test')) { let query = supabase.from('mock_tests').select('id,title,slug,description,category,difficulty,is_premium,branch_id,exam_id').eq('is_active', true).or(`title.ilike.${pattern},slug.ilike.${pattern},description.ilike.${pattern},category.ilike.${pattern}`); if (branchId !== 'All') query = query.eq('branch_id', branchId); if (difficulty !== 'All') query = query.eq('difficulty', difficulty); requests.push(query.range(start, end).then((result) => ({ type: 'Mock Test', result }))); }
   if (wants('Study Material')) { let query = supabase.from('study_materials').select('id,title,slug,description,material_type,branch_id,subject_id,topic_id').eq('is_published', true).or(`title.ilike.${pattern},description.ilike.${pattern},content.ilike.${pattern}`); if (branchId !== 'All') query = query.eq('branch_id', branchId); if (subjectId !== 'All') query = query.eq('subject_id', subjectId); if (topicId !== 'All') query = query.eq('topic_id', topicId); requests.push(query.range(start, end).then((result) => ({ type: 'Study Material', result }))); }
   if (wants('Current Affairs')) requests.push(supabase.from('current_affairs').select('id,title,slug,summary,category,source_url').eq('is_published', true).or(`title.ilike.${pattern},summary.ilike.${pattern},category.ilike.${pattern}`).range(start, end).then((result) => ({ type: 'Current Affairs', result })));
   if (wants('ISSB')) requests.push(supabase.from('issb_modules').select('id,title,slug,description,content,module_type').eq('is_published', true).or(`title.ilike.${pattern},description.ilike.${pattern},content.ilike.${pattern},module_type.ilike.${pattern}`).range(start, end).then((result) => ({ type: 'ISSB', result })));
@@ -249,22 +249,31 @@ export async function getAdminDashboardStats() {
   return counts;
 }
 
-export async function getAdminQuestions({ search = '', subjectId = 'All', topicId = 'All', difficulty = 'All', status = 'All', page = 1, pageSize = 20 } = {}) {
+export async function getAdminQuestions({ search = '', subjectId = 'All', topicId = 'All', difficulty = 'All', priority = 'All', category = 'All', paperId = 'All', status = 'All', page = 1, pageSize = 20 } = {}) {
   if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
   let query = supabase
     .from('questions')
-    .select('id,subject_id,topic_id,question_text,question_type,difficulty,option_a,option_b,option_c,option_d,correct_option,explanation,source,image_url,is_active,is_verified,created_at,updated_at,subjects(id,name,slug),topics(id,name,slug)', { count: 'exact' });
+    .select('id,subject_id,topic_id,question_text,question_type,difficulty,option_a,option_b,option_c,option_d,correct_option,explanation,source,source_type,source_reference,priority,category,content_key,visual_data,image_url,is_active,is_verified,created_at,updated_at,subjects(id,name,slug),topics(id,name,slug)', { count: 'exact' });
 
   if (subjectId !== 'All') query = query.eq('subject_id', subjectId);
   if (topicId !== 'All') query = query.eq('topic_id', topicId);
   if (difficulty !== 'All') query = query.eq('difficulty', difficulty);
+  if (priority !== 'All') query = query.eq('priority', priority);
+  if (category !== 'All') query = query.eq('category', category);
+  if (paperId !== 'All') {
+    const { data: links, error: linksError } = await supabase.from('mock_test_questions').select('question_id').eq('mock_test_id', paperId);
+    if (linksError) throw linksError;
+    const questionIds = (links || []).map((link) => link.question_id);
+    if (!questionIds.length) return { items: [], count: 0, hasMore: false };
+    query = query.in('id', questionIds);
+  }
   if (status !== 'All') {
     const activeStatus = status === 'ACTIVE';
     query = query.eq('is_active', activeStatus);
   }
   if (search.trim()) {
     const pattern = `%${search.trim()}%`;
-    query = query.or(`question_text.ilike.${pattern},explanation.ilike.${pattern},source.ilike.${pattern}`);
+    query = query.or(`question_text.ilike.${pattern},explanation.ilike.${pattern},source.ilike.${pattern},source_reference.ilike.${pattern},source_type.ilike.${pattern},category.ilike.${pattern}`);
   }
 
   const start = (page - 1) * pageSize;
@@ -284,7 +293,7 @@ export async function createAdminQuestion(question) {
   const payload = { ...question };
   if (!payload.subject_id) throw new Error('A valid subject is required.');
   if (!payload.question_text || !payload.question_text.trim()) throw new Error('Question text is required.');
-  if (!['MCQ', 'TRUE_FALSE', 'DESCRIPTIVE'].includes(payload.question_type || 'MCQ')) throw new Error('Question type is invalid.');
+  if (!['MCQ', 'TRUE_FALSE', 'DESCRIPTIVE', 'NON_VERBAL'].includes(payload.question_type || 'MCQ')) throw new Error('Question type is invalid.');
   const optionValues = ['option_a', 'option_b', 'option_c', 'option_d'].map((key) => (payload[key] || '').trim());
   if (optionValues.some((value) => !value)) throw new Error('All answer options are required.');
   if (!['A', 'B', 'C', 'D'].includes(payload.correct_option || '')) throw new Error('A valid correct option is required.');
@@ -299,7 +308,7 @@ export async function updateAdminQuestion(questionId, question) {
   const payload = { ...question };
   if (!payload.subject_id) throw new Error('A valid subject is required.');
   if (!payload.question_text || !payload.question_text.trim()) throw new Error('Question text is required.');
-  if (!['MCQ', 'TRUE_FALSE', 'DESCRIPTIVE'].includes(payload.question_type || 'MCQ')) throw new Error('Question type is invalid.');
+  if (!['MCQ', 'TRUE_FALSE', 'DESCRIPTIVE', 'NON_VERBAL'].includes(payload.question_type || 'MCQ')) throw new Error('Question type is invalid.');
   const optionValues = ['option_a', 'option_b', 'option_c', 'option_d'].map((key) => (payload[key] || '').trim());
   if (optionValues.some((value) => !value)) throw new Error('All answer options are required.');
   if (!['A', 'B', 'C', 'D'].includes(payload.correct_option || '')) throw new Error('A valid correct option is required.');
@@ -326,7 +335,7 @@ export async function getAdminMockTests({ search = '', branchId = 'All', examId 
   if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
   let query = supabase
     .from('mock_tests')
-    .select('id,title,slug,description,branch_id,exam_id,duration_minutes,total_questions,difficulty,is_premium,is_active,created_at,updated_at,military_branches(id,name,slug),exams(id,name,slug)', { count: 'exact' });
+    .select('id,title,slug,description,branch_id,exam_id,duration_minutes,total_questions,difficulty,category,is_premium,is_active,created_at,updated_at,military_branches(id,name,slug),exams(id,name,slug)', { count: 'exact' });
 
   if (branchId !== 'All') query = query.eq('branch_id', branchId);
   if (examId !== 'All') query = query.eq('exam_id', examId);
@@ -334,7 +343,7 @@ export async function getAdminMockTests({ search = '', branchId = 'All', examId 
   if (status !== 'All') query = query.eq('is_active', status === 'ACTIVE');
   if (search.trim()) {
     const pattern = `%${search.trim()}%`;
-    query = query.or(`title.ilike.${pattern},description.ilike.${pattern}`);
+    query = query.or(`title.ilike.${pattern},slug.ilike.${pattern},description.ilike.${pattern},category.ilike.${pattern}`);
   }
 
   const start = (page - 1) * pageSize;
