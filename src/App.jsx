@@ -497,6 +497,7 @@ export default function App() {
       practice: '/practice',
       mockTests: '/mock-tests',
       'mock-tests': '/mock-tests',
+      'mock-detail': value ? `/mock-tests/${encodeURIComponent(value)}` : '/mock-tests',
       issb: '/issb',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
@@ -641,6 +642,7 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
+      if (normalizedPath.startsWith('/mock-tests/')) { setCurrentPage('mock-detail'); setSelectedForceId(decodeSlug(path.slice('/mock-tests/'.length))); return; }
       if (normalizedPath === '/current-affairs') { setCurrentPage('current-affairs'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/current-affairs/')) { setCurrentPage('current-affairs-detail'); setSelectedForceId(decodeSlug(path.slice('/current-affairs/'.length))); return; }
       const routePages = {
@@ -1364,6 +1366,7 @@ export default function App() {
       studyMaterial: studyMaterialDetailState.item,
       currentAffair: currentAffairDetailState.item,
       issbModule: issbModuleDetailState.item || backendData.issbModules.find((item) => item.slug === selectedForceId),
+      mockTest: backendData.mockTests.find((item) => item.slug === selectedForceId),
     });
     applySeoMetadata(metadata);
 
@@ -3156,6 +3159,7 @@ export default function App() {
   };
 
   const renderMockTestDetailPage = () => {
+    if (backendLoading) return <div className="max-w-3xl mx-auto px-4 py-20"><div className="animate-pulse rounded-3xl bg-slate-900 border border-slate-800 p-8 space-y-4"><div className="h-5 w-28 rounded bg-slate-800" /><div className="h-9 w-2/3 rounded bg-slate-800" /><div className="h-4 w-full rounded bg-slate-800" /><div className="h-24 w-full rounded-xl bg-slate-800" /></div></div>;
     const mock = backendData.mockTests.find((item) => item.slug === selectedForceId);
     if (!mock) return render404Page();
     const branch = backendData.branches.find((item) => item.id === mock.branch_id);

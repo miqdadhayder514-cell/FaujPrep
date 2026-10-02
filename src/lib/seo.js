@@ -50,6 +50,7 @@ export function getPageSeo({
   studyMaterial,
   currentAffair,
   issbModule,
+  mockTest,
 }) {
   const branch = backendData?.branches?.find((item) => item.slug === ({ army: 'pak-army', paf: 'paf', navy: 'pak-navy' }[currentPage]));
   const isSearch = currentPage === 'search' || Boolean(search);
@@ -143,6 +144,17 @@ export function getPageSeo({
   } else if (currentPage === 'mock-tests') {
     title = 'Mock Tests | FaujPrep';
     description = 'Explore available mock tests for independent Pakistan Army, PAF, Navy and ISSB preparation.';
+  } else if (currentPage === 'mock-detail') {
+    indexable = Boolean(mockTest?.is_active && !mockTest.is_premium);
+    if (mockTest) {
+      title = `${mockTest.title} | Mock Test | FaujPrep`;
+      description = cleanDescription([mockTest.description || mockTest.title, mockTest.category].filter(Boolean).join(' '));
+      breadcrumbItems = [
+        { name: 'Home', path: '/' },
+        { name: 'Mock Tests', path: '/mock-tests' },
+        { name: mockTest.title },
+      ];
+    }
   } else if (currentPage === 'practice') {
     title = 'Practice Questions | FaujPrep';
     description = 'Practice questions across subjects for Pakistan military entry tests with FaujPrep.';
@@ -267,8 +279,9 @@ function upsertMeta(selector, attribute, key, content) {
 }
 
 function absoluteUrl(path) {
-  const configuredOrigin = import.meta.env.VITE_SITE_URL;
-  const origin = configuredOrigin || window.location.origin;
+  const configuredOrigin = import.meta.env?.VITE_SITE_URL;
+  const origin = configuredOrigin || (typeof window !== 'undefined' ? window.location.origin : null);
+  if (!origin) return null;
   try {
     return new URL(path, `${origin.replace(/\/+$/, '')}/`).href;
   } catch {

@@ -143,7 +143,7 @@ async function fetchPublicRows(supabaseUrl, anonKey, table, select, filters = {}
   return allRows;
 }
 
-export function buildDynamicPages({ materials = [], affairs = [], modules = [] }) {
+export function buildDynamicPages({ materials = [], affairs = [], modules = [], mockTests = [] }) {
   return [
     ...materials.filter((item) => item.is_published && !item.is_premium && isPublicSlug(item.slug)).map((item) => ({
       path: `/study-materials/${encodeURIComponent(item.slug)}`,
@@ -174,6 +174,14 @@ export function buildDynamicPages({ materials = [], affairs = [], modules = [] }
       indexable: true,
       breadcrumb: ['Home', 'ISSB', item.title],
     })),
+    ...mockTests.filter((item) => item.is_active && !item.is_premium && isPublicSlug(item.slug)).map((item) => ({
+      path: `/mock-tests/${encodeURIComponent(item.slug)}`,
+      title: `${item.title} | Mock Test | FaujPrep`,
+      description: [item.description || item.title, item.category].filter(Boolean).join(' '),
+      lastmod: item.updated_at || null,
+      indexable: true,
+      breadcrumb: ['Home', 'Mock Tests', item.title],
+    })),
   ];
 }
 
@@ -185,15 +193,17 @@ async function getDynamicPages(env) {
     fetchPublicRows(supabaseUrl, anonKey, 'study_materials', 'slug,title,description,material_type,updated_at,cover_image_url,is_published,is_premium,subjects(name),topics(name),military_branches(name)', { is_published: 'eq.true', is_premium: 'eq.false' }),
     fetchPublicRows(supabaseUrl, anonKey, 'current_affairs', 'slug,title,summary,category,published_at,image_url,is_published', { is_published: 'eq.true' }),
     fetchPublicRows(supabaseUrl, anonKey, 'issb_modules', 'slug,title,description,module_type,is_published', { is_published: 'eq.true' }),
+    fetchPublicRows(supabaseUrl, anonKey, 'mock_tests', 'slug,title,description,category,updated_at,is_active,is_premium', { is_active: 'eq.true', is_premium: 'eq.false' }),
   ]);
-  const [materialsResult, affairsResult, modulesResult] = queries;
+  const [materialsResult, affairsResult, modulesResult, mockTestsResult] = queries;
   for (const result of queries) {
     if (result.status === 'rejected') console.warn(`SEO public content fetch skipped: ${result.reason.message}`);
   }
   const materials = materialsResult.status === 'fulfilled' ? materialsResult.value : [];
   const affairs = affairsResult.status === 'fulfilled' ? affairsResult.value : [];
   const modules = modulesResult.status === 'fulfilled' ? modulesResult.value : [];
-  return buildDynamicPages({ materials, affairs, modules });
+  const mockTests = mockTestsResult.status === 'fulfilled' ? mockTestsResult.value : [];
+  return buildDynamicPages({ materials, affairs, modules, mockTests });
 }
 
 async function writePageShell(baseHtml, page, siteUrl) {

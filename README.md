@@ -2,7 +2,7 @@
 
 ## SEO build output
 
-Set `VITE_SITE_URL` to the canonical deployed origin before a production build. The build uses the Supabase anon key and existing public row-level security policies to generate route-specific HTML metadata and `dist/sitemap.xml` from published public content. Premium study materials are excluded. `dist/robots.txt` blocks private and query-based routes; `dist/404.html` is the branded not-found document for hosts that support a conventional static 404 page.
+Set `VITE_SITE_URL` to the canonical deployed origin (`https://fauj-prep.vercel.app`) in the deployment environment before a production build. The build uses the Supabase anon key and existing public row-level security policies to generate route-specific HTML metadata and `dist/sitemap.xml` from published public content, including active free mock tests. Premium content and private or query-based routes are excluded. `dist/robots.txt` blocks private routes; `dist/404.html` is the branded not-found document for hosts that support a conventional static 404 page.
 
 Without `VITE_SITE_URL`, the app still sets runtime canonical URLs from the browser origin, but build-generated sitemap locations and static canonical tags are omitted rather than guessed.
 
