@@ -56,13 +56,17 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 
-const FaujPrepLogo = ({ className = "h-8 w-8", textClassName = "text-xl font-bold" }) => (
+const FaujPrepLogo = ({ className = "h-14 w-14", textClassName = "text-xl font-bold" }) => (
   <div className="flex items-center gap-2.5 cursor-pointer group">
-    <div className="relative flex items-center justify-center">
+    <div className={`relative shrink-0 ${className}`}>
       <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-emerald-600 via-amber-500 to-emerald-500 opacity-30 blur-sm group-hover:opacity-75 transition duration-300"></div>
-      <div className="relative bg-slate-900 border border-emerald-500/40 p-2 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-950/50">
-        <Shield className="w-5 h-5 text-emerald-400 group-hover:scale-105 transition-transform" />
-        <Star className="w-2.5 h-2.5 text-amber-400 absolute top-1.5 right-1.5 fill-amber-400" />
+      <div className="relative h-full w-full overflow-hidden rounded-lg bg-slate-900 border border-emerald-500/40 shadow-lg shadow-emerald-950/50">
+        <img
+          src="/images/website%20logo.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute left-0 top-1/2 h-[165%] w-auto max-w-none -translate-y-1/2"
+        />
       </div>
     </div>
     <div className="flex flex-col">
@@ -129,6 +133,13 @@ const renderStudyGuideContent = (content) => String(content || '').split(/\r?\n/
   return <p key={index} className="text-base leading-8 text-slate-200">{renderGuideInlineText(line)}</p>;
 });
 
+const FORCE_CARD_BACKGROUNDS = {
+  army: "linear-gradient(135deg, rgba(2, 6, 23, 0.28), rgba(2, 44, 50, 0.18)), url('/images/pakistan%20army%20section.png')",
+  paf: "linear-gradient(135deg, rgba(2, 6, 23, 0.30), rgba(8, 47, 73, 0.18)), url('/images/pakistan%20air%20force.png')",
+  navy: "linear-gradient(135deg, rgba(2, 6, 23, 0.30), rgba(12, 32, 64, 0.18)), url('/images/pakistan%20navy.png')",
+  issb: "linear-gradient(135deg, rgba(30, 12, 3, 0.24), rgba(15, 23, 42, 0.18)), url('/images/issb%20section.png')",
+};
+
 const FORCES_DATA = {
   army: {
     id: 'army',
@@ -137,6 +148,7 @@ const FORCES_DATA = {
     tagline: 'Lead with Honor and Commitment',
     badgeColor: 'from-emerald-900/80 to-emerald-950 border-emerald-500/30 text-emerald-400',
     accentColor: 'emerald',
+    backgroundImage: FORCE_CARD_BACKGROUNDS.army,
     description: 'Prepare thoroughly for the PMA Long Course, Technical Cadet Course (TCC), Lady Cadet Course (LCC), and Direct Short Service Commission tests.',
     subjects: ['Intelligence Tests (Verbal & Non-Verbal)', 'Mathematics (Matrices, Trigonometry, Calculus)', 'English (Grammar, Vocabulary, Comprehension)', 'General Knowledge & Pakistan Affairs', 'Initial Test Physical & Academic Standards', 'Initial Interview Guidelines'],
     routes: ['PMA Long Course', 'Technical Cadet Course (TCC)', 'Lady Cadet Course (LCC)', 'Direct Short Service Commission'],
@@ -149,6 +161,7 @@ const FORCES_DATA = {
     tagline: 'Aim High with Precision and Academic Mastery',
     badgeColor: 'from-sky-900/80 to-slate-950 border-sky-500/30 text-sky-400',
     accentColor: 'sky',
+    backgroundImage: FORCE_CARD_BACKGROUNDS.paf,
     description: 'Structured preparation for GDP (General Duty Pilot), Aeronautical Engineering, Air Defence, Admin & Special Duties, and Information Technology branches.',
     subjects: ['Verbal & Non-Verbal Intelligence', 'Advanced Mathematics', 'Physics (Mechanics, Electricity, Optics)', 'English Language Proficiency', 'General Knowledge & Current Affairs', 'Initial Computer-Based Testing Routine'],
     routes: ['General Duty Pilot (GDP)', 'Aeronautical Engineering (CAE)', 'Air Defence Course', 'Admin & Special Duties', 'Logistics & IT Branch'],
@@ -161,6 +174,7 @@ const FORCES_DATA = {
     tagline: 'Command the Seas with Academic Rigor',
     badgeColor: 'from-blue-900/80 to-slate-950 border-blue-500/30 text-blue-400',
     accentColor: 'blue',
+    backgroundImage: FORCE_CARD_BACKGROUNDS.navy,
     description: 'Comprehensive test preparation for PN Cadet Permanent Commission, Short Service Commission (SSC), Special Cadet Scheme, and Supply Branch.',
     subjects: ['Intelligence Reasoning (Verbal/Non-Verbal)', 'Mathematics & Analytical Skills', 'Physics & Basic Sciences', 'English & Essay Fundamentals', 'Pakistan Navy General Knowledge', 'Initial Medical & Physical Test Protocol'],
     routes: ['PN Cadet Permanent Commission', 'Short Service Commission (SSC)', 'Direct Cadet Entry', 'Supply & Executive Branches'],
@@ -174,6 +188,7 @@ const FORCES_DATA = {
     tagline: 'Four Days of Selection Evaluation',
     badgeColor: 'from-amber-900/80 to-slate-950 border-amber-500/30 text-amber-400',
     accentColor: 'amber',
+    backgroundImage: FORCE_CARD_BACKGROUNDS.issb,
     description: 'Specialized 4-day board evaluation preparation spanning psychological tests, group testing officer (GTO) indoor/outdoor tasks, and president interviews.',
     subjects: ['Intelligence Tests (Screening Day)', 'Word Association Test (WAT)', 'Sentence Completion Test (SCT)', 'Thematic Apperception / Story Writing', 'Group Discussions & Planning Exercises', 'GTO Outdoor Command Tasks', 'Interview & Personality Alignment'],
     routes: ['Army Recommendation Path', 'PAF Recommendation Path', 'Navy Recommendation Path'],
@@ -1727,6 +1742,26 @@ export default function App() {
           </div>
         </div>
 
+        <div className="pt-6 pb-4">
+          <div
+            className="relative overflow-hidden rounded-2xl border border-slate-700/80 shadow-2xl"
+            style={{
+              backgroundImage: "linear-gradient(90deg, rgba(2, 6, 23, 0.30), rgba(2, 6, 23, 0.50)), url('/images/hero%20section.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              minHeight: '220px',
+            }}
+          >
+            <div className="flex items-center justify-center min-h-[220px] px-6 py-8 text-center">
+              <div className="rounded-2xl border border-slate-700/60 bg-slate-950/35 px-5 py-4 shadow-lg backdrop-blur-[2px]">
+                <p className="text-xs sm:text-sm font-mono uppercase tracking-[0.25em] text-emerald-300">FaujPrep</p>
+                <p className="mt-2 text-lg sm:text-2xl font-bold text-slate-100">Prepare for the Forces. Build Your Future.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Legal Non-affiliation Disclaimer & Copyright */}
         <div className="pt-8 space-y-4">
           <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed flex items-start gap-3">
@@ -1816,7 +1851,15 @@ export default function App() {
     <div className="space-y-20 pb-16">
       
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-8 pb-16 lg:pt-16 lg:pb-24 border-b border-slate-800/60 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <section
+        className="relative overflow-hidden pt-8 pb-16 lg:pt-16 lg:pb-24 border-b border-slate-800/60"
+        style={{
+          backgroundImage: "linear-gradient(90deg, rgba(1, 6, 18, 0.88) 0%, rgba(2, 11, 24, 0.78) 38%, rgba(2, 11, 24, 0.62) 100%), url('/images/pakistan%20army%20section.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
@@ -1944,30 +1987,6 @@ export default function App() {
         </div>
       </section>
 
-      {/* Quick Trust Strip */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-6">
-          <p className="text-xs font-mono uppercase tracking-widest text-slate-400">
-            One Platform. Multiple Preparation Paths.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.values(FORCES_DATA).map((force) => (
-            <div
-              key={force.id}
-              onClick={() => navigateTo(force.id)}
-              className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition flex items-center justify-between cursor-pointer group"
-            >
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-semibold text-slate-200 group-hover:text-white">{force.name}</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Forces Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div className="text-center space-y-3">
@@ -1981,8 +2000,17 @@ export default function App() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Army Card */}
-          <div className="group rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 hover:border-emerald-500/50 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between">
-            <div className="space-y-4">
+          <div
+            className="group rounded-2xl border border-slate-800 hover:border-emerald-500/50 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between bg-slate-950/80 overflow-hidden relative"
+            style={{
+              backgroundImage: FORCES_DATA.army.backgroundImage,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            <div className="absolute inset-0 bg-slate-950/10" />
+            <div className="relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono uppercase px-2.5 py-1 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 font-bold">
                   PMA & TCC
@@ -1992,31 +2020,33 @@ export default function App() {
               <h3 className="text-2xl font-bold text-slate-100 group-hover:text-emerald-400 transition">
                 {FORCES_DATA.army.name}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                 {FORCES_DATA.army.description}
               </p>
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-mono uppercase text-slate-400">Key Syllabus Focus:</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {FORCES_DATA.army.subjects.map((sub, i) => (
-                    <span key={i} className="text-[11px] bg-slate-800/80 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700/60">
-                      {sub}
-                    </span>
-                  ))}
-                </div>
+              <div className="space-y-2 pt-2" aria-hidden="true">
+                <div className="h-0 opacity-0" />
               </div>
             </div>
             <button
               onClick={() => navigateTo('army')}
-              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-emerald-600 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 font-semibold text-sm transition flex items-center justify-center gap-2"
+              className="relative z-10 w-full py-3 rounded-xl bg-slate-900/80 hover:bg-emerald-600 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 font-semibold text-sm transition flex items-center justify-center gap-2"
             >
               Explore Army Prep <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* PAF Card */}
-          <div className="group rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 hover:border-sky-500/50 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between">
-            <div className="space-y-4">
+          <div
+            className="group rounded-2xl border border-slate-800 hover:border-sky-500/50 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between bg-slate-950/80 overflow-hidden relative"
+            style={{
+              backgroundImage: FORCES_DATA.paf.backgroundImage,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            <div className="absolute inset-0 bg-slate-950/10" />
+            <div className="relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono uppercase px-2.5 py-1 rounded bg-sky-950 border border-sky-800 text-sky-400 font-bold">
                   GDP & CAE
@@ -2026,31 +2056,33 @@ export default function App() {
               <h3 className="text-2xl font-bold text-slate-100 group-hover:text-sky-400 transition">
                 {FORCES_DATA.paf.name}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                 {FORCES_DATA.paf.description}
               </p>
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-mono uppercase text-slate-400">Key Syllabus Focus:</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {FORCES_DATA.paf.subjects.map((sub, i) => (
-                    <span key={i} className="text-[11px] bg-slate-800/80 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700/60">
-                      {sub}
-                    </span>
-                  ))}
-                </div>
+              <div className="space-y-2 pt-2" aria-hidden="true">
+                <div className="h-0 opacity-0" />
               </div>
             </div>
             <button
               onClick={() => navigateTo('paf')}
-              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-400 border border-sky-500/30 font-semibold text-sm transition flex items-center justify-center gap-2"
+              className="relative z-10 w-full py-3 rounded-xl bg-slate-900/80 hover:bg-sky-500 hover:text-slate-950 text-sky-400 border border-sky-500/30 font-semibold text-sm transition flex items-center justify-center gap-2"
             >
               Explore PAF Prep <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* Navy Card */}
-          <div className="group rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 hover:border-blue-500/50 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between">
-            <div className="space-y-4">
+          <div
+            className="group rounded-2xl border border-slate-800 hover:border-blue-500/50 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between bg-slate-950/80 overflow-hidden relative"
+            style={{
+              backgroundImage: FORCES_DATA.navy.backgroundImage,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            <div className="absolute inset-0 bg-slate-950/10" />
+            <div className="relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono uppercase px-2.5 py-1 rounded bg-blue-950 border border-blue-800 text-blue-400 font-bold">
                   PN Cadet & SSC
@@ -2060,31 +2092,33 @@ export default function App() {
               <h3 className="text-2xl font-bold text-slate-100 group-hover:text-blue-400 transition">
                 {FORCES_DATA.navy.name}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                 {FORCES_DATA.navy.description}
               </p>
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-mono uppercase text-slate-400">Key Syllabus Focus:</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {FORCES_DATA.navy.subjects.map((sub, i) => (
-                    <span key={i} className="text-[11px] bg-slate-800/80 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700/60">
-                      {sub}
-                    </span>
-                  ))}
-                </div>
+              <div className="space-y-2 pt-2" aria-hidden="true">
+                <div className="h-0 opacity-0" />
               </div>
             </div>
             <button
               onClick={() => navigateTo('navy')}
-              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-blue-500 hover:text-slate-950 text-blue-400 border border-blue-500/30 font-semibold text-sm transition flex items-center justify-center gap-2"
+              className="relative z-10 w-full py-3 rounded-xl bg-slate-900/80 hover:bg-blue-500 hover:text-slate-950 text-blue-400 border border-blue-500/30 font-semibold text-sm transition flex items-center justify-center gap-2"
             >
               Explore Navy Prep <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* ISSB Prominent Card */}
-          <div className="group rounded-2xl bg-gradient-to-b from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 hover:border-amber-400 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between relative overflow-hidden">
-            <div className="space-y-4">
+          <div
+            className="group rounded-2xl border border-amber-500/40 hover:border-amber-400 p-6 sm:p-8 space-y-6 transition-all duration-300 shadow-xl flex flex-col justify-between relative overflow-hidden bg-slate-950/80"
+            style={{
+              backgroundImage: FORCES_DATA.issb.backgroundImage,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            <div className="absolute inset-0 bg-slate-950/10" />
+            <div className="relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono uppercase px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
                   Specialized Board Prep
@@ -2097,23 +2131,16 @@ export default function App() {
                 </h3>
                 <p className="text-xs text-amber-400 font-mono">{FORCES_DATA.issb.subtitle}</p>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                 {FORCES_DATA.issb.description}
               </p>
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-mono uppercase text-slate-400">4-Day Evaluation Structure:</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {FORCES_DATA.issb.subjects.map((sub, i) => (
-                    <span key={i} className="text-[11px] bg-amber-950/60 text-amber-200 px-2.5 py-1 rounded-md border border-amber-800/50">
-                      {sub}
-                    </span>
-                  ))}
-                </div>
+              <div className="space-y-2 pt-2" aria-hidden="true">
+                <div className="h-0 opacity-0" />
               </div>
             </div>
             <button
               onClick={() => navigateTo('issb')}
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50"
+              className="relative z-10 w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50"
             >
               Explore ISSB Prep <ArrowRight className="w-4 h-4" />
             </button>
@@ -2122,8 +2149,16 @@ export default function App() {
       </section>
 
       {/* ISSB Feature Section */}
-      <section className="bg-slate-900/60 border-y border-slate-800/80 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      <section
+        className="relative overflow-hidden border-y border-slate-800/80 py-20"
+        style={{
+          backgroundImage: "linear-gradient(180deg, rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('/images/issb%20centre.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 relative z-10">
           <div className="text-center space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950 border border-amber-800 text-amber-400 text-xs font-mono">
               <Star className="w-3.5 h-3.5 fill-amber-400" /> Essential Officer Selection
@@ -2131,7 +2166,7 @@ export default function App() {
             <h2 className="text-3xl font-extrabold text-slate-100">
               Master Your ISSB Preparation
             </h2>
-            <p className="text-sm text-slate-400 max-w-xl mx-auto">
+            <p className="text-sm text-slate-200 max-w-xl mx-auto">
               Build familiarity with the major psychological, group testing, and interview dimensions of the ISSB board evaluation.
             </p>
           </div>
@@ -2140,16 +2175,16 @@ export default function App() {
             {issbCatalog.map((mod) => (
               <div
                 key={mod.id}
-                className="p-5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition flex flex-col justify-between space-y-4"
+                className="p-5 rounded-xl bg-slate-900/70 border border-slate-700/70 hover:border-amber-500/40 transition flex flex-col justify-between space-y-4 backdrop-blur-[2px]"
               >
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider">{mod.category}</span>
                   <h3 className="font-bold text-slate-100 text-base">{mod.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">{mod.desc}</p>
+                  <p className="text-xs text-slate-200 leading-relaxed">{mod.desc}</p>
                 </div>
                 <button
                   onClick={() => openModal(`Practice: ${mod.title}`, `Interactive exercise execution for "${mod.title}" will be activated in Phase 2 alongside automated timer and performance tracking.`)}
-                  className="w-full py-2 text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-950/40 hover:bg-amber-950/80 border border-amber-800/50 rounded-lg transition"
+                  className="w-full py-2 text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-950/50 hover:bg-amber-950/70 border border-amber-800/50 rounded-lg transition"
                 >
                   Practice Module
                 </button>
@@ -2186,17 +2221,25 @@ export default function App() {
 
       {/* Pricing Teaser */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border border-emerald-500/30 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="space-y-3 text-center md:text-left">
-            <span className="text-xs font-mono uppercase text-emerald-400 tracking-wider">Transparent Preparation</span>
-            <h2 className="text-3xl font-extrabold text-slate-100">Simple & Accessible Preparation Plans</h2>
-            <p className="text-sm text-slate-300 max-w-xl">
+        <div
+          className="relative min-h-[320px] sm:min-h-[360px] overflow-hidden rounded-[28px] border border-emerald-500/40 px-7 py-9 sm:px-12 sm:py-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl"
+          style={{
+            backgroundImage: "linear-gradient(90deg, rgba(2, 6, 23, 0.72) 0%, rgba(2, 8, 16, 0.48) 48%, rgba(2, 8, 16, 0.12) 100%), url('/images/Simple%20&%20Accessible%20Preparation%20Plans.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 54%',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          <div className="relative z-10 max-w-2xl space-y-3 text-center md:text-left">
+            <span className="text-xs font-mono uppercase text-emerald-400 tracking-[0.2em]">Transparent Preparation</span>
+            <h2 className="text-2xl sm:text-4xl xl:text-5xl font-extrabold text-slate-100 leading-tight">Simple & Accessible Preparation Plans</h2>
+            <p className="text-sm sm:text-lg text-slate-200 max-w-3xl">
               Start with free practice questions or upgrade to unlock comprehensive test banks and ISSB preparation tools.
             </p>
           </div>
           <button
             onClick={() => navigateTo('pricing')}
-            className="px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shrink-0 transition"
+            className="relative z-10 shrink-0 mt-2 md:mt-0 whitespace-nowrap px-5 py-3.5 sm:px-6 sm:py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm sm:text-base shadow-lg shadow-emerald-950/30 transition"
           >
             View Preparation Plans
           </button>
@@ -2235,9 +2278,17 @@ export default function App() {
 
       {/* Final CTA Banner */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-6">
+        <div
+          className="relative min-h-[340px] sm:min-h-[380px] overflow-hidden rounded-3xl border border-slate-700/80 px-6 py-10 sm:px-12 sm:py-12 flex flex-col justify-center text-center space-y-6 shadow-xl"
+          style={{
+            backgroundImage: "linear-gradient(180deg, rgba(2, 6, 23, 0.58) 0%, rgba(2, 6, 23, 0.38) 42%, rgba(2, 6, 23, 0.72) 100%), url('/images/Start%20Preparing%20Today.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 56%',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Start Preparing Today</h2>
-          <p className="text-sm text-slate-400 max-w-xl mx-auto">
+          <p className="text-sm text-slate-200 max-w-xl mx-auto">
             Build your preparation discipline step by step with focused practice questions and structured syllabus guides.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
@@ -2269,11 +2320,35 @@ export default function App() {
       ? { ...FORCES_DATA[forceKey], name: databaseBranch.name, description: databaseBranch.description || databaseBranch.short_description }
       : FORCES_DATA[forceKey];
     if (!force) return null;
+    const hasSyllabusBackground = forceKey === 'army' || forceKey === 'navy';
+
+    const forceHeroBackgrounds = {
+      army: {
+        backgroundImage: "linear-gradient(105deg, rgba(2, 8, 23, 0.42) 0%, rgba(2, 8, 23, 0.3) 58%, rgba(2, 8, 23, 0.12) 100%), url('/images/pakistan%20army%20preparation.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      },
+      navy: {
+        backgroundImage: "linear-gradient(105deg, rgba(2, 8, 23, 0.36) 0%, rgba(2, 8, 23, 0.24) 58%, rgba(2, 8, 23, 0.08) 100%), url('/images/pakistan%20navy%20preparation.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      },
+    };
 
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
         {/* Force Hero Header */}
-        <div className={`p-8 sm:p-12 rounded-3xl bg-gradient-to-br ${force.badgeColor} border space-y-6`}>
+        <div
+          className={`relative overflow-hidden p-8 sm:p-12 rounded-3xl bg-gradient-to-br ${force.badgeColor} border ${forceKey === 'paf' ? 'border-cyan-500/40' : forceKey === 'army' ? 'border-emerald-500/40' : forceKey === 'navy' ? 'border-blue-500/40' : ''} space-y-6`}
+          style={forceKey === 'paf' ? {
+            backgroundImage: "linear-gradient(105deg, rgba(2, 8, 23, 0.66) 0%, rgba(2, 8, 23, 0.48) 58%, rgba(2, 8, 23, 0.24) 100%), url('/images/pakistan%20air%20force%20preparations.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          } : forceHeroBackgrounds[forceKey]}
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest font-bold bg-slate-950/80 px-3 py-1 rounded-md border border-slate-800">
               {force.subtitle || force.name}
@@ -2322,13 +2397,26 @@ export default function App() {
           </div>
         )}
 
-        <div className="space-y-6">
+        <div
+          className={`space-y-6 ${hasSyllabusBackground ? 'relative overflow-hidden rounded-3xl border border-slate-600/40 p-4 sm:p-6' : forceKey === 'paf' ? 'relative overflow-hidden rounded-3xl border border-cyan-500/30 p-4 sm:p-6' : ''}`}
+          style={hasSyllabusBackground ? {
+            backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.22), rgba(2, 6, 23, 0.34)), url('/images/Syllabus%20&%20Subject%20Structure.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 55%',
+            backgroundRepeat: 'no-repeat',
+          } : forceKey === 'paf' ? {
+            backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.28)), url('/images/Paf%20Syllabus%20&%20Subject%20Structure.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 55%',
+            backgroundRepeat: 'no-repeat',
+          } : undefined}
+        >
           <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-emerald-400" /> Syllabus & Subject Structure
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {force.subjects.map((sub, idx) => (
-              <div key={idx} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+              <div key={idx} className={`p-5 rounded-2xl ${forceKey === 'paf' || hasSyllabusBackground ? 'bg-slate-950/65 border border-slate-600/70' : 'bg-slate-900 border border-slate-800'} space-y-3`}>
                 <span className="text-xs font-mono text-emerald-400">Subject 0{idx + 1}</span>
                 <h3 className="font-bold text-slate-200 text-base">{sub}</h3>
                 <p className="text-xs text-slate-400">Practice questions aligned with standard initial test topics.</p>
@@ -2794,7 +2882,15 @@ export default function App() {
 
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-        <section className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 p-8 sm:p-10 space-y-6">
+        <section
+          className="relative min-h-[360px] sm:min-h-[460px] overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 p-8 sm:p-10 space-y-6 flex flex-col justify-center"
+          style={{
+            backgroundImage: "linear-gradient(105deg, rgba(2, 6, 23, 0.58) 0%, rgba(2, 6, 23, 0.38) 58%, rgba(2, 6, 23, 0.16) 100%), url('/images/issb%20preparation.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
           <div className="flex items-center gap-2 text-[10px] font-mono uppercase text-amber-300 tracking-[0.2em]">
             <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
             ISSB Preparation Hub
@@ -2811,7 +2907,15 @@ export default function App() {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section
+          className="relative overflow-hidden rounded-3xl border border-amber-500/25 p-4 sm:p-6 space-y-5"
+          style={{
+            backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.24), rgba(2, 6, 23, 0.34)), url('/images/Syllabus%20&%20Subject%20Structure.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 55%',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-100">ISSB Preparation Modules</h2>
             <span className="text-[10px] uppercase font-mono text-amber-300">{issbModules.length} live modules</span>
@@ -2819,7 +2923,7 @@ export default function App() {
           {backendConfigured && issbModules.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {issbModules.map((module) => (
-                <article key={module.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-all space-y-4">
+                <article key={module.id} className="p-6 rounded-2xl bg-slate-950/65 border border-slate-600/70 hover:border-amber-500/40 transition-all space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[10px] font-mono uppercase text-amber-300 bg-amber-950/30 border border-amber-500/20 px-2 py-1 rounded">{module.module_type || 'Preparation'}</span>
                     <span className="text-[10px] text-slate-500">#{module.display_order || 1}</span>
@@ -2833,7 +2937,7 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <div className="p-8 rounded-2xl bg-slate-900 border border-dashed border-slate-700 text-center text-sm text-slate-400">
+            <div className="p-8 rounded-2xl bg-slate-950/65 border border-dashed border-slate-600/70 text-center text-sm text-slate-300">
               No ISSB modules are available yet.
             </div>
           )}
@@ -2887,8 +2991,17 @@ export default function App() {
           </div>
         </section>
 
+        <div
+          className="relative overflow-hidden rounded-3xl border border-slate-700/50 p-4 sm:p-6 space-y-8 sm:space-y-10"
+          style={{
+            backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.24), rgba(2, 6, 23, 0.38)), url('/images/issb%20practice%20mock%20tests.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
+          <div className="p-6 rounded-2xl bg-slate-950/70 border border-slate-600/60 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-100">ISSB Practice</h2>
               <button onClick={() => navigateTo('practice')} className="text-xs text-emerald-400 hover:underline">Open practice bank</button>
@@ -2899,7 +3012,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
+          <div className="p-6 rounded-2xl bg-slate-950/70 border border-slate-600/60 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-100">ISSB Mock Tests</h2>
               <button onClick={() => navigateTo('mock-tests')} className="text-xs text-emerald-400 hover:underline">View all tests</button>
@@ -2907,7 +3020,7 @@ export default function App() {
             {backendConfigured && issbMockTests.length > 0 ? (
               <div className="space-y-3">
                 {issbMockTests.map((mock) => (
-                  <button key={mock.id} onClick={() => navigateTo('mock-detail', mock.slug)} className="w-full text-left p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/40 transition">
+                  <button key={mock.id} onClick={() => navigateTo('mock-detail', mock.slug)} className="w-full text-left p-4 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 transition">
                     <p className="font-semibold text-slate-200">{mock.title}</p>
                     <p className="mt-1 text-xs text-slate-400">{mock.total_questions} questions · {mock.duration_minutes} minutes · {mock.difficulty || 'Practice'}</p>
                   </button>
@@ -2919,7 +3032,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <section className="p-6 rounded-2xl bg-slate-950/70 border border-slate-600/60 space-y-4">
           <h2 className="text-xl font-bold text-slate-100">ISSB Preparation Progress</h2>
           {session?.user ? (
             <div className="space-y-3 text-sm text-slate-300">
@@ -2933,6 +3046,7 @@ export default function App() {
             </div>
           )}
         </section>
+        </div>
       </div>
     );
   };
@@ -3302,13 +3416,23 @@ export default function App() {
     ];
 
     const planTone = {
-      free: 'bg-slate-900 border border-slate-800',
-      pro: 'bg-slate-900 border border-emerald-500/40 shadow-2xl shadow-emerald-950/30',
-      premium: 'bg-slate-900 border border-amber-500/40 shadow-2xl shadow-amber-950/20',
+      free: 'bg-slate-950/75 border border-slate-700/80',
+      pro: 'bg-slate-950/75 border border-emerald-500/40 shadow-2xl shadow-emerald-950/30',
+      premium: 'bg-slate-950/75 border border-amber-500/40 shadow-2xl shadow-amber-950/20',
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+      <div className="w-full pb-10">
+        <section
+          className="relative w-full py-10"
+          style={{
+            backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.18), rgba(2, 6, 23, 0.36)), url('/images/pricing.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Choose Your Preparation Plan</h1>
           <p className="text-sm text-slate-400">FaujPrep pricing is in PKR and JazzCash is the primary payment method for all paid access.</p>
@@ -3383,8 +3507,11 @@ export default function App() {
             );
           })}
         </div>
+          </div>
+        </section>
 
-        <div className="overflow-x-auto rounded-3xl bg-slate-900 border border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+        <div className="overflow-x-auto rounded-3xl bg-slate-950/75 border border-slate-700/80">
           <table className="min-w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80">
               <tr>
@@ -3406,6 +3533,7 @@ export default function App() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     );
   };
@@ -4048,13 +4176,22 @@ export default function App() {
   );
 
   const renderContactPage = () => (
-    <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+    <div
+      className="relative w-full py-10"
+      style={{
+        backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.32)), url('/images/contact%20faujprep.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+    <div className="max-w-3xl mx-auto px-4 space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-extrabold text-slate-100">Contact FaujPrep Support</h1>
         <p className="text-xs text-slate-400">Have questions about preparation modules or platform access?</p>
       </div>
 
-      <form onSubmit={handleContactSubmit} className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-5 shadow-2xl">
+      <form onSubmit={handleContactSubmit} className="p-6 sm:p-8 rounded-3xl bg-slate-950/75 border border-slate-700/80 space-y-5 shadow-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-300">Your Name</label>
@@ -4113,16 +4250,25 @@ export default function App() {
         </button>
       </form>
     </div>
+    </div>
   );
 
   const renderLegalPage = (title, type) => (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-      <div className="space-y-2 border-b border-slate-800 pb-4">
+    <div
+      className={type === 'about' ? 'relative w-full py-10 space-y-6' : 'max-w-4xl mx-auto px-4 py-10 space-y-6'}
+      style={type === 'about' ? {
+        backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.34)), url('/images/about%20faujprep.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      } : undefined}
+    >
+      <div className={`${type === 'about' ? 'max-w-4xl mx-auto px-4' : ''} space-y-2 border-b border-slate-800 pb-4`}>
         <h1 className="text-3xl font-extrabold text-slate-100">{title}</h1>
         <p className="text-xs text-slate-400">Last updated: September 2026 • FaujPrep Platform Policies</p>
       </div>
 
-      <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 text-xs text-slate-300 leading-relaxed">
+      <div className={`p-6 sm:p-8 rounded-3xl ${type === 'about' ? 'max-w-4xl mx-auto bg-slate-950/75 border-slate-700/80' : 'bg-slate-900 border-slate-800'} border space-y-6 text-xs text-slate-300 leading-relaxed`}>
         {type === 'disclaimer' && (
           <>
             <h3 className="font-bold text-slate-100 text-sm">Official Non-Affiliation Disclaimer</h3>
