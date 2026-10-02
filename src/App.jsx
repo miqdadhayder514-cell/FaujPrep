@@ -92,6 +92,42 @@ const Breadcrumbs = ({ items }) => (
   </nav>
 );
 
+const renderGuideInlineText = (text) => String(text).split(/(\*\*[^*]+\*\*)/g).map((part, index) => (
+  part.startsWith('**') && part.endsWith('**')
+    ? <strong key={index} className="font-bold text-slate-100">{part.slice(2, -2)}</strong>
+    : part
+));
+
+const renderStudyGuideContent = (content) => String(content || '').split(/\r?\n/).map((rawLine, index) => {
+  const line = rawLine.trim();
+  if (!line) return null;
+
+  if (line.startsWith('SOURCE|')) {
+    const [, url, label] = line.split('|');
+    const validUrl = /^https:\/\/[A-Za-z0-9.-]+(?:\/[^\s]*)?$/.test(url || '');
+    return validUrl ? (
+      <p key={index} className="text-sm leading-6 text-slate-400">
+        Reference: <a href={url} target="_blank" rel="noreferrer" className="text-emerald-300 underline underline-offset-4">{label || url}</a>
+      </p>
+    ) : null;
+  }
+
+  if (line.startsWith('## ')) return <h2 key={index} className="pt-4 text-2xl font-bold leading-tight text-slate-100">{renderGuideInlineText(line.slice(3))}</h2>;
+  if (line.startsWith('### ')) return <h3 key={index} className="pt-2 text-xl font-bold leading-tight text-slate-100">{renderGuideInlineText(line.slice(4))}</h3>;
+  if (line.startsWith('IMPORTANT:') || line.startsWith('METHOD:') || line.startsWith('REMEMBER:')) {
+    const [label, ...body] = line.split(':');
+    return (
+      <aside key={index} className="rounded-r-lg border-l-4 border-amber-400 bg-amber-400/10 px-4 py-3 text-base leading-7 text-amber-50">
+        <strong className="mr-2 text-amber-300">{label}:</strong>{renderGuideInlineText(body.join(':').trim())}
+      </aside>
+    );
+  }
+  if (line.startsWith('- ')) {
+    return <p key={index} className="flex gap-3 text-base leading-7 text-slate-200"><span aria-hidden="true" className="text-emerald-400">•</span><span>{renderGuideInlineText(line.slice(2))}</span></p>;
+  }
+  return <p key={index} className="text-base leading-8 text-slate-200">{renderGuideInlineText(line)}</p>;
+});
+
 const FORCES_DATA = {
   army: {
     id: 'army',
@@ -2423,7 +2459,7 @@ export default function App() {
 
                     <div className="space-y-3">
                       <h2 className="text-xl font-bold text-slate-100 leading-tight">{material.title}</h2>
-                      <p className="text-sm text-slate-400 line-clamp-3">{material.description || 'No summary is available for this study material yet.'}</p>
+                      <p className="text-base text-slate-400 line-clamp-3">{material.description || 'No summary is available for this study material yet.'}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2 text-[10px] font-mono text-slate-300">
@@ -2505,7 +2541,7 @@ export default function App() {
 
           <div className="space-y-4">
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">{item.title}</h1>
-            <p className="text-sm text-slate-300">{item.description || 'No summary is available for this resource yet.'}</p>
+            <p className="text-base leading-7 text-slate-300">{item.description || 'No summary is available for this resource yet.'}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-300">
@@ -2522,7 +2558,7 @@ export default function App() {
 
           <div className="rounded-2xl bg-slate-950 border border-slate-800 p-5">
             <h2 className="text-xl font-bold text-slate-100 mb-3">Resource Details</h2>
-            <div className="whitespace-pre-wrap text-sm leading-7 text-slate-300">{item.content || item.description || 'No detailed content is available for this resource yet.'}</div>
+            <div className="space-y-4">{renderStudyGuideContent(item.content || item.description || 'No detailed content is available for this resource yet.')}</div>
           </div>
         </article>
       </div>
