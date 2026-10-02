@@ -411,6 +411,7 @@ export default function App() {
     ? backendData.studyMaterials.map((material) => ({
         id: material.id,
         title: material.title,
+      slug: material.slug,
         force: 'Database',
         category: material.material_type || 'Guide',
         type: material.material_type || 'Study Material',
@@ -3228,7 +3229,7 @@ export default function App() {
               <h3 className="font-bold text-slate-100 text-base">{res.title}</h3>
             </div>
             <button
-              onClick={() => openModal(`Resource: ${res.title}`, backendConfigured ? 'This study material is loaded from Supabase.' : 'Configure Supabase to load live study materials.')}
+              onClick={() => res.slug ? navigateTo('study-material-detail', res.slug) : navigateTo('study-materials')}
               className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
             >
               <FileText className="w-4 h-4 text-emerald-400" /> Read Resource Guide
