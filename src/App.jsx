@@ -2532,6 +2532,17 @@ export default function App() {
   const renderCurrentAffairsPage = () => {
     const { items, loading, error, hasMore, page } = currentAffairsPageState;
     const hasActiveFilters = currentAffairsFilters.category !== 'All' || currentAffairsFilters.search.trim().length > 0;
+    const currentAffairsTopics = [
+      'AI & Cyber Security',
+      'Climate & Water Security',
+      'Regional Security & Connectivity',
+      'Energy & Energy Security',
+      'Space & Defence Technology',
+    ];
+    const availableCategories = [...new Set([
+      ...currentAffairsTopics,
+      ...(backendData.currentAffairs || []).map((item) => item.category).filter(Boolean),
+    ])];
 
     const clearFilters = () => setCurrentAffairsFilters({ category: 'All', search: '' });
 
@@ -2543,19 +2554,28 @@ export default function App() {
         </div>
 
         <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-3">
             <input
               type="text"
               value={currentAffairsFilters.search}
               onChange={(event) => setCurrentAffairsFilters((previous) => ({ ...previous, search: event.target.value }))}
               placeholder="Search current affairs..."
               aria-label="Search current affairs"
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
             />
-            <select value={currentAffairsFilters.category} onChange={(event) => setCurrentAffairsFilters((previous) => ({ ...previous, category: event.target.value }))} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
-              <option value="All">All categories</option>
-              {[...new Set((backendData.currentAffairs || []).map((item) => item.category).filter(Boolean))].map((category) => <option key={category} value={category}>{category}</option>)}
-            </select>
+            <nav aria-label="Current affairs topics" className="flex gap-2 overflow-x-auto pb-1">
+              {['All', ...availableCategories].map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setCurrentAffairsFilters((previous) => ({ ...previous, category }))}
+                  aria-pressed={currentAffairsFilters.category === category}
+                  className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${currentAffairsFilters.category === category ? 'border-emerald-400 bg-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-emerald-500/60 hover:text-emerald-300'}`}
+                >
+                  {category === 'All' ? 'All topics' : category}
+                </button>
+              ))}
+            </nav>
           </div>
           {hasActiveFilters && (
             <div className="flex justify-end">
@@ -2607,14 +2627,11 @@ export default function App() {
                     <h2 className="text-xl font-bold text-slate-100 leading-tight">{item.title}</h2>
                     <p className="text-sm text-slate-400">{item.summary || 'No summary available for this item yet.'}</p>
                   </div>
-                  {item.source_name ? <p className="text-[11px] text-slate-500">Source: {item.source_name}</p> : null}
+                  {item.source_name ? <p className="text-[11px] text-slate-500">Reference: {item.source_name}</p> : null}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button type="button" onClick={() => navigateTo('current-affairs-detail', item.slug)} className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">Read More</button>
-                  {item.source_url ? (
-                    <a href={item.source_url} target="_blank" rel="noreferrer" className="flex-1 text-center px-4 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/20 text-emerald-300 font-bold text-xs">Open Source</a>
-                  ) : null}
                 </div>
               </article>
             ))}
@@ -2660,11 +2677,10 @@ export default function App() {
             <p className="text-sm text-slate-300">{item.summary}</p>
           </div>
 
-          {item.source_name || item.source_url ? (
+          {item.source_name ? (
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-300">
-              <span className="text-slate-400 uppercase font-mono text-[10px] block mb-2">Source</span>
+              <span className="text-slate-400 uppercase font-mono text-[10px] block mb-2">Reference</span>
               {item.source_name ? <span className="block">{item.source_name}</span> : null}
-              {item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-emerald-400 hover:underline">Open source link</a> : null}
             </div>
           ) : null}
 
