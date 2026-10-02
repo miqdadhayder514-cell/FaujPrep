@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useFaujPrepData } from './hooks/useFaujPrepData';
 import AdminContentManager from './components/AdminContentManager';
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
@@ -861,6 +862,35 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.getElementById('mobile-navigation-close')?.focus();
+
+    const trapFocus = (event) => {
+      if (event.key !== 'Tab') return;
+      const focusable = [...document.querySelectorAll('#mobile-navigation button:not(:disabled), #mobile-navigation a[href]')];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', trapFocus);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', trapFocus);
+      document.getElementById('mobile-navigation-toggle')?.focus();
+    };
+  }, [mobileMenuOpen]);
+
   /* Filter logic for practice */
   const filteredPractice = useMemo(() => {
     return practiceCatalog.filter((item) => {
@@ -1462,7 +1492,7 @@ export default function App() {
       onClick={() => navigateTo('notifications')}
       aria-label={notificationUnreadCount > 0 ? `Notifications, ${notificationUnreadCount} unread` : 'Notifications'}
       title="Notifications"
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-300 transition hover:bg-slate-900 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+      className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-300 transition hover:bg-slate-900 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
     >
       <Bell className="h-5 w-5" />
       {notificationUnreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 min-w-4 rounded-full bg-rose-500 px-1 text-center text-[9px] font-bold leading-4 text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount}</span>}
@@ -1470,14 +1500,15 @@ export default function App() {
   );
 
   const renderNavbar = () => (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div onClick={() => navigateTo('home')}>
+    <>
+      <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-[96rem] items-center justify-between px-3 sm:px-6 lg:px-8">
+        <button type="button" onClick={() => navigateTo('home')} aria-label="FaujPrep home" className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
           <FaujPrepLogo />
-        </div>
+        </button>
 
         {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2 text-sm font-medium text-slate-300">
+        <nav className="hidden 2xl:flex items-center gap-1 text-sm font-medium text-slate-300">
           <button
             onClick={() => navigateTo('home')}
             className={`px-3 py-1.5 rounded-md transition ${currentPage === 'home' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
@@ -1571,66 +1602,71 @@ export default function App() {
         </nav>
 
         {/* Action Buttons */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden 2xl:flex items-center gap-3">
           {session?.user && renderNotificationButton()}
           {session ? <button onClick={async () => { await signOut(); addToast('Signed out.', 'success'); }} className="text-sm font-medium text-rose-200 hover:text-white px-3 py-1.5 rounded-md hover:bg-rose-950/60 transition">Sign Out</button> : <><button onClick={() => navigateTo('login')} className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-md hover:bg-slate-900 transition">Login</button><button onClick={() => navigateTo('register')} className="text-sm font-semibold text-slate-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 px-4 py-2 rounded-lg shadow-md shadow-emerald-950/50 transition hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5">Get Started <ArrowRight className="w-4 h-4" /></button></>}
         </div>
 
         {/* Mobile Hamburger */}
-        <div className="lg:hidden flex items-center gap-2">
+        <div className="2xl:hidden flex items-center gap-2">
           {session?.user && renderNotificationButton()}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition"
+            id="mobile-navigation-toggle"
+            type="button"
+            aria-controls="mobile-navigation"
+            aria-expanded={mobileMenuOpen}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-300 transition hover:bg-slate-900 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
             aria-label="Toggle Navigation Menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
-          <div className="relative ml-auto w-4/5 max-w-sm bg-slate-900 border-l border-slate-800 h-full p-6 flex flex-col justify-between overflow-y-auto shadow-2xl">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                <FaujPrepLogo />
-                <button onClick={() => setMobileMenuOpen(false)} className="p-1 text-slate-400 hover:text-white">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <button onClick={() => navigateTo('home')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Home</button>
-                {session?.user && <button onClick={() => navigateTo('notifications')} className="flex items-center justify-between gap-3 text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400"><span>Notifications</span>{notificationUnreadCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount} unread</span>}</button>}
-                <div className="space-y-1 pl-3 border-l-2 border-slate-800 my-1">
-                  <span className="text-[11px] font-mono text-slate-500 uppercase px-2">Forces Sections</span>
-                  <button onClick={() => navigateTo('army')} className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800">Pakistan Army</button>
-                  <button onClick={() => navigateTo('paf')} className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800">Pakistan Air Force</button>
-                  <button onClick={() => navigateTo('navy')} className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800">Pakistan Navy</button>
-                  <button onClick={() => navigateTo('issb')} className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-amber-400 hover:bg-slate-800">ISSB Preparation</button>
-                </div>
-                <button onClick={() => navigateTo('practice')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Practice Tests</button>
-                <button onClick={() => navigateTo('mock-tests')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Mock Tests</button>
-                <button onClick={() => navigateTo('resources')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Resources</button>
-                <button onClick={() => navigateTo('study-materials')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Study Materials</button>
-                <button onClick={() => navigateTo('current-affairs')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Current Affairs</button>
-                <button onClick={() => navigateTo('pricing')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Pricing</button>
-                <button onClick={() => navigateTo('dashboard')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Dashboard</button>
-                <button onClick={() => navigateTo('about')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">About FaujPrep</button>
-                <button onClick={() => navigateTo('contact')} className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Contact</button>
-              </div>
+      </header>
+      {mobileMenuOpen && createPortal(
+        <div className="2xl:hidden fixed inset-0 z-[60]">
+          <button type="button" tabIndex={-1} aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 h-full w-full bg-slate-950/80 backdrop-blur-sm" />
+          <div id="mobile-navigation" role="dialog" aria-modal="true" aria-label="Site navigation" className="absolute inset-y-0 right-0 flex w-[88vw] max-w-sm flex-col border-l border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6" style={{ height: '100dvh', paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 pb-4">
+              <FaujPrepLogo />
+              <button type="button" id="mobile-navigation-close" onClick={() => setMobileMenuOpen(false)} aria-label="Close navigation menu" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
+                <X className="h-6 w-6" />
+              </button>
             </div>
 
-            <div className="pt-6 border-t border-slate-800 flex flex-col gap-3">
-              {session ? <button onClick={async () => { await signOut(); setMobileMenuOpen(false); addToast('Signed out.', 'success'); }} className="w-full text-center py-2.5 text-sm font-semibold text-rose-200 bg-rose-950/50 rounded-lg border border-rose-500/30">Sign Out</button> : <><button onClick={() => navigateTo('login')} className="w-full text-center py-2.5 text-sm font-semibold text-slate-200 bg-slate-800 rounded-lg border border-slate-700">Login</button><button onClick={() => navigateTo('register')} className="w-full text-center py-2.5 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow">Get Started</button></>}
+            <nav aria-label="Mobile navigation" className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain py-4">
+              <button onClick={() => navigateTo('home')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Home</button>
+              <button onClick={() => navigateTo('search')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Search</button>
+              {session?.user && <button onClick={() => navigateTo('notifications')} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400"><span>Notifications</span>{notificationUnreadCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount} unread</span>}</button>}
+              <div className="my-2 space-y-1 border-l-2 border-slate-800 pl-3">
+                <span className="px-2 text-[11px] font-mono uppercase text-slate-500">Forces</span>
+                <button onClick={() => navigateTo('army')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Army</button>
+                <button onClick={() => navigateTo('paf')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Air Force</button>
+                <button onClick={() => navigateTo('navy')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Navy</button>
+                <button onClick={() => navigateTo('issb')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-semibold text-amber-400 hover:bg-slate-800">ISSB Preparation</button>
+              </div>
+              <button onClick={() => navigateTo('practice')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Practice Tests</button>
+              <button onClick={() => navigateTo('mock-tests')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Mock Tests</button>
+              <button onClick={() => navigateTo('resources')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Resources</button>
+              <button onClick={() => navigateTo('study-materials')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Study Materials</button>
+              <button onClick={() => navigateTo('current-affairs')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Current Affairs</button>
+              <button onClick={() => navigateTo('pricing')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Pricing</button>
+              {session && <button onClick={() => navigateTo('dashboard')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Dashboard</button>}
+              {session && <button onClick={() => navigateTo('billing')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Billing</button>}
+              {session && <button onClick={() => navigateTo('profile')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Profile</button>}
+              <button onClick={() => navigateTo('about')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">About FaujPrep</button>
+              <button onClick={() => navigateTo('contact')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Contact</button>
+            </nav>
+
+            <div className="flex shrink-0 flex-col gap-3 border-t border-slate-800 pt-4">
+              {session ? <button onClick={async () => { await signOut(); setMobileMenuOpen(false); addToast('Signed out.', 'success'); }} className="min-h-11 w-full rounded-lg border border-rose-500/30 bg-rose-950/50 py-2.5 text-sm font-semibold text-rose-200">Sign Out</button> : <><button onClick={() => navigateTo('login')} className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-800 py-2.5 text-sm font-semibold text-slate-200">Login</button><button onClick={() => navigateTo('register')} className="min-h-11 w-full rounded-lg bg-emerald-400 py-2.5 text-sm font-semibold text-slate-950 shadow hover:bg-emerald-300">Get Started</button></>}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </header>
+    </>
   );
 
   const renderFooter = () => (
