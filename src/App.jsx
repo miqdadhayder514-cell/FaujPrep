@@ -3160,7 +3160,7 @@ export default function App() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono uppercase bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-emerald-400">
-                  {item.force}
+                  Army Navy PAF
                 </span>
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
                   item.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-400' :
