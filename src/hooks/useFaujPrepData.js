@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isSupabaseConfigured, supabase, SUPABASE_SETUP_MESSAGE } from '../lib/supabase';
+import { ensureAnonymousSession, isSupabaseConfigured, supabase, SUPABASE_SETUP_MESSAGE } from '../lib/supabase';
 import {
   getBranches,
   getExams,
@@ -30,12 +30,12 @@ export function useFaujPrepData() {
     if (!isSupabaseConfigured) return undefined;
 
     let mounted = true;
-    supabase.auth.getSession().then(({ data: sessionData }) => {
-      if (mounted) setSession(sessionData.session);
-    });
     const { data: authSubscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (mounted) setSession(nextSession);
     });
+    ensureAnonymousSession()
+      .then((anonymousSession) => mounted && setSession(anonymousSession))
+      .catch(() => mounted && setError('Visitor access is unavailable. Enable anonymous sign-ins in Supabase Authentication settings.'));
     setLoading(true);
     Promise.all([getBranches(), getExams(), getSubjects(), getMockTests(), getStudyMaterials(), getISSBModules(), getCurrentAffairs()])
       .then(([branches, exams, subjects, mockTests, studyMaterials, issbModules, currentAffairs]) => {

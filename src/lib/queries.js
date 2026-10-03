@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured, SUPABASE_SETUP_MESSAGE } from './supabase';
+import { ensureAnonymousSession, supabase, isSupabaseConfigured, SUPABASE_SETUP_MESSAGE } from './supabase';
 
 async function read(table, columns, options = {}) {
   if (!isSupabaseConfigured) {
@@ -609,21 +609,11 @@ export async function signIn(email, password) {
   return data;
 }
 
-export async function signUp({ email, password, fullName, targetBranchId }) {
-  if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName, target_branch_id: targetBranchId || null } },
-  });
-  if (error) throw error;
-  return data;
-}
-
 export const signOut = async () => {
   if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+  await ensureAnonymousSession();
 };
 
 export async function startMockTest(mockTestId) {
