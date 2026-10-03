@@ -3088,20 +3088,28 @@ export default function App() {
             />
           </div>
 
-          {/* Force Filter */}
-          <div>
-            <select
-              value={practiceForceFilter}
-              onChange={(e) => setPracticeForceFilter(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-            >
-              <option value="All">All Forces</option>
-              <option value="Pakistan Army">Pakistan Army</option>
-              <option value="PAF">Pakistan Air Force</option>
-              <option value="Pakistan Navy">Pakistan Navy</option>
-              <option value="ISSB">ISSB</option>
-            </select>
-          </div>
+          <fieldset className="md:col-span-4 space-y-2">
+            <legend className="text-xs font-semibold text-slate-300">Force</legend>
+            <div role="group" aria-label="Filter practice tests by force" className="flex flex-wrap gap-2">
+              {[
+                ['All', 'All Forces'],
+                ['Pakistan Army', 'Pakistan Army'],
+                ['PAF', 'PAF'],
+                ['Pakistan Navy', 'Pakistan Navy'],
+                ['ISSB', 'ISSB'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={practiceForceFilter === value}
+                  onClick={() => setPracticeForceFilter(value)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${practiceForceFilter === value ? 'border-emerald-500 bg-emerald-500 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
           {/* Category Filter */}
           <div>
