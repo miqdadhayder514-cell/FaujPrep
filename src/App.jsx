@@ -6,10 +6,11 @@ import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
 import AdminNotificationsPanel from './components/AdminNotificationsPanel';
 import NotificationCenter from './components/NotificationCenter';
 import QuestionCard from './components/QuestionCard';
-import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, signUp, startMockTest, submitMockTest, updateProfile } from './lib/queries';
+import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyPaymentTransactions, getPaymentSettings, getPlanCatalog, rejectPaymentTransaction, submitManualPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
-import { isPrimaryAdmin } from './lib/adminAccess';
+import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
+import { ensureAnonymousSession } from './lib/supabase';
 import { getMyUnreadNotificationCount } from './lib/notifications';
 import { trackAnalyticsEvent, trackPageView } from './lib/analytics';
 import { ANALYTICS_EVENTS } from './lib/analytics-events';
@@ -356,17 +357,6 @@ export default function App() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '', showPass: false });
   const [loginErrors, setLoginErrors] = useState({});
 
-  const [registerForm, setRegisterForm] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    targetForce: 'Army',
-    agreeTerms: false,
-    showPass: false
-  });
-  const [registerErrors, setRegisterErrors] = useState({});
-
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [contactErrors, setContactErrors] = useState({});
 
@@ -524,8 +514,7 @@ export default function App() {
       dashboard: '/dashboard',
       billing: '/billing',
       checkout: '/checkout',
-      login: '/login',
-      register: '/register',
+      'admin-login': '/admin/login',
       pricing: '/pricing',
       about: '/about',
       contact: '/contact',
@@ -670,8 +659,7 @@ export default function App() {
         '/dashboard': 'dashboard',
         '/billing': 'billing',
         '/checkout': 'checkout',
-        '/login': 'login',
-        '/register': 'register',
+        '/admin/login': 'admin-login',
         '/pricing': 'pricing',
         '/about': 'about',
         '/contact': 'contact',
@@ -951,6 +939,7 @@ export default function App() {
     const errors = {};
     if (!loginForm.email) errors.email = 'Email address is required';
     else if (!/\S+@\S+\.\S+/.test(loginForm.email)) errors.email = 'Please enter a valid email address';
+    else if (loginForm.email.trim().toLowerCase() !== PRIMARY_ADMIN_EMAIL) errors.email = `Admin access is restricted to ${PRIMARY_ADMIN_EMAIL}`;
     if (!loginForm.password) errors.password = 'Password is required';
     else if (loginForm.password.length < 8) errors.password = 'Password must be at least 8 characters';
 
@@ -962,48 +951,16 @@ export default function App() {
         return;
       }
       try {
-        await signIn(loginForm.email, loginForm.password);
-        trackAnalyticsEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED, { pagePath: '/login' });
-        addToast('Signed in successfully.', 'success');
-        navigateTo('dashboard');
+        const { user } = await signIn(loginForm.email, loginForm.password);
+        if (!isPrimaryAdmin(user)) {
+          await signOut();
+          throw new Error('Only the confirmed primary administrator can sign in here.');
+        }
+        trackAnalyticsEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED, { pagePath: '/admin/login' });
+        addToast('Admin signed in successfully.', 'success');
+        navigateTo('admin');
       } catch (error) {
         addToast(error.message || 'Unable to sign in.', 'error');
-      }
-    }
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    const errors = {};
-    if (!registerForm.fullName.trim()) errors.fullName = 'Full Name is required';
-    if (!registerForm.email) errors.email = 'Email address is required';
-    else if (!/\S+@\S+\.\S+/.test(registerForm.email)) errors.email = 'Please enter a valid email address';
-    if (!registerForm.password) errors.password = 'Password is required';
-    else if (registerForm.password.length < 8) errors.password = 'Password must be at least 8 characters';
-    if (registerForm.confirmPassword !== registerForm.password) errors.confirmPassword = 'Passwords do not match';
-    if (!registerForm.agreeTerms) errors.agreeTerms = 'You must accept the Terms of Service and Privacy Policy';
-
-    setRegisterErrors(errors);
-
-    if (Object.keys(errors).length === 0) {
-      if (!backendConfigured) {
-        addToast(backendError || 'Supabase is not configured.', 'error');
-        return;
-      }
-      try {
-        const branchSlug = { Army: 'pak-army', PAF: 'paf', Navy: 'pak-navy', ISSB: 'issb' }[registerForm.targetForce];
-        const targetBranch = backendData.branches.find((branch) => branch.slug === branchSlug);
-        await signUp({
-          email: registerForm.email,
-          password: registerForm.password,
-          fullName: registerForm.fullName,
-          targetBranchId: targetBranch?.id,
-        });
-        trackAnalyticsEvent(ANALYTICS_EVENTS.SIGNUP_COMPLETED, { pagePath: '/register' });
-        addToast('Account created. Check your email if confirmation is enabled.', 'success');
-        navigateTo('login');
-      } catch (error) {
-        addToast(error.message || 'Unable to create account.', 'error');
       }
     }
   };
@@ -1011,14 +968,15 @@ export default function App() {
   const handleCheckoutSubmit = async (event) => {
     event.preventDefault();
 
-    if (!session?.user) {
-      addToast('Please sign in before continuing to checkout.', 'error');
-      navigateTo('login');
+    if (!selectedPlan || !selectedPlan.slug) {
+      setCheckoutState({ loading: false, error: 'Choose a valid plan before checkout.', result: null });
       return;
     }
 
-    if (!selectedPlan || !selectedPlan.slug) {
-      setCheckoutState({ loading: false, error: 'Choose a valid plan before checkout.', result: null });
+    try {
+      if (!session?.user) await ensureAnonymousSession();
+    } catch (error) {
+      setCheckoutState({ loading: false, error: error.message || 'Unable to start visitor checkout.', result: null });
       return;
     }
 
@@ -1058,12 +1016,6 @@ export default function App() {
   const handlePaymentSubmission = async (event) => {
     event.preventDefault();
 
-    if (!session?.user) {
-      addToast('Please sign in before submitting payment proof.', 'error');
-      navigateTo('login');
-      return;
-    }
-
     if (!selectedPlan || !selectedPlan.slug || selectedPlan.slug === 'free') {
       addToast('Please choose a paid plan to submit payment proof.', 'error');
       return;
@@ -1082,6 +1034,7 @@ export default function App() {
     setCheckoutState({ loading: true, error: null, result: null });
 
     try {
+      const visitor = session?.user || (await ensureAnonymousSession()).user;
       const response = await submitManualPaymentProof({
         planSlug: selectedPlan.slug,
         senderName,
@@ -1090,7 +1043,7 @@ export default function App() {
         paymentTime: paymentForm.paymentTime || null,
         notes: paymentForm.notes || null,
         paymentScreenshot,
-        userId: session.user.id,
+        userId: visitor.id,
       });
 
       setCheckoutState({ loading: false, error: null, result: response });
@@ -1158,12 +1111,9 @@ export default function App() {
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
-    if (!session?.user) {
-      addToast('Sign in before updating your profile.', 'error');
-      return;
-    }
     try {
-      await updateProfile(session.user.id, profileData);
+      const user = session?.user || (await ensureAnonymousSession()).user;
+      await updateProfile(user.id, profileData);
       setProfileSuccessMsg('Profile settings saved to Supabase.');
       addToast('Profile updated', 'success');
       setTimeout(() => setProfileSuccessMsg(''), 3000);
@@ -1208,13 +1158,9 @@ export default function App() {
   });
 
   const startMockSession = async (mock) => {
-    if (!session?.user) {
-      addToast('Sign in before starting a mock test.', 'error');
-      navigateTo('login');
-      return;
-    }
     setPracticeSessionLoading(true);
     try {
+      if (!session?.user) await ensureAnonymousSession();
       const attempt = await startMockTest(mock.id);
       const questions = await getMockTestQuestions(mock.id);
       if (!questions.length) {
@@ -1426,11 +1372,6 @@ export default function App() {
       trackPageView({ pagePath: pathname });
       lastAnalyticsPage.current = pageKey;
     }
-    if (currentPage === 'register' && lastAnalyticsPage.current !== pageKey) {
-      trackAnalyticsEvent(ANALYTICS_EVENTS.SIGNUP_STARTED, { pagePath: pathname, dedupeKey: pageKey });
-      lastAnalyticsPage.current = pageKey;
-    }
-
     let contentEvent = null;
     let content = null;
     if (['army', 'paf', 'navy'].includes(currentPage)) {
@@ -1618,13 +1559,13 @@ export default function App() {
 
         {/* Action Buttons */}
         <div className="hidden 2xl:flex items-center gap-3">
-          {session?.user && renderNotificationButton()}
-          {session ? <button onClick={async () => { await signOut(); addToast('Signed out.', 'success'); }} className="text-sm font-medium text-rose-200 hover:text-white px-3 py-1.5 rounded-md hover:bg-rose-950/60 transition">Sign Out</button> : <><button onClick={() => navigateTo('login')} className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-md hover:bg-slate-900 transition">Login</button><button onClick={() => navigateTo('register')} className="text-sm font-semibold text-slate-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 px-4 py-2 rounded-lg shadow-md shadow-emerald-950/50 transition hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5">Get Started <ArrowRight className="w-4 h-4" /></button></>}
+          {session?.user && !session.user.is_anonymous && renderNotificationButton()}
+          {isPrimaryAdmin(session?.user) ? <><button onClick={() => navigateTo('admin')} className="text-sm font-medium text-amber-300 hover:text-white px-3 py-1.5 rounded-md hover:bg-slate-900 transition">Admin Workspace</button><button onClick={async () => { await signOut(); addToast('Admin signed out.', 'success'); }} className="text-sm font-medium text-rose-200 hover:text-white px-3 py-1.5 rounded-md hover:bg-rose-950/60 transition">Sign Out</button></> : <button onClick={() => navigateTo('admin-login')} className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-md hover:bg-slate-900 transition">Admin Login</button>}
         </div>
 
         {/* Mobile Hamburger */}
         <div className="2xl:hidden flex items-center gap-2">
-          {session?.user && renderNotificationButton()}
+          {session?.user && !session.user.is_anonymous && renderNotificationButton()}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             id="mobile-navigation-toggle"
@@ -1653,7 +1594,7 @@ export default function App() {
             <nav aria-label="Mobile navigation" className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain py-4">
               <button onClick={() => navigateTo('home')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Home</button>
               <button onClick={() => navigateTo('search')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Search</button>
-              {session?.user && <button onClick={() => navigateTo('notifications')} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400"><span>Notifications</span>{notificationUnreadCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount} unread</span>}</button>}
+              {session?.user && !session.user.is_anonymous && <button onClick={() => navigateTo('notifications')} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400"><span>Notifications</span>{notificationUnreadCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount} unread</span>}</button>}
               <div className="my-2 space-y-1 border-l-2 border-slate-800 pl-3">
                 <span className="px-2 text-[11px] font-mono uppercase text-slate-500">Forces</span>
                 <button onClick={() => navigateTo('army')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Army</button>
@@ -1675,7 +1616,7 @@ export default function App() {
             </nav>
 
             <div className="flex shrink-0 flex-col gap-3 border-t border-slate-800 pt-4">
-              {session ? <button onClick={async () => { await signOut(); setMobileMenuOpen(false); addToast('Signed out.', 'success'); }} className="min-h-11 w-full rounded-lg border border-rose-500/30 bg-rose-950/50 py-2.5 text-sm font-semibold text-rose-200">Sign Out</button> : <><button onClick={() => navigateTo('login')} className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-800 py-2.5 text-sm font-semibold text-slate-200">Login</button><button onClick={() => navigateTo('register')} className="min-h-11 w-full rounded-lg bg-emerald-400 py-2.5 text-sm font-semibold text-slate-950 shadow hover:bg-emerald-300">Get Started</button></>}
+              {isPrimaryAdmin(session?.user) ? <button onClick={async () => { await signOut(); setMobileMenuOpen(false); addToast('Admin signed out.', 'success'); }} className="min-h-11 w-full rounded-lg border border-rose-500/30 bg-rose-950/50 py-2.5 text-sm font-semibold text-rose-200">Sign Out</button> : <button onClick={() => { navigateTo('admin-login'); setMobileMenuOpen(false); }} className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-800 py-2.5 text-sm font-semibold text-slate-200">Admin Login</button>}
             </div>
           </div>
         </div>,
@@ -1883,7 +1824,7 @@ export default function App() {
 
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <button
-                  onClick={() => navigateTo('register')}
+                  onClick={() => navigateTo('practice')}
                   className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-2 transition hover:scale-[1.02]"
                 >
                   Start Preparing <ArrowRight className="w-5 h-5" />
@@ -2293,10 +2234,10 @@ export default function App() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
             <button
-              onClick={() => navigateTo('register')}
+              onClick={() => navigateTo('practice')}
               className="px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition"
             >
-              Create Free Account
+              Start Free Practice
             </button>
             <button
               onClick={() => navigateTo('issb')}
@@ -3034,17 +2975,10 @@ export default function App() {
 
         <section className="p-6 rounded-2xl bg-slate-950/70 border border-slate-600/60 space-y-4">
           <h2 className="text-xl font-bold text-slate-100">ISSB Preparation Progress</h2>
-          {session?.user ? (
-            <div className="space-y-3 text-sm text-slate-300">
-              <p>Your dashboard stores your real practice and mock-test activity. Start an ISSB practice set or mock test to build your live preparation history.</p>
-              <button onClick={() => navigateTo('dashboard')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-200 font-semibold text-sm">Open Progress Dashboard</button>
-            </div>
-          ) : (
-            <div className="space-y-3 text-sm text-slate-300">
-              <p>Sign in to track your real ISSB activity and progress from the protected dashboard.</p>
-              <button onClick={() => navigateTo('login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Sign in to track progress</button>
-            </div>
-          )}
+          <div className="space-y-3 text-sm text-slate-300">
+            <p>Your practice and mock-test activity is saved in this browser session.</p>
+            <button onClick={() => navigateTo('dashboard')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-200 font-semibold text-sm">Open Progress Dashboard</button>
+          </div>
         </section>
         </div>
       </div>
@@ -3539,17 +3473,6 @@ export default function App() {
   };
 
   const renderCheckoutPage = () => {
-    if (!session?.user) {
-      return (
-        <div className="max-w-md mx-auto px-4 py-20 text-center space-y-6">
-          <Lock className="w-10 h-10 text-amber-400 mx-auto" />
-          <h1 className="text-2xl font-extrabold text-slate-100">Sign in to continue</h1>
-          <p className="text-sm text-slate-400">Checkout is attached to your FaujPrep account and the verified subscription record.</p>
-          <button onClick={() => navigateTo('login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Go to Login</button>
-        </div>
-      );
-    }
-
     const plan = selectedPlan || { slug: 'free', name: 'Free', price_pkr: 0 };
 
     return (
@@ -3689,17 +3612,6 @@ export default function App() {
   };
 
   const renderBillingPage = () => {
-    if (!session?.user) {
-      return (
-        <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5">
-          <Lock className="w-10 h-10 text-amber-400 mx-auto" />
-          <h1 className="text-2xl font-extrabold text-slate-100">Billing requires sign-in</h1>
-          <p className="text-sm text-slate-400">Your billing, payments, and plan status are protected to your account.</p>
-          <button onClick={() => navigateTo('login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Go to Login</button>
-        </div>
-      );
-    }
-
     const summary = billingState.summary || { subscription: { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 }, transactions: [] };
     const subscription = summary.subscription || { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 };
     const transactions = Array.isArray(summary.transactions) ? summary.transactions : [];
@@ -3763,8 +3675,8 @@ export default function App() {
     <div className="max-w-md mx-auto px-4 py-16 space-y-8">
       <div className="text-center space-y-2">
         <FaujPrepLogo className="h-10 w-10 mx-auto" textClassName="text-2xl font-bold" />
-        <h1 className="text-2xl font-extrabold text-slate-100">Login to FaujPrep</h1>
-        <p className="text-xs text-slate-400">Access your practice dashboard and syllabus guides</p>
+        <h1 className="text-2xl font-extrabold text-slate-100">Administrator Login</h1>
+          <p className="text-xs text-slate-400">Only the confirmed primary administrator account can access payment approvals.</p>
       </div>
 
       <form onSubmit={handleLoginSubmit} className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-5 shadow-2xl">
@@ -3774,7 +3686,7 @@ export default function App() {
             type="email"
             value={loginForm.email}
             onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-            placeholder="candidate@example.com"
+            placeholder={PRIMARY_ADMIN_EMAIL}
             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
           />
           {loginErrors.email && <p className="text-[11px] text-rose-400 font-medium">{loginErrors.email}</p>}
@@ -3805,135 +3717,13 @@ export default function App() {
           type="submit"
           className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg"
         >
-          Login to Platform
+          Admin Login
         </button>
-
-        <div className="pt-2 text-center text-xs text-slate-400">
-          Don't have an account?{' '}
-          <button type="button" onClick={() => navigateTo('register')} className="text-emerald-400 font-semibold hover:underline">
-            Register now
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-
-  const renderRegisterPage = () => (
-    <div className="max-w-md mx-auto px-4 py-12 space-y-6">
-      <div className="text-center space-y-2">
-        <FaujPrepLogo className="h-10 w-10 mx-auto" textClassName="text-2xl font-bold" />
-        <h1 className="text-2xl font-extrabold text-slate-100">Create Candidate Account</h1>
-        <p className="text-xs text-slate-400">Begin structured preparation for Army, PAF, Navy & ISSB</p>
-      </div>
-
-      <form onSubmit={handleRegisterSubmit} className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-300">Full Name</label>
-          <input
-            type="text"
-            value={registerForm.fullName}
-            onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })}
-            placeholder="e.g. Muhammad Ali"
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-          />
-          {registerErrors.fullName && <p className="text-[11px] text-rose-400">{registerErrors.fullName}</p>}
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-300">Email Address</label>
-          <input
-            type="email"
-            value={registerForm.email}
-            onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-            placeholder="candidate@example.com"
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-          />
-          {registerErrors.email && <p className="text-[11px] text-rose-400">{registerErrors.email}</p>}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300">Password</label>
-            <input
-              type="password"
-              value={registerForm.password}
-              onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-              placeholder="Min 8 characters"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-            />
-            {registerErrors.password && <p className="text-[11px] text-rose-400">{registerErrors.password}</p>}
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300">Confirm Password</label>
-            <input
-              type="password"
-              value={registerForm.confirmPassword}
-              onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
-              placeholder="Confirm password"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-            />
-            {registerErrors.confirmPassword && <p className="text-[11px] text-rose-400">{registerErrors.confirmPassword}</p>}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-300">Target Preparation Focus</label>
-          <select
-            value={registerForm.targetForce}
-            onChange={(e) => setRegisterForm({ ...registerForm, targetForce: e.target.value })}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="Army">Pakistan Army (PMA / TCC)</option>
-            <option value="PAF">Pakistan Air Force (GDP / CAE)</option>
-            <option value="Navy">Pakistan Navy (PN Cadet)</option>
-            <option value="ISSB">ISSB Special Preparation</option>
-          </select>
-        </div>
-
-        <div className="flex items-start gap-2 pt-1">
-          <input
-            type="checkbox"
-            id="terms"
-            checked={registerForm.agreeTerms}
-            onChange={(e) => setRegisterForm({ ...registerForm, agreeTerms: e.target.checked })}
-            className="mt-1 rounded bg-slate-950 border-slate-800 text-emerald-500 focus:ring-0"
-          />
-          <label htmlFor="terms" className="text-[11px] text-slate-400 leading-tight">
-            I agree to the <button type="button" onClick={() => navigateTo('terms')} className="text-emerald-400 hover:underline">Terms of Service</button> and <button type="button" onClick={() => navigateTo('privacy')} className="text-emerald-400 hover:underline">Privacy Policy</button>.
-          </label>
-        </div>
-        {registerErrors.agreeTerms && <p className="text-[11px] text-rose-400">{registerErrors.agreeTerms}</p>}
-
-        <button
-          type="submit"
-          className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg mt-2"
-        >
-          Create Candidate Account
-        </button>
-
-        <div className="pt-2 text-center text-xs text-slate-400">
-          Already registered?{' '}
-          <button type="button" onClick={() => navigateTo('login')} className="text-emerald-400 font-semibold hover:underline">
-            Login
-          </button>
-        </div>
       </form>
     </div>
   );
 
   const renderDashboardPage = () => {
-    if (!session?.user) {
-      return (
-        <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5">
-          <Lock className="w-10 h-10 text-amber-400 mx-auto" />
-          <h1 className="text-2xl font-extrabold text-slate-100">Sign in to view your dashboard</h1>
-          <p className="text-sm text-slate-400">Your attempts and performance are private to your Supabase account.</p>
-          <button onClick={() => navigateTo('login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Go to Login</button>
-        </div>
-      );
-    }
-
     const summary = dashboardState.summary;
     const stats = summary?.stats || {};
     const completedAttempts = summary?.recentMock || [];
@@ -3954,7 +3744,7 @@ export default function App() {
         <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold text-slate-100">Welcome {summary?.profile?.full_name || session.user.email}</h1>
+              <h1 className="text-2xl font-extrabold text-slate-100">Welcome {summary?.profile?.full_name || (session?.user?.is_anonymous ? 'Candidate' : session?.user?.email || 'Candidate')}</h1>
               <span className="text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Live Account</span>
             </div>
             <p className="text-xs text-slate-400">Target: {targetBranch?.name || 'Not configured'} · Exam: {targetExam?.name || 'Not configured'}</p>
@@ -3963,7 +3753,7 @@ export default function App() {
             <button onClick={() => navigateTo('profile')} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">Edit Candidate Profile</button>
             <button onClick={() => navigateTo('billing')} className="px-4 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900 text-emerald-200 text-xs font-semibold border border-emerald-500/20 transition">Billing</button>
             {isPrimaryAdmin(session.user) && <button onClick={() => navigateTo('admin')} className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 hover:text-slate-950 text-amber-300 text-xs font-semibold border border-amber-500/30 transition">Admin</button>}
-            <button onClick={async () => { await signOut(); addToast('Signed out.', 'success'); }} className="px-4 py-2 rounded-xl bg-rose-950/50 hover:bg-rose-900 text-rose-200 text-xs font-semibold border border-rose-500/30 transition">Sign Out</button>
+            {isPrimaryAdmin(session?.user) && <button onClick={async () => { await signOut(); addToast('Admin signed out.', 'success'); }} className="px-4 py-2 rounded-xl bg-rose-950/50 hover:bg-rose-900 text-rose-200 text-xs font-semibold border border-rose-500/30 transition">Sign Out</button>}
           </div>
         </div>
 
@@ -3995,11 +3785,8 @@ export default function App() {
 
   const renderAdminPage = () => {
     const isAdmin = isPrimaryAdmin(session?.user);
-    if (!session?.user) {
-      return <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5"><Lock className="w-10 h-10 text-amber-400 mx-auto" /><h1 className="text-2xl font-extrabold text-slate-100">Admin sign-in required</h1><button onClick={() => navigateTo('login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Go to Login</button></div>;
-    }
     if (!isAdmin) {
-      return <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5"><Lock className="w-10 h-10 text-rose-400 mx-auto" /><h1 className="text-2xl font-extrabold text-slate-100">Access denied</h1><p className="text-sm text-slate-400">This area is restricted to the primary FaujPrep administrator.</p><button onClick={() => navigateTo('dashboard')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-200 font-bold text-sm">Return to Dashboard</button></div>;
+      return <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5"><Lock className="w-10 h-10 text-amber-400 mx-auto" /><h1 className="text-2xl font-extrabold text-slate-100">Administrator sign-in required</h1><p className="text-sm text-slate-400">Payment approvals are restricted to the confirmed primary administrator.</p><button onClick={() => navigateTo('admin-login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Admin Login</button></div>;
     }
     if (currentPage === 'admin-notifications') return <AdminNotificationsPanel />;
     if (currentPage === 'admin-analytics') {
@@ -4406,10 +4193,8 @@ export default function App() {
         return renderCheckoutPage();
       case 'billing':
         return renderBillingPage();
-      case 'login':
+      case 'admin-login':
         return renderLoginPage();
-      case 'register':
-        return renderRegisterPage();
       case 'dashboard':
         return renderDashboardPage();
       case 'admin':
@@ -4421,7 +4206,7 @@ export default function App() {
       case 'notifications':
         return session?.user
           ? <NotificationCenter onNavigate={navigateToNotificationAction} onUnreadCountChange={setNotificationUnreadCount} />
-          : <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5"><Lock className="w-10 h-10 text-amber-400 mx-auto" /><h1 className="text-2xl font-extrabold text-slate-100">Sign in to view notifications</h1><button onClick={() => navigateTo('login')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Go to Login</button></div>;
+          : null;
       case 'profile':
         return renderProfilePage();
       case 'contact':

@@ -11,7 +11,9 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 5. Restart Vite with `npm run dev`.
-6. Enable email authentication in Supabase Authentication settings if email confirmation is desired.
+6. Enable anonymous sign-ins in Supabase Authentication settings for public practice and payment sessions. Keep email/password sign-in enabled for the existing primary administrator, require email confirmation, and disable public email/password sign-ups.
+
+Candidate progress, billing, and payment records use a persistent anonymous session stored in the current browser. Clearing browser storage or switching browsers creates a separate visitor identity. The only password login in FaujPrep is the admin login, restricted to the confirmed `miqdadhayder514@gmail.com` account.
 
 Only the publishable anon key belongs in `.env.local`. Never put a service-role key in this frontend project.
 
