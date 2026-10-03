@@ -210,16 +210,23 @@ const ISSB_MODULES = [
 ];
 
 const PRACTICE_BANK = [
-  { id: 'p1', title: 'Verbal Intelligence Test - Set A', force: 'Army', category: 'Intelligence', difficulty: 'Medium', questionsCount: 50, duration: '25 mins' },
+  { id: 'p1', title: 'Verbal Intelligence Test - Set A', force: 'Pakistan Army', category: 'Intelligence', difficulty: 'Medium', questionsCount: 50, duration: '25 mins' },
   { id: 'p2', title: 'Non-Verbal Pattern Series', force: 'PAF', category: 'Non-Verbal', difficulty: 'Hard', questionsCount: 40, duration: '20 mins' },
   { id: 'p3', title: 'Physics Fundamentals - Mechanics', force: 'PAF', category: 'Physics', difficulty: 'Medium', questionsCount: 30, duration: '20 mins' },
-  { id: 'p4', title: 'Mathematics Matrices & Trigonometry', force: 'Army', category: 'Mathematics', difficulty: 'Hard', questionsCount: 30, duration: '25 mins' },
-  { id: 'p5', title: 'English Grammar & Synonyms', force: 'Navy', category: 'English', difficulty: 'Easy', questionsCount: 40, duration: '20 mins' },
-  { id: 'p6', title: 'Pakistan Studies & General Knowledge', force: 'Army', category: 'General Knowledge', difficulty: 'Easy', questionsCount: 50, duration: '20 mins' },
+  { id: 'p4', title: 'Mathematics Matrices & Trigonometry', force: 'Pakistan Army', category: 'Mathematics', difficulty: 'Hard', questionsCount: 30, duration: '25 mins' },
+  { id: 'p5', title: 'English Grammar & Synonyms', force: 'Pakistan Navy', category: 'English', difficulty: 'Easy', questionsCount: 40, duration: '20 mins' },
+  { id: 'p6', title: 'Pakistan Studies & General Knowledge', force: 'Pakistan Army', category: 'General Knowledge', difficulty: 'Easy', questionsCount: 50, duration: '20 mins' },
   { id: 'p7', title: 'Word Association Practice Set 1', force: 'ISSB', category: 'Verbal', difficulty: 'Medium', questionsCount: 60, duration: '15 mins' },
   { id: 'p8', title: 'Sentence Completion English Set A', force: 'ISSB', category: 'English', difficulty: 'Medium', questionsCount: 26, duration: '10 mins' },
-  { id: 'p9', title: 'Navy Physics & Science Aptitude', force: 'Navy', category: 'Physics', difficulty: 'Hard', questionsCount: 35, duration: '25 mins' },
+  { id: 'p9', title: 'Navy Physics & Science Aptitude', force: 'Pakistan Navy', category: 'Physics', difficulty: 'Hard', questionsCount: 35, duration: '25 mins' },
 ];
+
+const PRACTICE_FORCE_CATEGORIES = {
+  'pak-army': 'Pakistan Army',
+  paf: 'PAF',
+  'pak-navy': 'Pakistan Navy',
+  issb: 'ISSB',
+};
 
 const MOCK_TESTS_DATA = [
   { id: 'm-army', title: 'PMA Long Course Initial Academic & Intelligence Mock', force: 'Pakistan Army', duration: '90 Minutes', format: 'Computer-based Simulated Format', difficulty: 'Challenging' },
@@ -399,16 +406,19 @@ export default function App() {
   const [dashboardState, setDashboardState] = useState({ loading: false, error: null, summary: null });
 
   const practiceCatalog = backendConfigured
-    ? backendData.mockTests.map((test) => ({
-        id: test.id,
-        title: test.title,
-        force: test.branch_id ? (backendData.branches.find((branch) => branch.id === test.branch_id)?.name.includes('Army') ? 'Army' : backendData.branches.find((branch) => branch.id === test.branch_id)?.name || 'All') : 'All',
-        category: test.category || 'Mock Test',
-        difficulty: test.difficulty || 'Medium',
-        questionsCount: test.total_questions,
-        duration: `${test.duration_minutes} mins`,
-        mockTestSlug: test.slug,
-      }))
+    ? backendData.mockTests.map((test) => {
+        const branch = backendData.branches.find((item) => item.id === test.branch_id);
+        return {
+          id: test.id,
+          title: test.title,
+          force: PRACTICE_FORCE_CATEGORIES[branch?.slug] || branch?.name || 'All',
+          category: test.category || 'Mock Test',
+          difficulty: test.difficulty || 'Medium',
+          questionsCount: test.total_questions,
+          duration: `${test.duration_minutes} mins`,
+          mockTestSlug: test.slug,
+        };
+      })
     : PRACTICE_BANK;
   const resourceCatalog = backendConfigured
     ? backendData.studyMaterials.map((material) => ({
@@ -3086,9 +3096,9 @@ export default function App() {
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
             >
               <option value="All">All Forces</option>
-              <option value="Army">Pakistan Army</option>
+              <option value="Pakistan Army">Pakistan Army</option>
               <option value="PAF">Pakistan Air Force</option>
-              <option value="Navy">Pakistan Navy</option>
+              <option value="Pakistan Navy">Pakistan Navy</option>
               <option value="ISSB">ISSB</option>
             </select>
           </div>
