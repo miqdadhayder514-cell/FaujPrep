@@ -1454,52 +1454,57 @@ export default function App() {
     </button>
   );
 
+  const renderMobileNavLink = (page, label, activePages = [page]) => (
+    <button
+      type="button"
+      onClick={() => navigateTo(page)}
+      aria-current={activePages.includes(currentPage) ? 'page' : undefined}
+      className={`mobile-nav-link ${activePages.includes(currentPage) ? 'mobile-nav-link-active' : ''}`}
+    >
+      {label}
+    </button>
+  );
+
   const renderNavbar = () => (
     <>
-      <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+      <header className="site-navigation-header sticky top-0 z-40 w-full border-b border-emerald-500/15 bg-slate-950/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-[96rem] items-center justify-between px-3 sm:px-6 lg:px-8">
         <button type="button" onClick={() => navigateTo('home')} aria-label="FaujPrep home" className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
           <FaujPrepLogo />
         </button>
 
         {/* Desktop Nav */}
-        <nav className="hidden 2xl:flex items-center gap-1 text-sm font-medium text-slate-300">
+        <nav aria-label="Primary navigation" className="hidden xl:flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[13px] font-semibold text-slate-300">
           <button
             onClick={() => navigateTo('home')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'home' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'home' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Home
           </button>
-          <button
-            onClick={() => navigateTo('search')}
-            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${currentPage === 'search' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
-          >
-            <Search className="w-3.5 h-3.5" /> Search
-          </button>
 
-          {/* Forces Dropdown or Direct Link */}
           <div className="relative group">
             <button
               onClick={() => navigateTo('forces')}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1 transition ${['forces', 'army', 'paf', 'navy', 'issb'].includes(currentPage) ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+              aria-haspopup="true"
+              className={`primary-nav-link flex items-center gap-1 px-2.5 py-2 rounded-lg transition ${['forces', 'army', 'paf', 'navy', 'issb'].includes(currentPage) ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
             >
-              Forces <ChevronDown className="w-3.5 h-3.5 opacity-70 group-hover:rotate-180 transition-transform" />
+              Forces <ChevronDown className="w-3.5 h-3.5 opacity-70 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
             </button>
-            <div className="absolute top-full left-0 mt-1 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 hidden group-hover:block transition-all z-50">
-              <button onClick={() => navigateTo('army')} className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 hover:text-emerald-400 text-slate-200 flex items-center justify-between">
+            <div className="force-nav-menu invisible pointer-events-none absolute left-0 top-full z-50 mt-2 w-60 translate-y-1 rounded-xl border border-slate-700/80 bg-slate-900/98 p-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100">
+              <button onClick={() => navigateTo('army')} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-200 transition hover:bg-slate-800 hover:text-emerald-300">
                 <span>Pakistan Army</span>
                 <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded">PMA</span>
               </button>
-              <button onClick={() => navigateTo('paf')} className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 hover:text-sky-400 text-slate-200 flex items-center justify-between">
+              <button onClick={() => navigateTo('paf')} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-200 transition hover:bg-slate-800 hover:text-sky-300">
                 <span>Pakistan Air Force</span>
                 <span className="text-[10px] bg-sky-950 text-sky-400 border border-sky-800 px-1.5 py-0.5 rounded">PAF</span>
               </button>
-              <button onClick={() => navigateTo('navy')} className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 hover:text-blue-400 text-slate-200 flex items-center justify-between">
+              <button onClick={() => navigateTo('navy')} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-200 transition hover:bg-slate-800 hover:text-blue-300">
                 <span>Pakistan Navy</span>
                 <span className="text-[10px] bg-blue-950 text-blue-400 border border-blue-800 px-1.5 py-0.5 rounded">Navy</span>
               </button>
               <div className="my-1 border-t border-slate-800"></div>
-              <button onClick={() => navigateTo('issb')} className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 hover:text-amber-400 text-slate-200 flex items-center justify-between">
+              <button onClick={() => navigateTo('issb')} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-200 transition hover:bg-slate-800 hover:text-amber-300">
                 <span>ISSB Preparation</span>
                 <span className="text-[10px] bg-amber-950 text-amber-400 border border-amber-800 px-1.5 py-0.5 rounded font-bold">Special</span>
               </button>
@@ -1508,62 +1513,50 @@ export default function App() {
 
           <button
             onClick={() => navigateTo('practice')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'practice' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'practice' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Practice Tests
           </button>
           <button
             onClick={() => navigateTo('mock-tests')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'mock-tests' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'mock-tests' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Full Mock Tests
           </button>
           <button
             onClick={() => navigateTo('resources')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'resources' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'resources' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Resources
           </button>
           <button
             onClick={() => navigateTo('study-materials')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'study-materials' || currentPage === 'study-material-detail' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'study-materials' || currentPage === 'study-material-detail' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Study Materials
           </button>
           <button
-            onClick={() => navigateTo('current-affairs')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'current-affairs' || currentPage === 'current-affairs-detail' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
-          >
-            Current Affairs
-          </button>
-          <button
             onClick={() => navigateTo('pricing')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'pricing' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'pricing' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Pricing
           </button>
           <button
             onClick={() => navigateTo('billing')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'billing' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'billing' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Billing
-          </button>
-          <button
-            onClick={() => navigateTo('dashboard')}
-            className={`px-3 py-1.5 rounded-md transition ${currentPage === 'dashboard' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
-          >
-            Dashboard
           </button>
         </nav>
 
         {/* Action Buttons */}
-        <div className="hidden 2xl:flex items-center gap-3">
+        <div className="hidden xl:flex shrink-0 items-center gap-2">
           {session?.user && !session.user.is_anonymous && renderNotificationButton()}
           {isPrimaryAdmin(session?.user) ? <><button onClick={() => navigateTo('admin')} className="text-sm font-medium text-amber-300 hover:text-white px-3 py-1.5 rounded-md hover:bg-slate-900 transition">Admin Workspace</button><button onClick={async () => { await signOut(); addToast('Admin signed out.', 'success'); }} className="text-sm font-medium text-rose-200 hover:text-white px-3 py-1.5 rounded-md hover:bg-rose-950/60 transition">Sign Out</button></> : <button onClick={() => navigateTo('admin-login')} className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-md hover:bg-slate-900 transition">Admin Login</button>}
         </div>
 
         {/* Mobile Hamburger */}
-        <div className="2xl:hidden flex items-center gap-2">
+        <div className="xl:hidden flex items-center gap-2">
           {session?.user && !session.user.is_anonymous && renderNotificationButton()}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -1580,9 +1573,9 @@ export default function App() {
       </div>
       </header>
       {mobileMenuOpen && createPortal(
-        <div className="2xl:hidden fixed inset-0 z-[60]">
-          <button type="button" tabIndex={-1} aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 h-full w-full bg-slate-950/80 backdrop-blur-sm" />
-          <div id="mobile-navigation" role="dialog" aria-modal="true" aria-label="Site navigation" className="absolute inset-y-0 right-0 flex w-[88vw] max-w-sm flex-col border-l border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6" style={{ height: '100dvh', paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        <div className="xl:hidden mobile-nav-overlay fixed inset-0 z-[60]">
+          <button type="button" tabIndex={-1} aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)} className="mobile-nav-backdrop absolute inset-0 h-full w-full bg-slate-950/75 backdrop-blur-sm" />
+          <div id="mobile-navigation" role="dialog" aria-modal="true" aria-label="Site navigation" className="mobile-nav-panel absolute inset-y-0 right-0 flex w-[88vw] max-w-sm flex-col border-l border-emerald-500/20 bg-slate-900 p-4 shadow-2xl sm:p-6" style={{ height: '100dvh', paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
             <div className="flex shrink-0 items-center justify-between border-b border-slate-800 pb-4">
               <FaujPrepLogo />
               <button type="button" id="mobile-navigation-close" onClick={() => setMobileMenuOpen(false)} aria-label="Close navigation menu" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
@@ -1590,28 +1583,44 @@ export default function App() {
               </button>
             </div>
 
-            <nav aria-label="Mobile navigation" className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain py-4">
-              <button onClick={() => navigateTo('home')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Home</button>
-              <button onClick={() => navigateTo('search')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Search</button>
-              {session?.user && !session.user.is_anonymous && <button onClick={() => navigateTo('notifications')} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400"><span>Notifications</span>{notificationUnreadCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount} unread</span>}</button>}
-              <div className="my-2 space-y-1 border-l-2 border-slate-800 pl-3">
-                <span className="px-2 text-[11px] font-mono uppercase text-slate-500">Forces</span>
-                <button onClick={() => navigateTo('army')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Army</button>
-                <button onClick={() => navigateTo('paf')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Air Force</button>
-                <button onClick={() => navigateTo('navy')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-slate-300 hover:bg-slate-800">Pakistan Navy</button>
-                <button onClick={() => navigateTo('issb')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-semibold text-amber-400 hover:bg-slate-800">ISSB Preparation</button>
-              </div>
-              <button onClick={() => navigateTo('practice')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Practice Tests</button>
-              <button onClick={() => navigateTo('mock-tests')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Full Mock Tests</button>
-              <button onClick={() => navigateTo('resources')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Resources</button>
-              <button onClick={() => navigateTo('study-materials')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Study Materials</button>
-              <button onClick={() => navigateTo('current-affairs')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Current Affairs</button>
-              <button onClick={() => navigateTo('pricing')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Pricing</button>
-              {session && <button onClick={() => navigateTo('dashboard')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Dashboard</button>}
-              {session && <button onClick={() => navigateTo('billing')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Billing</button>}
-              {session && <button onClick={() => navigateTo('profile')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Profile</button>}
-              <button onClick={() => navigateTo('about')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">About FaujPrep</button>
-              <button onClick={() => navigateTo('contact')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Contact</button>
+            <nav aria-label="Mobile navigation" className="mobile-nav-list min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain py-5">
+              <section className="mobile-nav-section">
+                <h2 className="mobile-nav-section-label">Main</h2>
+                {renderMobileNavLink('home', 'Home')}
+                {renderMobileNavLink('search', 'Search')}
+                {session?.user && !session.user.is_anonymous && <button type="button" onClick={() => navigateTo('notifications')} aria-current={currentPage === 'notifications' ? 'page' : undefined} className={`mobile-nav-link flex items-center justify-between ${currentPage === 'notifications' ? 'mobile-nav-link-active' : ''}`}><span>Notifications</span>{notificationUnreadCount > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{notificationUnreadCount > 99 ? '99+' : notificationUnreadCount} unread</span>}</button>}
+              </section>
+
+              <section className="mobile-nav-section">
+                <h2 className="mobile-nav-section-label">Forces</h2>
+                {renderMobileNavLink('army', 'Pakistan Army')}
+                {renderMobileNavLink('paf', 'Pakistan Air Force')}
+                {renderMobileNavLink('navy', 'Pakistan Navy')}
+                {renderMobileNavLink('issb', 'ISSB Preparation')}
+              </section>
+
+              <section className="mobile-nav-section">
+                <h2 className="mobile-nav-section-label">Preparation</h2>
+                {renderMobileNavLink('practice', 'Practice Tests')}
+                {renderMobileNavLink('mock-tests', 'Full Mock Tests', ['mock-tests', 'mock-detail'])}
+                {renderMobileNavLink('resources', 'Resources')}
+                {renderMobileNavLink('study-materials', 'Study Materials', ['study-materials', 'study-material-detail'])}
+                {renderMobileNavLink('current-affairs', 'Current Affairs', ['current-affairs', 'current-affairs-detail'])}
+              </section>
+
+              <section className="mobile-nav-section">
+                <h2 className="mobile-nav-section-label">Account</h2>
+                {renderMobileNavLink('pricing', 'Pricing')}
+                {session && renderMobileNavLink('billing', 'Billing')}
+                {session && renderMobileNavLink('dashboard', 'Dashboard')}
+                {session && renderMobileNavLink('profile', 'Profile')}
+              </section>
+
+              <section className="mobile-nav-section">
+                <h2 className="mobile-nav-section-label">About</h2>
+                {renderMobileNavLink('about', 'About FaujPrep')}
+                {renderMobileNavLink('contact', 'Contact')}
+              </section>
             </nav>
 
             <div className="flex shrink-0 flex-col gap-3 border-t border-slate-800 pt-4">
@@ -3695,7 +3704,6 @@ export default function App() {
   const renderLoginPage = () => (
     <div className="max-w-md mx-auto px-4 py-16 space-y-8">
       <div className="text-center space-y-2">
-        <FaujPrepLogo className="h-10 w-10 mx-auto" textClassName="text-2xl font-bold" />
         <h1 className="text-2xl font-extrabold text-slate-100">Administrator Login</h1>
           <p className="text-xs text-slate-400">Only the confirmed primary administrator account can access payment approvals.</p>
       </div>
@@ -3707,7 +3715,7 @@ export default function App() {
             type="email"
             value={loginForm.email}
             onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-            placeholder={PRIMARY_ADMIN_EMAIL}
+            placeholder="admin@gmail.com"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
           />
           {loginErrors.email && <p className="text-[11px] text-rose-400 font-medium">{loginErrors.email}</p>}
