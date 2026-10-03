@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const migration = readFileSync(new URL('../supabase/migrations/014_analytics_events_and_admin_reporting.sql', import.meta.url), 'utf8');
+const revenueFixMigration = readFileSync(new URL('../supabase/migrations/022_fix_admin_analytics_revenue.sql', import.meta.url), 'utf8');
 
 test('analytics events cannot be read or written directly by browser roles', () => {
   assert.match(migration, /alter table public\.analytics_events enable row level security/i);
@@ -28,6 +29,11 @@ test('aggregate read RPC is explicitly ADMIN-only and revenue uses approved reco
   const revenueQuery = migration.split("'approved_total_pkr'")[1].split("'daily'")[0];
   assert.match(revenueQuery, /where status = 'APPROVED'/i);
   assert.doesNotMatch(revenueQuery, /'SUCCESS'|'PENDING'|'REJECTED'/i);
+});
+
+test('analytics revenue sums the derived per-plan total alias', () => {
+  assert.match(revenueFixMigration, /'approved_total_pkr',\s*coalesce\(sum\(plan_totals\.total\), 0\)/i);
+  assert.match(revenueFixMigration, /select coalesce\(sum\(amount_pkr\), 0\) as total from public\.payment_transactions/i);
 });
 
 test('payment outcomes are recorded by database triggers, not client insertion', () => {

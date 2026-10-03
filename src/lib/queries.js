@@ -581,7 +581,7 @@ export async function getPracticeQuestions({ subjectId, topicId, difficulty, lim
   if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
   let query = supabase
     .from('public_questions')
-    .select('id,subject_id,topic_id,question_text,question_type,difficulty,option_a,option_b,option_c,option_d,explanation,image_url')
+    .select('id,subject_id,topic_id,question_text,question_type,difficulty,option_a,option_b,option_c,option_d,image_url')
     .limit(limit);
   if (subjectId) query = query.eq('subject_id', subjectId);
   if (topicId) query = query.eq('topic_id', topicId);
