@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { useFaujPrepData } from './hooks/useFaujPrepData';
 import AdminContentManager from './components/AdminContentManager';
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
@@ -4238,6 +4239,7 @@ export default function App() {
       {renderFooter()}
       {renderModal()}
       {renderToasts()}
+      <Analytics />
     </div>
   );
 }
