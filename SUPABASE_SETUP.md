@@ -21,7 +21,7 @@ When variables are absent, FaujPrep shows an explicit database setup notice. It 
 
 ## Analytics
 
-Apply the Supabase migrations in numeric order through `016_notifications_and_study_reminders.sql`. Migration 015 promotes the existing, email-confirmed `miqdadhayder514@gmail.com` profile to `ADMIN` and restricts admin database helpers, UI entry points, and analytics to that account. Other `ADMIN` and `EDITOR` profiles will no longer have admin access. Event history starts when migration 014 is deployed, while practice, mock-test, subscription, and payment totals also use their existing source tables.
+Apply the Supabase migrations in numeric order through `021_seed_first_full_mock_test.sql`. Migration 015 promotes the existing, email-confirmed `miqdadhayder514@gmail.com` profile to `ADMIN` and restricts admin database helpers, UI entry points, and analytics to that account. Other `ADMIN` and `EDITOR` profiles will no longer have admin access. Migration 021 adds the first full mock test with its 200 ordered questions and source figures. Event history starts when migration 014 is deployed, while practice, mock-test, subscription, and payment totals also use their existing source tables.
 
 The browser only receives the publishable anon key. Analytics writes go through the validated event RPC, and reports are returned as admin-checked aggregates rather than raw event rows.
 

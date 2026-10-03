@@ -365,10 +365,6 @@ export default function App() {
   const [practiceForceFilter, setPracticeForceFilter] = useState('All');
   const [practiceCategoryFilter, setPracticeCategoryFilter] = useState('All');
   const [practiceDifficultyFilter, setPracticeDifficultyFilter] = useState('All');
-  const [mockBranchFilter, setMockBranchFilter] = useState('All');
-  const [mockExamFilter, setMockExamFilter] = useState('All');
-  const [mockDifficultyFilter, setMockDifficultyFilter] = useState('All');
-  const [mockPremiumFilter, setMockPremiumFilter] = useState('All');
 
   /* Resources Filters */
   const [resourceSearch, setResourceSearch] = useState('');
@@ -913,14 +909,6 @@ export default function App() {
       return matchSearch && matchCategory;
     });
   }, [resourceCatalog, resourceSearch, resourceCategoryFilter]);
-
-  const filteredMockTests = useMemo(() => backendData.mockTests.filter((test) => {
-    const branchMatch = mockBranchFilter === 'All' || test.branch_id === mockBranchFilter;
-    const examMatch = mockExamFilter === 'All' || test.exam_id === mockExamFilter;
-    const difficultyMatch = mockDifficultyFilter === 'All' || test.difficulty === mockDifficultyFilter;
-    const premiumMatch = mockPremiumFilter === 'All' || (mockPremiumFilter === 'Premium' ? test.is_premium : !test.is_premium);
-    return branchMatch && examMatch && difficultyMatch && premiumMatch;
-  }), [backendData.mockTests, mockBranchFilter, mockExamFilter, mockDifficultyFilter, mockPremiumFilter]);
 
   const activeSubscription = subscriptionState.summary?.subscription || { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 };
   const activePlanSlug = activeSubscription.plan_slug || 'free';
@@ -1517,7 +1505,7 @@ export default function App() {
             onClick={() => navigateTo('mock-tests')}
             className={`px-3 py-1.5 rounded-md transition ${currentPage === 'mock-tests' ? 'text-emerald-400 bg-slate-900 font-semibold border border-emerald-500/20' : 'hover:text-white hover:bg-slate-900/50'}`}
           >
-            Mock Tests
+            Full Mock Tests
           </button>
           <button
             onClick={() => navigateTo('resources')}
@@ -1603,7 +1591,7 @@ export default function App() {
                 <button onClick={() => navigateTo('issb')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-semibold text-amber-400 hover:bg-slate-800">ISSB Preparation</button>
               </div>
               <button onClick={() => navigateTo('practice')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Practice Tests</button>
-              <button onClick={() => navigateTo('mock-tests')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Mock Tests</button>
+              <button onClick={() => navigateTo('mock-tests')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Full Mock Tests</button>
               <button onClick={() => navigateTo('resources')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Resources</button>
               <button onClick={() => navigateTo('study-materials')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Study Materials</button>
               <button onClick={() => navigateTo('current-affairs')} className="min-h-11 w-full rounded-lg px-3 text-left text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-emerald-400">Current Affairs</button>
@@ -1662,7 +1650,7 @@ export default function App() {
             <h4 className="text-xs font-bold font-mono uppercase text-slate-200 tracking-wider">Resources</h4>
             <ul className="space-y-2 text-xs">
               <li><button onClick={() => navigateTo('practice')} className="hover:text-emerald-400 transition">Practice Tests</button></li>
-              <li><button onClick={() => navigateTo('mock-tests')} className="hover:text-emerald-400 transition">Mock Test Center</button></li>
+              <li><button onClick={() => navigateTo('mock-tests')} className="hover:text-emerald-400 transition">Full Mock Tests</button></li>
               <li><button onClick={() => navigateTo('resources')} className="hover:text-emerald-400 transition">Guides & Papers</button></li>
               <li><button onClick={() => navigateTo('study-materials')} className="hover:text-emerald-400 transition">Study Materials</button></li>
               <li><button onClick={() => navigateTo('current-affairs')} className="hover:text-emerald-400 transition">Current Affairs</button></li>
@@ -3253,21 +3241,35 @@ export default function App() {
   };
 
   const renderMockTestsPage = () => {
-    const branchName = (branchId) => backendData.branches.find((branch) => branch.id === branchId)?.name || 'All branches';
-    const examName = (examId) => backendData.exams.find((exam) => exam.id === examId)?.name || 'General preparation';
+    const fullMockTest = backendData.mockTests.find((test) => test.slug === 'first-full-mock-test');
+
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-        <div className="space-y-3"><h1 className="text-3xl font-extrabold text-slate-100">Mock Test Center</h1><p className="text-sm text-slate-400 max-w-xl">Browse real Supabase mock tests and launch a timed attempt.</p></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-5 rounded-2xl bg-slate-900 border border-slate-800">
-          <select value={mockBranchFilter} onChange={(event) => setMockBranchFilter(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="All">All branches</option>{backendData.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select>
-          <select value={mockExamFilter} onChange={(event) => setMockExamFilter(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="All">All exams</option>{backendData.exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}</select>
-          <select value={mockDifficultyFilter} onChange={(event) => setMockDifficultyFilter(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="All">All difficulties</option><option value="EASY">Easy</option><option value="MEDIUM">Medium</option><option value="HARD">Hard</option></select>
-          <select value={mockPremiumFilter} onChange={(event) => setMockPremiumFilter(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="All">Free and premium</option><option value="Free">Free only</option><option value="Premium">Premium only</option></select>
+        <div className="space-y-3">
+          <h1 className="text-3xl font-extrabold text-slate-100">Full Mock Tests</h1>
+          <p className="text-sm text-slate-400 max-w-xl">Full-length timed tests for complete exam practice.</p>
         </div>
-        {!backendConfigured && <div className="p-8 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-sm text-amber-200">Configure Supabase to load mock tests.</div>}
-        {filteredMockTests.some((mock) => mock.slug?.startsWith('pma-')) && <section className="space-y-4"><h2 className="text-2xl font-bold text-slate-100">PMA Long Course Initial Test</h2><p className="text-sm text-slate-400">Dedicated verbal, non-verbal, analogy, and mathematical-series papers.</p></section>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{filteredMockTests.map((mock) => <div key={mock.id} className="p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 flex flex-col justify-between"><div className="space-y-4"><div className="flex items-center justify-between"><span className="text-xs font-mono uppercase bg-emerald-950 border border-emerald-800 text-emerald-400 px-2.5 py-1 rounded">{branchName(mock.branch_id)}</span><Clock className="w-5 h-5 text-slate-400" /></div><h3 className="text-xl font-bold text-slate-100">{mock.title}</h3><p className="text-xs text-slate-400">{mock.description || 'Database-backed timed preparation test.'}</p><div className="grid grid-cols-2 gap-3 text-xs text-slate-300 font-mono bg-slate-950 p-4 rounded-xl border border-slate-800"><span>{mock.total_questions} Questions</span><span>{mock.duration_minutes} Minutes</span><span>{examName(mock.exam_id)}</span><span>{mock.category || mock.difficulty || 'Practice'}</span></div></div><button onClick={() => navigateTo('mock-detail', mock.slug)} className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">View Test Details</button></div>)}</div>
-        {backendConfigured && !filteredMockTests.length && <p className="p-8 rounded-2xl bg-slate-900 border border-dashed border-slate-800 text-sm text-slate-400">No mock tests match these filters.</p>}
+        {!backendConfigured && <div className="p-8 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-sm text-amber-200">Configure Supabase to load full mock tests.</div>}
+        {backendConfigured && backendLoading && <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-sm text-slate-400">Loading full mock tests...</div>}
+        {backendConfigured && !backendLoading && fullMockTest && (
+          <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+              <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-slate-100">{fullMockTest.title}</h2>
+              <p className="text-sm leading-6 text-slate-400">{fullMockTest.description}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{fullMockTest.total_questions}</strong>Questions</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{fullMockTest.duration_minutes}</strong>Minutes</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+            </div>
+            <button onClick={() => navigateTo('mock-detail', fullMockTest.slug)} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">View Test Details</button>
+          </article>
+        )}
+        {backendConfigured && !backendLoading && !fullMockTest && <p className="max-w-3xl rounded-2xl border border-dashed border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">The full mock test has not been added to the database yet.</p>}
       </div>
     );
   };
