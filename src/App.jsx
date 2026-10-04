@@ -2393,7 +2393,7 @@ export default function App() {
                 <h3 className="font-bold text-slate-200 text-base">{sub}</h3>
                 <p className="text-xs text-slate-400">Practice questions aligned with standard initial test topics.</p>
                 <button
-                  onClick={() => openModal(`Subject Module: ${sub}`, `Practice question module for "${sub}" will launch in Phase 2.`)}
+                  onClick={() => navigateTo('practice')}
                   className="text-xs font-semibold text-emerald-400 hover:underline inline-flex items-center gap-1"
                 >
                   Start Practice <ChevronRight className="w-3.5 h-3.5" />
