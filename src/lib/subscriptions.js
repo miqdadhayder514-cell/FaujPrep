@@ -120,30 +120,33 @@ export async function getPaymentSettings() {
   };
 }
 
-export async function submitManualPaymentProof(payload) {
-  if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
-  }
-
+async function uploadPaymentScreenshot(userId, paymentScreenshot) {
   const screenshotExtensions = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
   };
-  const screenshotExtension = screenshotExtensions[payload.paymentScreenshot?.type];
-  if (!screenshotExtension || payload.paymentScreenshot.size > 5 * 1024 * 1024) {
+  const screenshotExtension = screenshotExtensions[paymentScreenshot?.type];
+  if (!screenshotExtension || paymentScreenshot.size > 5 * 1024 * 1024) {
     throw new Error('Choose a JPG, PNG, or WebP image no larger than 5 MB.');
   }
 
-  const screenshotPath = `${payload.userId}/${crypto.randomUUID()}.${screenshotExtension}`;
-  const { error: uploadError } = await supabase.storage
-    .from('payment-screenshots')
-    .upload(screenshotPath, payload.paymentScreenshot, {
-      cacheControl: '3600',
-      contentType: payload.paymentScreenshot.type,
-      upsert: false,
-    });
-  if (uploadError) throw uploadError;
+  const screenshotPath = `${userId}/${crypto.randomUUID()}.${screenshotExtension}`;
+  const { error } = await supabase.storage.from('payment-screenshots').upload(screenshotPath, paymentScreenshot, {
+    cacheControl: '3600',
+    contentType: paymentScreenshot.type,
+    upsert: false,
+  });
+  if (error) throw error;
+  return screenshotPath;
+}
+
+export async function submitManualPaymentProof(payload) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
+  }
+
+  const screenshotPath = await uploadPaymentScreenshot(payload.userId, payload.paymentScreenshot);
 
   const { data, error } = await supabase.rpc('submit_manual_payment_proof', {
     p_plan_slug: payload.planSlug,
@@ -163,6 +166,42 @@ export async function submitManualPaymentProof(payload) {
   return data;
 }
 
+export async function submitMockTestPaymentProof(payload) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
+  }
+
+  const screenshotPath = await uploadPaymentScreenshot(payload.userId, payload.paymentScreenshot);
+  const { data, error } = await supabase.rpc('submit_mock_test_payment_proof', {
+    p_test_slug: payload.testSlug,
+    p_sender_name: payload.senderName,
+    p_sender_phone: payload.senderPhone,
+    p_payment_date: payload.paymentDate,
+    p_payment_time: payload.paymentTime || null,
+    p_payment_screenshot_url: screenshotPath,
+    p_notes: payload.notes || null,
+  });
+  if (error) {
+    await supabase.storage.from('payment-screenshots').remove([screenshotPath]);
+    throw error;
+  }
+  return data;
+}
+
+export async function getMyMockTestPurchases() {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('get_my_mock_test_purchases');
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getPaidMockTestQuestions(testSlug) {
+  if (!isSupabaseConfigured) throw new Error('Paid mock-test access requires a configured account.');
+  const { data, error } = await supabase.rpc('get_paid_mock_test_questions', { p_test_slug: testSlug });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
 export async function getMyPaymentTransactions() {
   if (!isSupabaseConfigured) {
     return [];
@@ -178,9 +217,17 @@ export async function getAdminPaymentQueue() {
     return [];
   }
 
-  const { data, error } = await supabase.rpc('get_admin_payment_queue');
-  if (error) throw error;
-  return Promise.all((Array.isArray(data) ? data : []).map(async (payment) => {
+  const [planQueue, mockTestQueue] = await Promise.all([
+    supabase.rpc('get_admin_payment_queue'),
+    supabase.rpc('get_admin_mock_test_purchase_queue'),
+  ]);
+  if (planQueue.error) throw planQueue.error;
+  if (mockTestQueue.error) throw mockTestQueue.error;
+  const payments = [
+    ...(Array.isArray(planQueue.data) ? planQueue.data : []).map((payment) => ({ ...payment, purchase_type: 'PLAN' })),
+    ...(Array.isArray(mockTestQueue.data) ? mockTestQueue.data : []),
+  ];
+  return Promise.all(payments.map(async (payment) => {
     const screenshotPath = payment.payment_screenshot_url;
     if (!screenshotPath) return { ...payment, screenshotUrl: null };
     if (/^https?:\/\//i.test(screenshotPath)) return { ...payment, screenshotUrl: screenshotPath };
@@ -190,6 +237,30 @@ export async function getAdminPaymentQueue() {
       .createSignedUrl(screenshotPath, 3600);
     return { ...payment, screenshotUrl: signedUrlError ? null : signedUrlData?.signedUrl || null };
   }));
+}
+
+export async function approveMockTestPurchase(purchaseId, adminNotes = '') {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
+  }
+  const { data, error } = await supabase.rpc('admin_approve_mock_test_purchase', {
+    p_purchase_id: purchaseId,
+    p_admin_notes: adminNotes,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function rejectMockTestPurchase(purchaseId, adminNotes = '') {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
+  }
+  const { data, error } = await supabase.rpc('admin_reject_mock_test_purchase', {
+    p_purchase_id: purchaseId,
+    p_admin_notes: adminNotes,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function approvePaymentTransaction(paymentId, adminNotes = '') {

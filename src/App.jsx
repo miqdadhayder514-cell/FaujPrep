@@ -12,7 +12,7 @@ import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
-import { approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyPaymentTransactions, getPaymentSettings, getPlanCatalog, rejectPaymentTransaction, submitManualPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
+import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
 import { ensureAnonymousSession } from './lib/supabase';
@@ -288,6 +288,11 @@ const DEFAULT_PAYMENT_SETTINGS = {
   instructions: 'Important: In JazzCash or any bank transfer flow, select NAYAPAY and send the exact amount to the account details below. Then submit the payment proof on FaujPrep for manual verification.',
 };
 
+const PAID_MOCK_TEST_PRODUCTS = [
+  ACADEMIC_PORTION_MOCK_TEST_2,
+  PMA_LONG_COURSE_159_MOCK_TEST_2,
+];
+
 export default function App() {
   const { data: backendData, loading: backendLoading, error: backendError, configured: backendConfigured, session } = useFaujPrepData();
   const lastAnalyticsPage = useRef(null);
@@ -327,6 +332,17 @@ export default function App() {
     notes: '',
     paymentScreenshot: null,
   });
+  const [mockTestPurchaseState, setMockTestPurchaseState] = useState({ loading: false, requests: [] });
+  const [mockTestPaymentForm, setMockTestPaymentForm] = useState({
+    senderName: '',
+    senderPhone: '',
+    paymentDate: '',
+    paymentTime: '',
+    notes: '',
+    paymentScreenshot: null,
+  });
+  const [mockTestPaymentState, setMockTestPaymentState] = useState({ loading: false, error: null, result: null });
+  const [paidMockTestLoading, setPaidMockTestLoading] = useState(false);
   const [adminPaymentQueue, setAdminPaymentQueue] = useState([]);
   const [adminPaymentAction, setAdminPaymentAction] = useState({ loading: false, error: null });
   const [contentTopics, setContentTopics] = useState([]);
@@ -507,6 +523,26 @@ export default function App() {
     }
   }, [backendConfigured]);
 
+  const refreshMockTestPurchases = useCallback(async () => {
+    if (!backendConfigured || !session?.user) {
+      setMockTestPurchaseState({ loading: false, requests: [] });
+      return;
+    }
+
+    setMockTestPurchaseState((previous) => ({ ...previous, loading: true }));
+    try {
+      const requests = await getMyMockTestPurchases();
+      setMockTestPurchaseState({ loading: false, requests });
+    } catch {
+      setMockTestPurchaseState({ loading: false, requests: [] });
+    }
+  }, [backendConfigured, session?.user?.id]);
+
+  useEffect(() => {
+    if (!['mock-tests', 'mock-payment'].includes(currentPage)) return;
+    refreshMockTestPurchases();
+  }, [currentPage, refreshMockTestPurchases]);
+
   const routeFromPage = (page, value = null) => {
     const routeMap = {
       home: '/',
@@ -518,6 +554,7 @@ export default function App() {
       mockTests: '/mock-tests',
       'mock-tests': '/mock-tests',
       'mock-detail': value ? `/mock-tests/${encodeURIComponent(value)}` : '/mock-tests',
+      'mock-payment': value ? `/mock-tests/${encodeURIComponent(value)}/payment` : '/mock-tests',
       issb: '/issb',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
@@ -661,6 +698,8 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
+      const mockPaymentPath = path.match(/^\/mock-tests\/([^/]+)\/payment$/i);
+      if (mockPaymentPath) { setCurrentPage('mock-payment'); setSelectedForceId(decodeSlug(mockPaymentPath[1])); return; }
       if (normalizedPath.startsWith('/mock-tests/')) { setCurrentPage('mock-detail'); setSelectedForceId(decodeSlug(path.slice('/mock-tests/'.length))); return; }
       if (normalizedPath === '/current-affairs') { setCurrentPage('current-affairs'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/current-affairs/')) { setCurrentPage('current-affairs-detail'); setSelectedForceId(decodeSlug(path.slice('/current-affairs/'.length))); return; }
@@ -1063,15 +1102,90 @@ export default function App() {
     }
   };
 
-  const handleAdminPaymentAction = async (paymentId, action, adminNotes = '') => {
+  const handleMockTestPaymentSubmission = async (event) => {
+    event.preventDefault();
+    const product = PAID_MOCK_TEST_PRODUCTS.find((item) => item.id === selectedForceId);
+    if (!product) {
+      setMockTestPaymentState({ loading: false, error: 'This mock test is not available for purchase.', result: null });
+      return;
+    }
+
+    const senderName = mockTestPaymentForm.senderName.trim();
+    const senderPhone = mockTestPaymentForm.senderPhone.trim();
+    if (!senderName || !senderPhone || !mockTestPaymentForm.paymentDate || !mockTestPaymentForm.paymentScreenshot) {
+      setMockTestPaymentState({ loading: false, error: 'Sender name, phone number, payment date, and screenshot are required.', result: null });
+      return;
+    }
+
+    setMockTestPaymentState({ loading: true, error: null, result: null });
+    try {
+      const user = session?.user || (await ensureAnonymousSession()).user;
+      const response = await submitMockTestPaymentProof({
+        testSlug: product.id,
+        senderName,
+        senderPhone,
+        paymentDate: mockTestPaymentForm.paymentDate,
+        paymentTime: mockTestPaymentForm.paymentTime || null,
+        notes: mockTestPaymentForm.notes,
+        paymentScreenshot: mockTestPaymentForm.paymentScreenshot,
+        userId: user.id,
+      });
+      setMockTestPaymentState({ loading: false, error: null, result: response });
+      setMockTestPaymentForm({ senderName: '', senderPhone: '', paymentDate: '', paymentTime: '', notes: '', paymentScreenshot: null });
+      await refreshMockTestPurchases();
+      addToast(response?.message || 'Payment proof submitted for admin review.', 'success');
+    } catch (error) {
+      setMockTestPaymentState({ loading: false, error: error.message || 'Unable to submit mock-test payment proof.', result: null });
+    }
+  };
+
+  const startPaidMockTest = async (product) => {
+    if (!product) return;
+    const hasApprovedPurchase = mockTestPurchaseState.requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
+    if (!canAccessPremiumResources && !hasApprovedPurchase) {
+      navigateTo('mock-payment', product.id);
+      return;
+    }
+
+    setPaidMockTestLoading(true);
+    try {
+      if (!session?.user) await ensureAnonymousSession();
+      const questions = await getPaidMockTestQuestions(product.id);
+      if (!questions.length) throw new Error('Questions are not available yet. Please contact support.');
+      await startPracticeSession({
+        title: product.title,
+        questions,
+        questionsCount: product.questionsCount,
+        duration: product.duration,
+        difficulty: product.difficulty,
+        preserveQuestionOrder: true,
+      });
+    } catch (error) {
+      addToast(error.message || 'Unable to load this mock test.', 'error');
+    } finally {
+      setPaidMockTestLoading(false);
+    }
+  };
+
+  const handleAdminPaymentAction = async (paymentId, action, adminNotes = '', purchaseType = 'PLAN') => {
     if (!paymentId) return;
     setAdminPaymentAction({ loading: true, error: null });
     try {
+      const isMockTestPurchase = purchaseType === 'MOCK_TEST';
       const response = action === 'approve'
-        ? await approvePaymentTransaction(paymentId, adminNotes)
-        : await rejectPaymentTransaction(paymentId, adminNotes);
+        ? isMockTestPurchase
+          ? await approveMockTestPurchase(paymentId, adminNotes)
+          : await approvePaymentTransaction(paymentId, adminNotes)
+        : isMockTestPurchase
+          ? await rejectMockTestPurchase(paymentId, adminNotes)
+          : await rejectPaymentTransaction(paymentId, adminNotes);
       setAdminPaymentAction({ loading: false, error: null });
-      addToast(response?.status === 'APPROVED' ? 'Payment approved and subscription activated.' : 'Payment rejected and no premium access was granted.', response?.status === 'APPROVED' ? 'success' : 'info');
+      addToast(
+        isMockTestPurchase
+          ? response?.status === 'APPROVED' ? 'Mock-test access approved permanently.' : 'Mock-test payment rejected.'
+          : response?.status === 'APPROVED' ? 'Payment approved and subscription activated.' : 'Payment rejected and no premium access was granted.',
+        response?.status === 'APPROVED' ? 'success' : 'info'
+      );
       const queue = await getAdminPaymentQueue();
       setAdminPaymentQueue(Array.isArray(queue) ? queue : []);
       await refreshSubscriptionSummary();
@@ -3308,11 +3422,116 @@ export default function App() {
     return <div className="max-w-3xl mx-auto px-4 py-10 space-y-8"><button onClick={() => navigateTo('mock-tests')} className="text-xs text-emerald-400 hover:underline">Back to Mock Tests</button><div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-5"><span className="text-xs font-mono uppercase text-emerald-400">{branch?.name || 'FaujPrep'} · {exam?.name || 'Preparation'}</span><h1 className="text-3xl font-extrabold text-slate-100">{mock.title}</h1><p className="text-sm text-slate-400">{mock.description || 'A timed preparation test loaded from Supabase.'}</p><div className="grid grid-cols-3 gap-3 text-center text-xs font-mono"><div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><strong className="block text-slate-100">{mock.total_questions}</strong>Questions</div><div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><strong className="block text-slate-100">{mock.duration_minutes}</strong>Minutes</div><div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><strong className="block text-slate-100">{mock.difficulty || 'Practice'}</strong>Difficulty</div></div><div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/20 text-xs text-slate-300 space-y-2"><p>Answers can be changed before submission.</p><p>Correctness and explanations are hidden until the test is submitted.</p><p>The test submits automatically when the timer reaches zero.</p></div><button onClick={() => startMockSession(mock)} className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Start Test</button></div></div>;
   };
 
+  const renderMockTestPaymentPage = () => {
+    const product = PAID_MOCK_TEST_PRODUCTS.find((item) => item.id === selectedForceId);
+    if (!product) return render404Page();
+    const latestRequest = mockTestPurchaseState.requests.find((request) => request.test_slug === product.id);
+    const hasAccess = canAccessPremiumResources || latestRequest?.status === 'APPROVED';
+    const paymentBlocked = !backendConfigured || mockTestPaymentState.loading || latestRequest?.status === 'PENDING';
+
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+        <button type="button" onClick={() => navigateTo('mock-tests')} className="text-xs text-emerald-400 hover:underline">Back to Mock Tests</button>
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
+          <div className="space-y-2">
+            <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · Permanent access after approval</p>
+            <h1 className="text-3xl font-extrabold text-slate-100">How to Pay</h1>
+            <p className="text-sm text-slate-400">{product.title}</p>
+            <p className="text-2xl font-bold text-emerald-300">{formatPKR(product.pricePkr)}</p>
+          </div>
+
+          {hasAccess ? (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
+              <p className="font-semibold text-emerald-200">This test is already unlocked on your account.</p>
+              <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">
+                {paidMockTestLoading ? 'Loading test...' : 'Start Test'}
+              </button>
+            </div>
+          ) : latestRequest?.status === 'PENDING' ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/30 p-5 space-y-2">
+              <h2 className="text-lg font-bold text-amber-200">Payment Pending Review</h2>
+              <p className="text-sm text-amber-100/80">Your proof was submitted. Access will unlock permanently after admin approval.</p>
+            </div>
+          ) : (
+            <>
+              {latestRequest?.status === 'REJECTED' && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-4 text-sm text-rose-200 space-y-1">
+                  <p className="font-semibold">Previous payment was rejected.</p>
+                  {latestRequest.admin_notes && <p>{latestRequest.admin_notes}</p>}
+                  <p>You can submit a new payment proof below.</p>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5 space-y-4">
+                <p className="text-xs uppercase tracking-wide text-emerald-200">Payment method</p>
+                <p className="text-3xl font-extrabold text-emerald-300">Choose NayaPay</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-4">
+                    <p className="text-[10px] uppercase text-slate-400">Account title</p>
+                    <p className="mt-1 break-words text-base font-bold text-slate-100">{paymentSettings.account_title || 'FaujPrep'}</p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-500/20 bg-slate-950/70 p-4">
+                    <p className="text-[10px] uppercase text-slate-400">Account number</p>
+                    <p className="mt-1 text-base font-bold text-slate-100">{paymentSettings.account_number || '0000000000000'}</p>
+                  </div>
+                </div>
+                <p className="text-sm leading-6 text-emerald-100/90">Transfer exactly {formatPKR(product.pricePkr)} to this NayaPay account, then submit your payment details and screenshot for admin verification.</p>
+              </div>
+
+              <form onSubmit={handleMockTestPaymentSubmission} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-1 text-xs font-semibold text-slate-300">Sender name
+                    <input value={mockTestPaymentForm.senderName} onChange={(event) => setMockTestPaymentForm((previous) => ({ ...previous, senderName: event.target.value }))} required className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100" autoComplete="name" />
+                  </label>
+                  <label className="space-y-1 text-xs font-semibold text-slate-300">Sender phone
+                    <input type="tel" value={mockTestPaymentForm.senderPhone} onChange={(event) => setMockTestPaymentForm((previous) => ({ ...previous, senderPhone: event.target.value }))} required className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100" autoComplete="tel" />
+                  </label>
+                  <label className="space-y-1 text-xs font-semibold text-slate-300">Payment date
+                    <input type="date" value={mockTestPaymentForm.paymentDate} onChange={(event) => setMockTestPaymentForm((previous) => ({ ...previous, paymentDate: event.target.value }))} required className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100" />
+                  </label>
+                  <label className="space-y-1 text-xs font-semibold text-slate-300">Payment time (optional)
+                    <input type="time" value={mockTestPaymentForm.paymentTime} onChange={(event) => setMockTestPaymentForm((previous) => ({ ...previous, paymentTime: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100" />
+                  </label>
+                  <label className="space-y-1 text-xs font-semibold text-slate-300 sm:col-span-2">Payment screenshot (JPG, PNG, or WebP; max 5 MB)
+                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setMockTestPaymentForm((previous) => ({ ...previous, paymentScreenshot: event.target.files?.[0] || null }))} required className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-xs text-slate-100 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-slate-200" />
+                  </label>
+                  <label className="space-y-1 text-xs font-semibold text-slate-300 sm:col-span-2">Notes (optional)
+                    <textarea value={mockTestPaymentForm.notes} onChange={(event) => setMockTestPaymentForm((previous) => ({ ...previous, notes: event.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100" />
+                  </label>
+                </div>
+                {!backendConfigured && <p className="text-sm text-rose-300">Online verification is unavailable because Supabase is not configured.</p>}
+                {mockTestPaymentState.error && <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">{mockTestPaymentState.error}</p>}
+                {mockTestPaymentState.result && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-3 text-sm text-emerald-200">{mockTestPaymentState.result.message}</p>}
+                <button type="submit" disabled={paymentBlocked} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">
+                  {mockTestPaymentState.loading ? 'Submitting payment proof...' : 'Submit Payment Proof'}
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      </div>
+    );
+  };
+
   const renderMockTestsPage = () => {
     const fullMockTest = backendData.mockTests.find((test) => test.slug === 'first-full-mock-test');
     const localMockTest = ACADEMIC_PORTION_MOCK_TEST_1;
     const localMockTest2 = ACADEMIC_PORTION_MOCK_TEST_2;
     const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
+    const getPurchaseRequest = (product) => mockTestPurchaseState.requests.find((request) => request.test_slug === product.id);
+    const renderPaidTestAction = (product) => {
+      const request = getPurchaseRequest(product);
+      if (canAccessPremiumResources || request?.status === 'APPROVED') {
+        return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? 'Loading test...' : 'Start Test'}</button>;
+      }
+      if (request?.status === 'PENDING') {
+        return <button disabled className="w-full rounded-xl border border-amber-500/30 bg-amber-950/40 py-3 text-sm font-bold text-amber-200">Payment Pending Admin Approval</button>;
+      }
+      if (mockTestPurchaseState.loading) {
+        return <button disabled className="w-full rounded-xl bg-slate-800 py-3 text-sm font-bold text-slate-400">Checking Access...</button>;
+      }
+      return <button onClick={() => navigateTo('mock-payment', product.id)} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">{request?.status === 'REJECTED' ? `Resubmit Payment · ${formatPKR(product.pricePkr)}` : `How to Pay · ${formatPKR(product.pricePkr)}`}</button>;
+    };
 
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -3350,49 +3569,37 @@ export default function App() {
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
-            <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {localMockTest2.pricePkr}</span>
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-slate-100">{localMockTest2.title}</h2>
             <p className="text-sm leading-6 text-slate-400">A complete PMA academic paper across English, Mathematics, Islamiyat, Pakistan Studies, and Physics. Questions include clear topic headings, and answers include detailed explanations and solution tips.</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{localMockTest2.questions.length}</strong>Questions</div>
+            <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{localMockTest2.questionsCount}</strong>Questions</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">80 mins</strong>Duration</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(localMockTest2.pricePkr)}</strong>One-time</div>
           </div>
-          <button onClick={() => startPracticeSession({
-            title: localMockTest2.title,
-            questions: localMockTest2.questions,
-            questionsCount: localMockTest2.questions.length,
-            duration: localMockTest2.duration,
-            difficulty: localMockTest2.difficulty,
-            preserveQuestionOrder: true,
-          })} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">Start Academic Portion Mock Test 2</button>
+          {renderPaidTestAction(localMockTest2)}
         </article>
 
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
-            <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {pmaMockTest2.pricePkr}</span>
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-slate-100">{pmaMockTest2.title}</h2>
             <p className="text-sm leading-6 text-slate-400">A complete 220-question PMA initial-test simulation covering verbal and non-verbal intelligence, Mathematics, Pakistan Studies, Physics, English, General Knowledge, and Islamic Studies. Includes the source figures and detailed answer explanations.</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMockTest2.questions.length}</strong>Questions</div>
+          <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMockTest2.questionsCount}</strong>Questions</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">160 mins</strong>Duration</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">8</strong>Sections</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(pmaMockTest2.pricePkr)}</strong>One-time</div>
           </div>
-          <button onClick={() => startPracticeSession({
-            title: pmaMockTest2.title,
-            questions: pmaMockTest2.questions,
-            questionsCount: pmaMockTest2.questions.length,
-            duration: pmaMockTest2.duration,
-            difficulty: pmaMockTest2.difficulty,
-            preserveQuestionOrder: true,
-          })} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">Start PMA Long Course159 Mock Test 2</button>
+          {renderPaidTestAction(pmaMockTest2)}
         </article>
 
         {backendConfigured && !backendLoading && fullMockTest && (
@@ -3955,8 +4162,8 @@ export default function App() {
         <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6">
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-100">JazzCash payment queue</h2>
-              <span className="text-[10px] uppercase font-mono text-amber-400">{adminPaymentQueue.length} pending</span>
+              <h2 className="text-xl font-bold text-slate-100">Payment approval queue</h2>
+              <span className="text-[10px] uppercase font-mono text-amber-400">{adminPaymentQueue.length} submissions</span>
             </div>
 
             {adminPaymentQueue.length ? (
@@ -3965,7 +4172,7 @@ export default function App() {
                   <div key={payment.id} className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-slate-200">{payment.plan_name || payment.plan_slug || 'Plan'}</p>
+                        <p className="font-semibold text-slate-200">{payment.purchase_type === 'MOCK_TEST' ? payment.test_title : payment.plan_name || payment.plan_slug || 'Plan'}</p>
                         <p className="text-[11px] text-slate-400">{payment.user_email || payment.user_id}</p>
                       </div>
                       <span className={`text-[10px] uppercase font-mono px-2 py-1 rounded ${payment.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : payment.status === 'REJECTED' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}`}>
@@ -3974,7 +4181,7 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
                       <span>Amount: {formatPKR(payment.amount_pkr || 0)}</span>
-                      <span>Method: {payment.payment_method || 'JAZZCASH_MANUAL'}</span>
+                      <span>Method: {payment.purchase_type === 'MOCK_TEST' ? 'NayaPay' : payment.payment_method || 'JAZZCASH_MANUAL'}</span>
                       <span>Sender: {payment.sender_name || '—'}</span>
                     </div>
                     {payment.screenshotUrl && (
@@ -3983,8 +4190,8 @@ export default function App() {
                     {payment.notes && <p className="text-[11px] text-slate-300">Notes: {payment.notes}</p>}
                     {(payment.status === 'PENDING' || payment.status === 'CREATED') && (
                       <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => handleAdminPaymentAction(payment.id, 'approve', 'Payment verified by admin.')} disabled={adminPaymentAction.loading} className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold disabled:opacity-60">Approve</button>
-                        <button type="button" onClick={() => handleAdminPaymentAction(payment.id, 'reject', 'Payment rejected by admin.')} disabled={adminPaymentAction.loading} className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-[11px] font-bold disabled:opacity-60">Reject</button>
+                        <button type="button" onClick={() => handleAdminPaymentAction(payment.id, 'approve', 'Payment verified by admin.', payment.purchase_type)} disabled={adminPaymentAction.loading} className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold disabled:opacity-60">Approve</button>
+                        <button type="button" onClick={() => handleAdminPaymentAction(payment.id, 'reject', 'Payment rejected by admin.', payment.purchase_type)} disabled={adminPaymentAction.loading} className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 text-[11px] font-bold disabled:opacity-60">Reject</button>
                       </div>
                     )}
                   </div>
@@ -4318,6 +4525,8 @@ export default function App() {
         return renderQuestionPracticePage();
       case 'mock-tests':
         return renderMockTestsPage();
+      case 'mock-payment':
+        return renderMockTestPaymentPage();
       case 'mock-detail':
         return renderMockTestDetailPage();
       case 'mock-result':
