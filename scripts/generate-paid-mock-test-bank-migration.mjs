@@ -7,8 +7,8 @@ const banks = [
 
 const values = await Promise.all(banks.map(async ([slug, path]) => {
   const questions = JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
-  const json = JSON.stringify(questions).replaceAll("'", "''");
-  return `  ('${slug}', '${json}'::jsonb)`;
+  const encoded = Buffer.from(JSON.stringify(questions), 'utf8').toString('base64');
+  return `  ('${slug}', convert_from(decode('${encoded}', 'base64'), 'UTF8')::jsonb)`;
 }));
 
 const migration = `begin;\n\ninsert into public.paid_mock_test_question_banks (test_slug, questions) values\n${values.join(',\n')}\non conflict (test_slug) do update set questions = excluded.questions, updated_at = now();\n\ncommit;\n`;

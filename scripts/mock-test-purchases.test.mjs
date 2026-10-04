@@ -11,13 +11,13 @@ const academicModule = readFileSync(fileURLToPath(new URL('../src/data/academicP
 const pmaModule = readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MockTest2.js', import.meta.url)), 'utf8');
 
 const getSeededBank = (slug) => {
-  const prefix = `('${slug}', '`;
+  const prefix = `('${slug}', convert_from(decode('`;
   const start = bankMigration.indexOf(prefix);
   assert.notEqual(start, -1, `Missing seeded question bank ${slug}`);
   const jsonStart = start + prefix.length;
-  const end = bankMigration.indexOf("'::jsonb)", jsonStart);
+  const end = bankMigration.indexOf("', 'base64'), 'UTF8')::jsonb)", jsonStart);
   assert.notEqual(end, -1, `Missing JSON terminator for ${slug}`);
-  return JSON.parse(bankMigration.slice(jsonStart, end).replaceAll("''", "'"));
+  return JSON.parse(Buffer.from(bankMigration.slice(jsonStart, end), 'base64').toString('utf8'));
 };
 
 test('mock-test payments use fixed product prices and pending approval', () => {
@@ -37,6 +37,10 @@ test('approved mock-test purchases grant permanent access without plan upgrades'
   assert.match(migration, /function public\.admin_approve_mock_test_purchase/);
   assert.doesNotMatch(migration.slice(migration.indexOf('function public.admin_approve_mock_test_purchase'), migration.indexOf('function public.admin_reject_mock_test_purchase')), /insert into public\.subscriptions/i);
   assert.match(migration, /on public\.mock_test_purchase_requests \(user_id, test_slug\)\s+where status in \('PENDING', 'APPROVED'\)/);
+  const accessFunction = migration.slice(migration.indexOf('function public.get_paid_mock_test_questions'));
+  assert.match(accessFunction, /purchase\.user_id = v_user_id/);
+  assert.match(accessFunction, /purchase\.test_slug = p_test_slug/);
+  assert.doesNotMatch(migration, /mock_test_global_access|global_unlocked/i);
   assert.match(migration, /alter table public\.paid_mock_test_question_banks enable row level security/i);
   assert.match(migration, /revoke all on table public\.paid_mock_test_question_banks from anon, authenticated/i);
   assert.doesNotMatch(academicModule, /academicPortionMockTest2\.json/);
