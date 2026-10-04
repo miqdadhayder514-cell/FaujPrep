@@ -1,7 +1,4 @@
-import sourceMarkdown from '../../../Full mock tests/PMA_LC159_Academic_MCQs_Set2.md?raw';
-import { parseAcademicMockTest } from './parseAcademicMockTest';
-
-const ACADEMIC_PORTION_MOCK_TEST_1_QUESTIONS = parseAcademicMockTest(sourceMarkdown);
+import ACADEMIC_PORTION_MOCK_TEST_1_QUESTIONS from './academicPortionMockTest1.json';
 
 export const ACADEMIC_PORTION_MOCK_TEST_1 = {
   id: 'academic-portion-mock-test-1',

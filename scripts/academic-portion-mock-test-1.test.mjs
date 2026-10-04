@@ -1,12 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { parseAcademicMockTest } from '../src/data/parseAcademicMockTest.js';
 
-const source = await readFile(new URL('../../Full mock tests/PMA_LC159_Academic_MCQs_Set2.md', import.meta.url), 'utf8');
-const questions = parseAcademicMockTest(source);
+const questions = JSON.parse(await readFile(new URL('../src/data/academicPortionMockTest1.json', import.meta.url), 'utf8'));
 
-test('Academic Portion Mock Test 1 parses every source question and answer', () => {
+test('Academic Portion Mock Test 1 includes every source question and answer', () => {
   assert.equal(questions.length, 100);
   assert.deepEqual(questions.map((question) => question.id), Array.from({ length: 100 }, (_, index) => index + 1));
   assert.deepEqual(
