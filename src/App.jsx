@@ -7,6 +7,10 @@ import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
 import AdminNotificationsPanel from './components/AdminNotificationsPanel';
 import NotificationCenter from './components/NotificationCenter';
 import QuestionCard from './components/QuestionCard';
+import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
+import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
+import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
+import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyPaymentTransactions, getPaymentSettings, getPlanCatalog, rejectPaymentTransaction, submitManualPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
@@ -405,21 +409,24 @@ export default function App() {
   const [practiceSubjects, setPracticeSubjects] = useState([]);
   const [dashboardState, setDashboardState] = useState({ loading: false, error: null, summary: null });
 
-  const practiceCatalog = backendConfigured
-    ? backendData.mockTests.map((test) => {
-        const branch = backendData.branches.find((item) => item.id === test.branch_id);
-        return {
-          id: test.id,
-          title: test.title,
-          force: PRACTICE_FORCE_CATEGORIES[branch?.slug] || branch?.name || 'All',
-          category: test.category || 'Mock Test',
-          difficulty: test.difficulty || 'Medium',
-          questionsCount: test.total_questions,
-          duration: `${test.duration_minutes} mins`,
-          mockTestSlug: test.slug,
-        };
-      })
-    : PRACTICE_BANK;
+  const practiceCatalog = [
+    ...(backendConfigured
+      ? backendData.mockTests.filter((test) => test.slug !== 'first-full-mock-test').map((test) => {
+          const branch = backendData.branches.find((item) => item.id === test.branch_id);
+          return {
+            id: test.id,
+            title: test.title,
+            force: PRACTICE_FORCE_CATEGORIES[branch?.slug] || branch?.name || 'All',
+            category: test.category || 'Mock Test',
+            difficulty: test.difficulty || 'Medium',
+            questionsCount: test.total_questions,
+            duration: `${test.duration_minutes} mins`,
+            mockTestSlug: test.slug,
+          };
+        })
+      : PRACTICE_BANK),
+    MOST_REPEATED_PHYSICS_PRACTICE,
+  ];
   const resourceCatalog = backendConfigured
     ? backendData.studyMaterials.map((material) => ({
         id: material.id,
@@ -1122,6 +1129,31 @@ export default function App() {
   };
 
   const startPracticeSession = async (item) => {
+    const customQuestions = item.questions || item.customQuestions || [];
+    if (customQuestions.length > 0) {
+      const randomizedQuestions = item.preserveQuestionOrder
+        ? [...customQuestions]
+        : [...customQuestions].sort(() => Math.random() - 0.5);
+      setPracticeSession({
+        mode: 'practice',
+        questions: randomizedQuestions,
+        index: 0,
+        selectedOption: '',
+        result: null,
+        score: 0,
+        answers: [],
+        attemptId: null,
+        expiresAt: null,
+        finalResult: null,
+        questionStartedAt: Date.now(),
+        subjectId: item.subjectId,
+        topicId: item.topicId,
+        difficulty: item.difficulty,
+      });
+      navigateTo('question-practice');
+      return;
+    }
+
     if (!backendConfigured) {
       addToast(backendError || 'Configure Supabase to load practice questions.', 'error');
       return;
@@ -1214,6 +1246,13 @@ export default function App() {
         addToast(error.message || 'Unable to save mock-test answer.', 'error');
         return;
       }
+    } else if (question.correct_option || question.answer || question.explanation) {
+      const isCorrect = practiceSession.selectedOption === question.correct_option;
+      result = {
+        is_correct: isCorrect,
+        correct_option: question.correct_option || question.answer,
+        explanation: question.explanation || 'No explanation is available for this question yet.',
+      };
     } else {
       try {
         result = await evaluateQuestionAnswer(question.id, practiceSession.selectedOption, Math.round((Date.now() - (practiceSession.questionStartedAt || Date.now())) / 1000));
@@ -2330,22 +2369,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Syllabus & Subjects Grid */}
-        {backendConfigured && backendData.exams.filter((exam) => exam.branch_id === databaseBranch?.id).length > 0 && (
-          <div className="space-y-5">
-            <h2 className="text-2xl font-bold text-slate-100">Available Exams</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {backendData.exams.filter((exam) => exam.branch_id === databaseBranch?.id).map((exam) => (
-                <button key={exam.id} onClick={() => navigateTo('exam', exam.slug)} className="text-left p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-2">
-                  <span className="text-[10px] font-mono uppercase text-emerald-400">{exam.exam_type || 'Preparation'}</span>
-                  <h3 className="font-bold text-slate-100">{exam.name}</h3>
-                  <p className="text-xs text-slate-400">{exam.short_description || exam.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div
           className={`space-y-6 ${hasSyllabusBackground ? 'relative overflow-hidden rounded-3xl border border-slate-600/40 p-4 sm:p-6' : forceKey === 'paf' ? 'relative overflow-hidden rounded-3xl border border-cyan-500/30 p-4 sm:p-6' : ''}`}
           style={hasSyllabusBackground ? {
@@ -3062,23 +3085,19 @@ export default function App() {
 
   const renderPracticePage = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div className="space-y-3">
-        <h1 className="text-3xl font-extrabold text-slate-100">Practice Test Center</h1>
-        <p className="text-sm text-slate-400 max-w-xl">
-          Search and filter targeted question sets across forces, subject categories, and difficulty levels.
-        </p>
-      </div>
-
-      <div className="p-6 rounded-2xl bg-slate-900 border border-emerald-500/20 space-y-5">
-        <div><h2 className="text-xl font-bold text-slate-100">Build a practice session</h2><p className="text-xs text-slate-400 mt-1">Choose live database filters before loading questions.</p></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <select value={practiceBranchId} onChange={(event) => setPracticeBranchId(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="">All branches</option>{backendData.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select>
-          <select value={practiceSubjectId} onChange={(event) => { setPracticeSubjectId(event.target.value); setPracticeTopicId(''); }} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="">All subjects</option>{practiceSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
-          <select value={practiceTopicId} onChange={(event) => setPracticeTopicId(event.target.value)} disabled={!practiceSubjectId || contentLoading} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 disabled:opacity-50"><option value="">All topics</option>{contentTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select>
-          <select value={practiceDifficulty} onChange={(event) => setPracticeDifficulty(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="">All difficulties</option><option value="EASY">Easy</option><option value="MEDIUM">Medium</option><option value="HARD">Hard</option></select>
-          <select value={practiceQuestionCount} onChange={(event) => setPracticeQuestionCount(Number(event.target.value))} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="5">5 questions</option><option value="10">10 questions</option><option value="20">20 questions</option><option value="30">30 questions</option></select>
+      <div className="relative isolate flex min-h-[230px] items-center overflow-hidden rounded-xl border border-slate-800 sm:min-h-[290px]">
+        <img
+          src="/images/practice%20tests.png"
+          alt="Candidate preparing for a military entrance test"
+          className="absolute inset-0 -z-10 h-full w-full object-cover object-[68%_center] sm:object-center"
+        />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-slate-950/25" />
+        <div className="max-w-2xl space-y-3 p-6 sm:p-10">
+          <h1 className="text-3xl font-extrabold text-slate-100 sm:text-4xl">Practice Test Center</h1>
+          <p className="max-w-xl text-sm leading-6 text-slate-200 sm:text-base">
+            Search and filter targeted question sets across forces, subject categories, and difficulty levels.
+          </p>
         </div>
-        <button onClick={startConfiguredPractice} disabled={!backendConfigured || practiceSessionLoading} className="px-5 py-3 rounded-xl bg-emerald-500 disabled:opacity-50 text-slate-950 font-bold text-xs">{practiceSessionLoading ? 'Loading questions...' : 'Start Practice'}</button>
       </div>
 
       {/* Filter Bar */}
@@ -3160,12 +3179,20 @@ export default function App() {
       </div>
 
       {/* Test List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPractice.map((item) => (
-          <div
-            key={item.id}
-            className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition flex flex-col justify-between space-y-4"
-          >
+      <div className="relative isolate overflow-hidden">
+        <img
+          src="/images/practice%20test.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 h-full w-full object-cover object-center"
+        />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-slate-950/55" />
+        <div className="relative grid grid-cols-1 gap-6 p-3 md:grid-cols-2 lg:grid-cols-3 sm:p-6">
+          {filteredPractice.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col justify-between space-y-4 rounded-2xl border border-slate-700/80 bg-slate-900/85 p-6 backdrop-blur-sm transition hover:border-emerald-500/40"
+            >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono uppercase bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-emerald-400">
@@ -3193,14 +3220,27 @@ export default function App() {
             >
               {practiceSessionLoading ? 'Loading Questions...' : 'Start Practice Session'}
             </button>
-          </div>
-        ))}
-        {filteredPractice.length === 0 && (
-          <div className="col-span-full p-12 text-center bg-slate-900 border border-slate-800 rounded-2xl text-slate-400 space-y-2">
-            <p className="font-semibold text-slate-200">No practice tests matched your current filter criteria.</p>
-            <p className="text-xs">Try clearing your search query or selecting "All" in the filters above.</p>
-          </div>
-        )}
+            </div>
+          ))}
+          {filteredPractice.length === 0 && (
+            <div className="col-span-full space-y-2 rounded-2xl border border-slate-700/80 bg-slate-900/90 p-12 text-center text-slate-400 backdrop-blur-sm">
+              <p className="font-semibold text-slate-200">No practice tests matched your current filter criteria.</p>
+              <p className="text-xs">Try clearing your search query or selecting "All" in the filters above.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-6 rounded-2xl bg-slate-900 border border-emerald-500/20 space-y-5">
+        <div><h2 className="text-xl font-bold text-slate-100">Build a practice session</h2><p className="text-xs text-slate-400 mt-1">Choose live database filters before loading questions.</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <select value={practiceBranchId} onChange={(event) => setPracticeBranchId(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="">All branches</option>{backendData.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select>
+          <select value={practiceSubjectId} onChange={(event) => { setPracticeSubjectId(event.target.value); setPracticeTopicId(''); }} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="">All subjects</option>{practiceSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
+          <select value={practiceTopicId} onChange={(event) => setPracticeTopicId(event.target.value)} disabled={!practiceSubjectId || contentLoading} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 disabled:opacity-50"><option value="">All topics</option>{contentTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select>
+          <select value={practiceDifficulty} onChange={(event) => setPracticeDifficulty(event.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="">All difficulties</option><option value="EASY">Easy</option><option value="MEDIUM">Medium</option><option value="HARD">Hard</option></select>
+          <select value={practiceQuestionCount} onChange={(event) => setPracticeQuestionCount(Number(event.target.value))} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"><option value="5">5 questions</option><option value="10">10 questions</option><option value="20">20 questions</option><option value="30">30 questions</option></select>
+        </div>
+        <button onClick={startConfiguredPractice} disabled={!backendConfigured || practiceSessionLoading} className="px-5 py-3 rounded-xl bg-emerald-500 disabled:opacity-50 text-slate-950 font-bold text-xs">{practiceSessionLoading ? 'Loading questions...' : 'Start Practice'}</button>
       </div>
     </div>
   );
@@ -3270,6 +3310,9 @@ export default function App() {
 
   const renderMockTestsPage = () => {
     const fullMockTest = backendData.mockTests.find((test) => test.slug === 'first-full-mock-test');
+    const localMockTest = ACADEMIC_PORTION_MOCK_TEST_1;
+    const localMockTest2 = ACADEMIC_PORTION_MOCK_TEST_2;
+    const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
 
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -3279,6 +3322,79 @@ export default function App() {
         </div>
         {!backendConfigured && <div className="p-8 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-sm text-amber-200">Configure Supabase to load full mock tests.</div>}
         {backendConfigured && backendLoading && <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-sm text-slate-400">Loading full mock tests...</div>}
+
+        <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-100">Academic Portion Mock Test 1</h2>
+            <p className="text-sm leading-6 text-slate-400">Complete PMA Long Course Academic Practice Set 2: English, Mathematics, Islamiyat, Pakistan Studies, and Physics, with answers and explanations from the source.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{localMockTest.questions.length}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">60 mins</strong>Duration</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+          </div>
+          <button onClick={() => startPracticeSession({
+            title: localMockTest.title,
+            questions: localMockTest.questions,
+            questionsCount: localMockTest.questions.length,
+            duration: localMockTest.duration,
+            difficulty: localMockTest.difficulty,
+            preserveQuestionOrder: true,
+          })} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">Start Academic Portion Mock Test 1</button>
+        </article>
+
+        <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-100">{localMockTest2.title}</h2>
+            <p className="text-sm leading-6 text-slate-400">A complete PMA academic paper across English, Mathematics, Islamiyat, Pakistan Studies, and Physics. Questions include clear topic headings, and answers include detailed explanations and solution tips.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{localMockTest2.questions.length}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">80 mins</strong>Duration</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+          </div>
+          <button onClick={() => startPracticeSession({
+            title: localMockTest2.title,
+            questions: localMockTest2.questions,
+            questionsCount: localMockTest2.questions.length,
+            duration: localMockTest2.duration,
+            difficulty: localMockTest2.difficulty,
+            preserveQuestionOrder: true,
+          })} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">Start Academic Portion Mock Test 2</button>
+        </article>
+
+        <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-100">{pmaMockTest2.title}</h2>
+            <p className="text-sm leading-6 text-slate-400">A complete 220-question PMA initial-test simulation covering verbal and non-verbal intelligence, Mathematics, Pakistan Studies, Physics, English, General Knowledge, and Islamic Studies. Includes the source figures and detailed answer explanations.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMockTest2.questions.length}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">160 mins</strong>Duration</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">8</strong>Sections</div>
+          </div>
+          <button onClick={() => startPracticeSession({
+            title: pmaMockTest2.title,
+            questions: pmaMockTest2.questions,
+            questionsCount: pmaMockTest2.questions.length,
+            duration: pmaMockTest2.duration,
+            difficulty: pmaMockTest2.difficulty,
+            preserveQuestionOrder: true,
+          })} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">Start PMA Long Course159 Mock Test 2</button>
+        </article>
+
         {backendConfigured && !backendLoading && fullMockTest && (
           <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">

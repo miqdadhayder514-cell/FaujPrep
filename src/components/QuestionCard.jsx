@@ -8,13 +8,14 @@ export default function QuestionCard({ question, selectedOption, submitted, onSe
         ['B', question.option_b],
         ['C', question.option_c],
         ['D', question.option_d],
+        ['E', question.option_e],
       ].filter(([, value]) => value);
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl sm:text-2xl font-bold text-slate-100 leading-relaxed">{question.question_text}</h1>
       {question.visual_data && <VisualQuestionFigures question={question} />}
-      {question.image_url && <img src={question.image_url} alt={`Illustration for ${question.question_text?.slice(0, 80) || 'practice question'}`} className="max-h-64 w-full object-contain rounded-xl border border-slate-800" />}
+      {question.image_url && <img src={question.image_url} alt={`Illustration for ${question.question_text?.slice(0, 80) || 'practice question'}`} className="max-h-96 w-full object-contain rounded-xl border border-slate-800" />}
       <div className="grid gap-3">
         {options.map(([option, value]) => (
           <button
