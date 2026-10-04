@@ -322,24 +322,14 @@ begin
     raise exception 'This mock test is not available for individual purchase';
   end if;
 
-  if not public.is_editor_or_admin()
-    and not exists (
-      select 1
-      from public.mock_test_purchase_requests purchase
-      where purchase.user_id = v_user_id
-        and purchase.test_slug = p_test_slug
-        and purchase.status = 'APPROVED'
-    )
-    and not exists (
-      select 1
-      from public.subscriptions subscription
-      join public.plans plan on plan.id = subscription.plan_id
-      where subscription.user_id = v_user_id
-        and subscription.status = 'ACTIVE'
-        and (subscription.expires_at is null or subscription.expires_at > now())
-        and plan.slug in ('pro', 'premium')
-    ) then
-    raise exception 'Purchase approval is required to access this mock test';
+  if not exists (
+    select 1
+    from public.mock_test_purchase_requests purchase
+    where purchase.user_id = v_user_id
+      and purchase.test_slug = p_test_slug
+      and purchase.status = 'APPROVED'
+  ) then
+    raise exception 'An approved purchase on this account is required to access this mock test';
   end if;
 
   select questions into v_questions

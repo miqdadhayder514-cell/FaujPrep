@@ -1142,7 +1142,7 @@ export default function App() {
   const startPaidMockTest = async (product) => {
     if (!product) return;
     const hasApprovedPurchase = mockTestPurchaseState.requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
-    if (!canAccessPremiumResources && !hasApprovedPurchase) {
+    if (!hasApprovedPurchase) {
       navigateTo('mock-payment', product.id);
       return;
     }
@@ -3426,7 +3426,7 @@ export default function App() {
     const product = PAID_MOCK_TEST_PRODUCTS.find((item) => item.id === selectedForceId);
     if (!product) return render404Page();
     const latestRequest = mockTestPurchaseState.requests.find((request) => request.test_slug === product.id);
-    const hasAccess = canAccessPremiumResources || latestRequest?.status === 'APPROVED';
+    const hasAccess = latestRequest?.status === 'APPROVED';
     const paymentBlocked = !backendConfigured || mockTestPaymentState.loading || latestRequest?.status === 'PENDING';
 
     return (
@@ -3521,7 +3521,7 @@ export default function App() {
     const getPurchaseRequest = (product) => mockTestPurchaseState.requests.find((request) => request.test_slug === product.id);
     const renderPaidTestAction = (product) => {
       const request = getPurchaseRequest(product);
-      if (canAccessPremiumResources || request?.status === 'APPROVED') {
+      if (request?.status === 'APPROVED') {
         return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? 'Loading test...' : 'Start Test'}</button>;
       }
       if (request?.status === 'PENDING') {
