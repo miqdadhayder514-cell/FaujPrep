@@ -10,6 +10,7 @@ const perUserAccessMigration = readFileSync(fileURLToPath(new URL('../supabase/m
 const bankMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/026_seed_paid_mock_test_question_banks.sql', import.meta.url)), 'utf8');
 const academicModule = readFileSync(fileURLToPath(new URL('../src/data/academicPortionMockTest2.js', import.meta.url)), 'utf8');
 const pmaModule = readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MockTest2.js', import.meta.url)), 'utf8');
+const appSource = readFileSync(fileURLToPath(new URL('../src/App.jsx', import.meta.url)), 'utf8');
 
 const getSeededBank = (slug) => {
   const prefix = `('${slug}', convert_from(decode('`;
@@ -50,6 +51,19 @@ test('approved mock-test purchases grant permanent access without plan upgrades'
   assert.match(migration, /revoke all on table public\.paid_mock_test_question_banks from anon, authenticated/i);
   assert.doesNotMatch(academicModule, /academicPortionMockTest2\.json/);
   assert.doesNotMatch(pmaModule, /pmaLongCourse159MockTest2\.json/);
+});
+
+test('paid test UI refreshes anonymous ownership and never bypasses approval', () => {
+  const cardAction = appSource.slice(appSource.indexOf('const renderPaidTestAction'), appSource.indexOf('\n\n    return (', appSource.indexOf('const renderPaidTestAction')));
+  const startHandler = appSource.slice(appSource.indexOf('const startPaidMockTest'), appSource.indexOf('const handleAdminPaymentAction', appSource.indexOf('const startPaidMockTest')));
+  const paymentPage = appSource.slice(appSource.indexOf('const renderMockTestPaymentPage'), appSource.indexOf('const renderMockTestsPage', appSource.indexOf('const renderMockTestPaymentPage')));
+
+  assert.match(cardAction, /request\?\.status === 'APPROVED'/);
+  assert.doesNotMatch(cardAction, /canAccessPremiumResources/);
+  assert.match(startHandler, /await ensureAnonymousSession\(\)/);
+  assert.ok(startHandler.indexOf('await getMyMockTestPurchases()') < startHandler.indexOf('await getPaidMockTestQuestions'));
+  assert.match(startHandler, /navigateTo\('mock-payment', product\.id\)/);
+  assert.match(paymentPage, /const hasAccess = latestRequest\?\.status === 'APPROVED'/);
 });
 
 test('protected database seed contains both complete paid question banks', () => {

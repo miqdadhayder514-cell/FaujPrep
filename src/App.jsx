@@ -332,7 +332,7 @@ export default function App() {
     notes: '',
     paymentScreenshot: null,
   });
-  const [mockTestPurchaseState, setMockTestPurchaseState] = useState({ loading: false, requests: [] });
+  const [mockTestPurchaseState, setMockTestPurchaseState] = useState({ loading: false, requests: [], userId: null });
   const [mockTestPaymentForm, setMockTestPaymentForm] = useState({
     senderName: '',
     senderPhone: '',
@@ -524,24 +524,25 @@ export default function App() {
   }, [backendConfigured]);
 
   const refreshMockTestPurchases = useCallback(async () => {
-    if (!backendConfigured || !session?.user) {
-      setMockTestPurchaseState({ loading: false, requests: [] });
+    if (!backendConfigured) {
+      setMockTestPurchaseState({ loading: false, requests: [], userId: null });
       return;
     }
 
-    setMockTestPurchaseState((previous) => ({ ...previous, loading: true }));
+    setMockTestPurchaseState((previous) => ({ ...previous, loading: true, userId: null }));
     try {
+      const currentSession = await ensureAnonymousSession();
       const requests = await getMyMockTestPurchases();
-      setMockTestPurchaseState({ loading: false, requests });
+      setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
     } catch {
-      setMockTestPurchaseState({ loading: false, requests: [] });
+      setMockTestPurchaseState({ loading: false, requests: [], userId: null });
     }
-  }, [backendConfigured, session?.user?.id]);
+  }, [backendConfigured]);
 
   useEffect(() => {
     if (!['mock-tests', 'mock-payment'].includes(currentPage)) return;
     refreshMockTestPurchases();
-  }, [currentPage, refreshMockTestPurchases]);
+  }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
 
   const routeFromPage = (page, value = null) => {
     const routeMap = {
@@ -1141,15 +1142,17 @@ export default function App() {
 
   const startPaidMockTest = async (product) => {
     if (!product) return;
-    const hasApprovedPurchase = mockTestPurchaseState.requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
-    if (!hasApprovedPurchase) {
-      navigateTo('mock-payment', product.id);
-      return;
-    }
-
     setPaidMockTestLoading(true);
     try {
-      if (!session?.user) await ensureAnonymousSession();
+      const currentSession = await ensureAnonymousSession();
+      const requests = await getMyMockTestPurchases();
+      setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
+      const hasApprovedPurchase = requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
+      if (!hasApprovedPurchase) {
+        navigateTo('mock-payment', product.id);
+        return;
+      }
+
       const questions = await getPaidMockTestQuestions(product.id);
       if (!questions.length) throw new Error('Questions are not available yet. Please contact support.');
       await startPracticeSession({
@@ -3425,7 +3428,8 @@ export default function App() {
   const renderMockTestPaymentPage = () => {
     const product = PAID_MOCK_TEST_PRODUCTS.find((item) => item.id === selectedForceId);
     if (!product) return render404Page();
-    const latestRequest = mockTestPurchaseState.requests.find((request) => request.test_slug === product.id);
+    const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+    const latestRequest = purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((request) => request.test_slug === product.id) : null;
     const hasAccess = latestRequest?.status === 'APPROVED';
     const paymentBlocked = !backendConfigured || mockTestPaymentState.loading || latestRequest?.status === 'PENDING';
 
@@ -3518,7 +3522,8 @@ export default function App() {
     const localMockTest = ACADEMIC_PORTION_MOCK_TEST_1;
     const localMockTest2 = ACADEMIC_PORTION_MOCK_TEST_2;
     const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
-    const getPurchaseRequest = (product) => mockTestPurchaseState.requests.find((request) => request.test_slug === product.id);
+    const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+    const getPurchaseRequest = (product) => purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((request) => request.test_slug === product.id) : null;
     const renderPaidTestAction = (product) => {
       const request = getPurchaseRequest(product);
       if (request?.status === 'APPROVED') {
