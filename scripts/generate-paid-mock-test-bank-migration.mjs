@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 const banks = [
   ['pma-long-course-159-mock-test-2', '../src/data/pmaLongCourse159MockTest2.json'],
   ['pma-long-course-159-most-repeated-questions-bank', '../src/data/pmaLongCourse159MostRepeatedQuestionsBank.json'],
+  ['pma-long-course-159-must-come-questions-bank', '../src/data/pmaLongCourse159MustComeQuestionsBank.json'],
   ['academic-portion-mock-test-2', '../src/data/academicPortionMockTest2.json'],
 ];
 
@@ -19,4 +20,9 @@ const mostRepeatedBankIndex = banks.findIndex(([slug]) => slug === 'pma-long-cou
 const latestBankMigration = `begin;\n\nalter table public.paid_mock_test_question_banks\n  drop constraint if exists paid_mock_test_question_banks_test_slug_check;\n\nalter table public.paid_mock_test_question_banks\n  add constraint paid_mock_test_question_banks_test_slug_check\n  check (test_slug in (\n    'pma-long-course-159-mock-test-2',\n    'pma-long-course-159-most-repeated-questions-bank',\n    'academic-portion-mock-test-2'\n  ));\n\ninsert into public.paid_mock_test_question_banks (test_slug, questions) values\n${values[mostRepeatedBankIndex]}\non conflict (test_slug) do update set questions = excluded.questions, updated_at = now();\n\ncommit;\n`;
 const latestBankDestination = new URL('../supabase/migrations/028_refresh_most_repeated_mock_test_question_bank.sql', import.meta.url);
 await writeFile(latestBankDestination, latestBankMigration, 'utf8');
-console.log(`Generated ${destination.pathname} and ${latestBankDestination.pathname}`);
+const mustComeBankIndex = banks.findIndex(([slug]) => slug === 'pma-long-course-159-must-come-questions-bank');
+const allowedSlugs = banks.map(([slug]) => `    '${slug}'`).join(',\n');
+const mustComeBankMigration = `begin;\n\nalter table public.paid_mock_test_question_banks\n  drop constraint if exists paid_mock_test_question_banks_test_slug_check;\n\nalter table public.paid_mock_test_question_banks\n  add constraint paid_mock_test_question_banks_test_slug_check\n  check (test_slug in (\n${allowedSlugs}\n  ));\n\ninsert into public.paid_mock_test_question_banks (test_slug, questions) values\n${values[mustComeBankIndex]}\non conflict (test_slug) do update set questions = excluded.questions, updated_at = now();\n\ncommit;\n`;
+const mustComeBankDestination = new URL('../supabase/migrations/033_seed_must_come_mock_test_question_bank.sql', import.meta.url);
+await writeFile(mustComeBankDestination, mustComeBankMigration, 'utf8');
+console.log(`Generated ${destination.pathname}, ${latestBankDestination.pathname}, and ${mustComeBankDestination.pathname}`);

@@ -11,6 +11,7 @@ import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
 import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
+import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
@@ -293,6 +294,7 @@ const PAID_MOCK_TEST_PRODUCTS = [
   ACADEMIC_PORTION_MOCK_TEST_2,
   PMA_LONG_COURSE_159_MOCK_TEST_2,
   PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK,
+  PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK,
 ];
 
 export default function App() {
@@ -3525,6 +3527,7 @@ export default function App() {
     const localMockTest2 = ACADEMIC_PORTION_MOCK_TEST_2;
     const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
     const pmaMostRepeatedQuestionsBank = PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK;
+    const pmaMustComeQuestionsBank = PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK;
     const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
     const getPurchaseRequest = (product) => purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((request) => request.test_slug === product.id) : null;
     const renderPaidTestAction = (product) => {
@@ -3626,6 +3629,24 @@ export default function App() {
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(pmaMostRepeatedQuestionsBank.pricePkr)}</strong>One-time</div>
           </div>
           {renderPaidTestAction(pmaMostRepeatedQuestionsBank)}
+        </article>
+
+        <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {pmaMustComeQuestionsBank.pricePkr}</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-100">{pmaMustComeQuestionsBank.title}</h2>
+            <p className="text-sm leading-6 text-slate-400">A complete 220-question PMA Long Course 159 practice paper from the Must Come Questions Bank, with 60 figure-based intelligence questions and worked answer explanations.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMustComeQuestionsBank.questionsCount}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMustComeQuestionsBank.duration}</strong>Duration</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">8</strong>Sections</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(pmaMustComeQuestionsBank.pricePkr)}</strong>One-time</div>
+          </div>
+          {renderPaidTestAction(pmaMustComeQuestionsBank)}
         </article>
 
         {backendConfigured && !backendLoading && fullMockTest && (

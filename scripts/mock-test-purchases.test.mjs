@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { ACADEMIC_PORTION_MOCK_TEST_2 } from '../src/data/academicPortionMockTest2.js';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from '../src/data/pmaLongCourse159MockTest2.js';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from '../src/data/pmaLongCourse159MostRepeatedQuestionsBank.js';
+import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from '../src/data/pmaLongCourse159MustComeQuestionsBank.js';
 
 const migration = readFileSync(fileURLToPath(new URL('../supabase/migrations/025_mock_test_purchases.sql', import.meta.url)), 'utf8');
 const perUserAccessMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/027_enforce_per_user_paid_mock_test_access.sql', import.meta.url)), 'utf8');
@@ -13,9 +14,12 @@ const mostRepeatedBankMigration = readFileSync(fileURLToPath(new URL('../supabas
 const mostRepeatedPurchaseMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/029_allow_most_repeated_mock_test_purchase.sql', import.meta.url)), 'utf8');
 const legacyPurchaseConstraintMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/030_fix_mock_test_purchase_product_constraints.sql', import.meta.url)), 'utf8');
 const paymentAccessRepairMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/031_repair_mock_test_payment_and_access.sql', import.meta.url)), 'utf8');
+const mustComePurchaseMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/032_add_must_come_mock_test_purchase.sql', import.meta.url)), 'utf8');
+const mustComeBankMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/033_seed_must_come_mock_test_question_bank.sql', import.meta.url)), 'utf8');
 const academicModule = readFileSync(fileURLToPath(new URL('../src/data/academicPortionMockTest2.js', import.meta.url)), 'utf8');
 const pmaModule = readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MockTest2.js', import.meta.url)), 'utf8');
 const mostRepeatedQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MostRepeatedQuestionsBank.json', import.meta.url)), 'utf8'));
+const mustComeQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MustComeQuestionsBank.json', import.meta.url)), 'utf8'));
 const appSource = readFileSync(fileURLToPath(new URL('../src/App.jsx', import.meta.url)), 'utf8');
 
 const getSeededBank = (migrationSource, slug) => {
@@ -34,6 +38,9 @@ test('mock-test payments use fixed product prices and pending approval', () => {
   assert.equal(PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK.title, 'PMA Long Course 159 Most Repeated Questions Bank');
   assert.equal(PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK.pricePkr, 79);
   assert.equal(PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK.duration, '150 mins');
+  assert.equal(PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK.title, 'PMA Long Course 159 Must Come Questions Bank');
+  assert.equal(PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK.pricePkr, 99);
+  assert.equal(PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK.duration, '120 mins');
   assert.equal(ACADEMIC_PORTION_MOCK_TEST_2.title, 'Academic Portion Mock Test 2');
   assert.equal(ACADEMIC_PORTION_MOCK_TEST_2.pricePkr, 20);
   assert.match(migration, /pma-long-course-159-mock-test-2' then 49/);
@@ -61,6 +68,9 @@ test('mock-test payments use fixed product prices and pending approval', () => {
   assert.match(paymentAccessRepairMigration, /revoke all on table public\.paid_mock_test_question_banks from public, anon, authenticated/i);
   assert.match(paymentAccessRepairMigration, /revoke all on function public\.get_paid_mock_test_questions\(text\) from public, anon/i);
   assert.match(paymentAccessRepairMigration, /grant execute on function public\.get_paid_mock_test_questions\(text\) to authenticated/i);
+  assert.match(mustComePurchaseMigration, /'pma-long-course-159-must-come-questions-bank' and amount_pkr = 99/);
+  assert.match(mustComePurchaseMigration, /'pma-long-course-159-must-come-questions-bank' then 99/);
+  assert.match(mustComePurchaseMigration, /purchase\.user_id = v_user_id[\s\S]*?purchase\.test_slug = p_test_slug[\s\S]*?purchase\.status = 'APPROVED'/);
 });
 
 test('approved mock-test purchases grant permanent access without plan upgrades', () => {
@@ -90,6 +100,7 @@ test('paid test UI refreshes anonymous ownership and never bypasses approval', (
   const paymentPage = appSource.slice(appSource.indexOf('const renderMockTestPaymentPage'), appSource.indexOf('const renderMockTestsPage', appSource.indexOf('const renderMockTestPaymentPage')));
 
   assert.match(paidProducts, /PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK/);
+  assert.match(paidProducts, /PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK/);
   assert.match(cardAction, /request\?\.status === 'APPROVED'/);
   assert.doesNotMatch(cardAction, /canAccessPremiumResources/);
   assert.match(startHandler, /await ensureAnonymousSession\(\)/);
@@ -103,6 +114,14 @@ test('protected database seed contains the complete paid question banks', () => 
   const seededMostRepeatedQuestions = getSeededBank(bankMigration, 'pma-long-course-159-most-repeated-questions-bank');
   const updatedMostRepeatedQuestions = getSeededBank(mostRepeatedBankMigration, 'pma-long-course-159-most-repeated-questions-bank');
   const academicQuestions = getSeededBank(bankMigration, 'academic-portion-mock-test-2');
+  const seededMustComeQuestions = getSeededBank(bankMigration, 'pma-long-course-159-must-come-questions-bank');
+  assert.equal(mustComeQuestions.length, 220);
+  assert.deepEqual(seededMustComeQuestions, mustComeQuestions);
+  assert.equal(seededMustComeQuestions[0].question_text, 'Synonym of ABUNDANT:');
+  assert.equal(seededMustComeQuestions[0].option_b, 'Plentiful');
+  assert.ok(seededMustComeQuestions.slice(60, 120).every((question) => question.image_url));
+  assert.ok(seededMustComeQuestions.every((question) => question.correct_option && question.explanation));
+  assert.match(mustComeBankMigration, /pma-long-course-159-must-come-questions-bank/);
   assert.equal(pmaQuestions.length, 220);
   assert.equal(seededMostRepeatedQuestions.length, 220);
   assert.deepEqual(seededMostRepeatedQuestions, mostRepeatedQuestions);
