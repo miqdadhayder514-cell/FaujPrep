@@ -283,6 +283,98 @@ const FAQ_DATA = [
   }
 ];
 
+const INTERVIEW_CATEGORY_DETAILS = {
+  personal: {
+    title: 'Personal Interview',
+    badge: 'Self-introduction & motivation',
+    description: 'Practice structured responses that show clarity, discipline, and national-service motivation.',
+    focus: ['Tell me about yourself', 'Why do you want to join the armed forces?', 'What are your strengths and weaknesses?'],
+  },
+  academic: {
+    title: 'Academic Interview',
+    badge: 'Subject confidence',
+    description: 'Sharpen explanations for academic subjects, analytical questions, and your educational journey.',
+    focus: ['Explain your strongest subject', 'How do your studies relate to your service goal?', 'What subjects need more attention?'],
+  },
+  'general-knowledge': {
+    title: 'General Knowledge',
+    badge: 'Current awareness',
+    description: 'Boost your ability to answer broad questions about geography, history, leadership, and civic awareness.',
+    focus: ['National symbols', 'Major world events', 'Strategic thinking and civic values'],
+  },
+  'current-affairs': {
+    title: 'Current Affairs',
+    badge: 'Daily awareness',
+    description: 'Practice concise and confident answers on recent national and international developments.',
+    focus: ['Defense developments', 'Regional diplomacy', 'Pakistan and global affairs'],
+  },
+  defense: {
+    title: 'Pakistan & Defense Knowledge',
+    badge: 'National understanding',
+    description: 'Build confidence in answering questions about Pakistan’s military, geography, institutions, and values.',
+    focus: ['Defense institutions', 'National geography', 'Strategic and historical context'],
+  },
+  'rapid-fire': {
+    title: 'Rapid Fire',
+    badge: 'Fast responses',
+    description: 'Answer quick, high-pressure questions with clarity and confidence under time pressure.',
+    focus: ['Short answers', 'Decision-making', 'Composure under pressure'],
+  },
+  mock: {
+    title: 'Mock Interview',
+    badge: 'Full simulation',
+    description: 'Practice a realistic interview rhythm and improve communication, stance, and composure.',
+    focus: ['Openers and closers', 'Strong structure', 'Professional body language'],
+  },
+  tips: {
+    title: 'Interview Tips',
+    badge: 'Preparation habits',
+    description: 'Follow practical habits that improve clarity, confidence, and the way you present yourself.',
+    focus: ['Answer structure', 'Tone and posture', 'Avoiding common mistakes'],
+  },
+  progress: {
+    title: 'Interview Progress',
+    badge: 'Live activity',
+    description: 'Track preparation based on actual activity and interview practice completion.',
+    focus: ['Completion trends', 'Practice consistency', 'Performance review'],
+  },
+};
+
+const INTERVIEW_PERSONAL_QUESTIONS = [
+  {
+    id: 'tell-me-about-yourself',
+    question: 'Tell me about yourself.',
+    thinkBeforeAnswering: 'Keep it brief, professional, and relevant to your goals. Highlight academics, character, discipline, and why you want service.',
+    assessing: 'The interviewer is assessing confidence, structure, motivation, and whether you can present yourself clearly and respectfully.',
+    strategy: 'Use a simple 3-part structure: background, strengths, and service motivation. End with a clear connection to your preparation goal.',
+    mistakes: ['Giving a long personal biography without focus', 'Listing weaknesses as a negative story', 'Failing to connect your background to service motivation'],
+  },
+  {
+    id: 'why-join-armed-forces',
+    question: 'Why do you want to join the armed forces?',
+    thinkBeforeAnswering: 'Focus on service, discipline, national duty, personal growth, and willingness to contribute in difficult circumstances.',
+    assessing: 'The interviewer is checking your commitment, values, and whether your reasons are sincere and grounded in responsibility rather than glamour.',
+    strategy: 'Give a balanced answer: mention duty, integrity, discipline, teamwork, and your long-term commitment to national service.',
+    mistakes: ['Saying it is only for prestige or status', 'Sounding unclear about your reasons', 'Speaking without personal commitment or responsibility'],
+  },
+  {
+    id: 'strengths-weaknesses',
+    question: 'What are your strengths and weaknesses?',
+    thinkBeforeAnswering: 'Choose strengths that matter for disciplined preparation and choose a weakness that shows self-awareness and improvement.',
+    assessing: 'The interviewer is judging emotional maturity, honesty, and whether you understand yourself well enough to improve.',
+    strategy: 'Name one real strength such as discipline, resilience, or teamwork, and one weakness you are actively managing. Always explain the improvement action.',
+    mistakes: ['Describing a weakness that is actually a fatal flaw', 'Giving vague answers with no self-improvement plan', 'Trying to hide weak points rather than address them'],
+  },
+  {
+    id: 'biggest-challenge',
+    question: 'What is the biggest challenge you have faced and how did you overcome it?',
+    thinkBeforeAnswering: 'Pick a challenge from academics, family, perseverance, or leadership—something that shows maturity and resilience.',
+    assessing: 'The interviewer is evaluating resilience, emotional control, and your ability to learn from difficulty.',
+    strategy: 'Describe the situation briefly, explain the challenge, detail your action, and end with the lesson you learned and how it shaped you.',
+    mistakes: ['Making it sound like an excuse', 'Over-dramatizing without a lesson', 'Not explaining how you responded or improved'],
+  },
+];
+
 const DEFAULT_PAYMENT_SETTINGS = {
   payment_method: 'JAZZCASH_MANUAL',
   bank_name: 'NAYAPAY',
@@ -430,6 +522,7 @@ export default function App() {
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceSubjects, setPracticeSubjects] = useState([]);
   const [dashboardState, setDashboardState] = useState({ loading: false, error: null, summary: null });
+  const [interviewActivity, setInterviewActivity] = useState({ practicedIds: [], answersByQuestion: {} });
 
   const practiceCatalog = [
     ...(backendConfigured
@@ -558,6 +651,16 @@ export default function App() {
       navy: '/navy',
       search: '/search',
       practice: '/practice',
+      interview: '/interview',
+      'interview-personal': '/interview/personal',
+      'interview-academic': '/interview/academic',
+      'interview-general-knowledge': '/interview/general-knowledge',
+      'interview-current-affairs': '/interview/current-affairs',
+      'interview-defense': '/interview/defense',
+      'interview-rapid-fire': '/interview/rapid-fire',
+      'interview-mock': '/interview/mock',
+      'interview-tips': '/interview/tips',
+      'interview-progress': '/interview/progress',
       mockTests: '/mock-tests',
       'mock-tests': '/mock-tests',
       'mock-detail': value ? `/mock-tests/${encodeURIComponent(value)}` : '/mock-tests',
@@ -714,25 +817,35 @@ export default function App() {
         '/': 'home',
         '/search': 'search',
         '/practice': 'practice',
-        '/mock-tests': 'mock-tests',
-        '/resources': 'resources',
-        '/dashboard': 'dashboard',
-        '/billing': 'billing',
-        '/checkout': 'checkout',
-        '/admin/login': 'admin-login',
-        '/pricing': 'pricing',
-        '/about': 'about',
-        '/contact': 'contact',
-        '/privacy': 'privacy',
-        '/terms': 'terms',
-        '/disclaimer': 'disclaimer',
-        '/admin/analytics': 'admin-analytics',
-        '/admin/notifications': 'admin-notifications',
-        '/admin': 'admin',
-        '/notifications': 'notifications',
-        '/account': 'profile',
-      };
-      setCurrentPage(routePages[normalizedPath] || 'not-found');
+          '/interview': 'interview',
+          '/interview/personal': 'interview-personal',
+          '/interview/academic': 'interview-academic',
+          '/interview/general-knowledge': 'interview-general-knowledge',
+          '/interview/current-affairs': 'interview-current-affairs',
+          '/interview/defense': 'interview-defense',
+          '/interview/rapid-fire': 'interview-rapid-fire',
+          '/interview/mock': 'interview-mock',
+          '/interview/tips': 'interview-tips',
+          '/interview/progress': 'interview-progress',
+          '/mock-tests': 'mock-tests',
+          '/resources': 'resources',
+          '/dashboard': 'dashboard',
+          '/billing': 'billing',
+          '/checkout': 'checkout',
+          '/admin/login': 'admin-login',
+          '/pricing': 'pricing',
+          '/about': 'about',
+          '/contact': 'contact',
+          '/privacy': 'privacy',
+          '/terms': 'terms',
+          '/disclaimer': 'disclaimer',
+          '/admin/analytics': 'admin-analytics',
+          '/admin/notifications': 'admin-notifications',
+          '/admin': 'admin',
+          '/notifications': 'notifications',
+          '/account': 'profile',
+        };
+        setCurrentPage(routePages[normalizedPath] || 'not-found');
       setSelectedForceId(null);
     };
     syncFromLocation();
@@ -1691,6 +1804,12 @@ export default function App() {
             Full Mock Tests
           </button>
           <button
+            onClick={() => navigateTo('interview')}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${['interview', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock', 'interview-tips', 'interview-progress'].includes(currentPage) ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
+          >
+            Interviews
+          </button>
+          <button
             onClick={() => navigateTo('resources')}
             className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'resources' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
@@ -1707,12 +1826,6 @@ export default function App() {
             className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'pricing' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
             Pricing
-          </button>
-          <button
-            onClick={() => navigateTo('billing')}
-            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'billing' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
-          >
-            Billing
           </button>
         </nav>
 
@@ -1770,6 +1883,7 @@ export default function App() {
                 <h2 className="mobile-nav-section-label">Preparation</h2>
                 {renderMobileNavLink('practice', 'Practice Tests')}
                 {renderMobileNavLink('mock-tests', 'Full Mock Tests', ['mock-tests', 'mock-detail'])}
+                {renderMobileNavLink('interview', 'Interviews', ['interview', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock', 'interview-tips', 'interview-progress'])}
                 {renderMobileNavLink('resources', 'Resources')}
                 {renderMobileNavLink('study-materials', 'Study Materials', ['study-materials', 'study-material-detail'])}
                 {renderMobileNavLink('current-affairs', 'Current Affairs', ['current-affairs', 'current-affairs-detail'])}
@@ -1778,7 +1892,6 @@ export default function App() {
               <section className="mobile-nav-section">
                 <h2 className="mobile-nav-section-label">Account</h2>
                 {renderMobileNavLink('pricing', 'Pricing')}
-                {session && renderMobileNavLink('billing', 'Billing')}
                 {session && renderMobileNavLink('dashboard', 'Dashboard')}
                 {session && renderMobileNavLink('profile', 'Profile')}
               </section>
@@ -4547,6 +4660,304 @@ export default function App() {
     </div>
   );
 
+  const interviewCategoryOrder = ['personal', 'academic', 'general-knowledge', 'current-affairs', 'defense', 'rapid-fire', 'mock', 'tips', 'progress'];
+
+  const getInterviewProgressSummary = () => {
+    const practicedCount = interviewActivity.practicedIds.length;
+    const answerCount = Object.values(interviewActivity.answersByQuestion || {}).filter((answer) => typeof answer === 'string' && answer.trim().length > 0).length;
+    const completionRate = INTERVIEW_PERSONAL_QUESTIONS.length ? Math.round((practicedCount / INTERVIEW_PERSONAL_QUESTIONS.length) * 100) : 0;
+    return {
+      practicedCount,
+      answerCount,
+      completionRate,
+      totalQuestions: INTERVIEW_PERSONAL_QUESTIONS.length,
+    };
+  };
+
+  const getInterviewPageKeyForCategory = (key) => {
+    switch (key) {
+      case 'personal':
+        return 'interview-personal';
+      case 'academic':
+        return 'interview-academic';
+      case 'general-knowledge':
+        return 'interview-general-knowledge';
+      case 'current-affairs':
+        return 'interview-current-affairs';
+      case 'defense':
+        return 'interview-defense';
+      case 'rapid-fire':
+        return 'interview-rapid-fire';
+      case 'mock':
+        return 'interview-mock';
+      case 'tips':
+        return 'interview-tips';
+      case 'progress':
+        return 'interview-progress';
+      default:
+        return 'interview';
+    }
+  };
+
+  const handleInterviewPracticeToggle = (questionId) => {
+    setInterviewActivity((previous) => {
+      const practicedIds = previous.practicedIds.includes(questionId)
+        ? previous.practicedIds.filter((id) => id !== questionId)
+        : [...previous.practicedIds, questionId];
+      return { ...previous, practicedIds };
+    });
+  };
+
+  const handleInterviewAnswerChange = (questionId, value) => {
+    setInterviewActivity((previous) => ({
+      ...previous,
+      answersByQuestion: {
+        ...previous.answersByQuestion,
+        [questionId]: value,
+      },
+    }));
+  };
+
+  const renderInterviewHubPage = () => {
+    const summary = getInterviewProgressSummary();
+    const categoryCards = interviewCategoryOrder.map((key) => ({
+      key,
+      ...INTERVIEW_CATEGORY_DETAILS[key],
+    }));
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+        <section className="relative overflow-hidden rounded-[28px] border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/30 p-7 sm:p-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.18),transparent_34%)]" aria-hidden="true" />
+          <div className="relative space-y-6">
+            <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.22em] text-emerald-400">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              Interview Preparation
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.6fr] gap-8 items-center">
+              <div className="space-y-5">
+                <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-100">INTERVIEW PREPARATION</h1>
+                <p className="max-w-2xl text-sm sm:text-base text-slate-300 leading-relaxed">
+                  Practice structured responses, improve your delivery, and build confidence for the armed forces and ISSB interview process.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={() => navigateTo('interview-personal')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Start Personal Practice</button>
+                  <button onClick={() => navigateTo('interview-progress')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-100 font-semibold text-sm border border-slate-700">Track Progress</button>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between text-xs font-mono uppercase tracking-[0.18em] text-slate-400">
+                  <span>Live activity</span>
+                  <span className="text-emerald-400">{session?.user ? 'Saved' : 'Not signed in'}</span>
+                </div>
+                {!session?.user ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-300 leading-relaxed">Sign in to save interview practice records and keep a consistent preparation history.</p>
+                    <button onClick={() => navigateTo('admin-login')} className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-sm font-semibold">Login to save progress</button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-3xl font-extrabold text-slate-100">{summary.practicedCount}</div>
+                      <div className="text-xs text-slate-400 uppercase tracking-[0.18em] font-mono">questions marked practiced</div>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-800">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${summary.completionRate}%` }} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-slate-300">
+                      <div className="rounded-xl bg-slate-900 border border-slate-800 p-3">
+                        <div className="text-lg font-bold text-emerald-300">{summary.answerCount}</div>
+                        <div className="text-slate-500">draft answers</div>
+                      </div>
+                      <div className="rounded-xl bg-slate-900 border border-slate-800 p-3">
+                        <div className="text-lg font-bold text-amber-300">{summary.completionRate}%</div>
+                        <div className="text-slate-500">practice completion</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-extrabold text-slate-100">Interview Service Areas</h2>
+            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-slate-400">Core practice tracks</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {[
+              { key: 'army', title: 'Army', short: 'PMA & selection readiness', accent: 'emerald', image: FORCE_CARD_BACKGROUNDS.army },
+              { key: 'paf', title: 'PAF', short: 'Air force interview confidence', accent: 'sky', image: FORCE_CARD_BACKGROUNDS.paf },
+              { key: 'navy', title: 'Navy', short: 'Naval service motivation and readiness', accent: 'blue', image: FORCE_CARD_BACKGROUNDS.navy },
+              { key: 'issb', title: 'ISSB', short: 'Board-style communication and conduct', accent: 'amber', image: FORCE_CARD_BACKGROUNDS.issb },
+            ].map((service) => (
+              <button
+                key={service.key}
+                type="button"
+                onClick={() => navigateTo(service.key === 'issb' ? 'issb' : service.key === 'army' ? 'army' : service.key === 'paf' ? 'paf' : 'navy')}
+                className="group relative overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 p-0 text-left transition hover:border-emerald-500/40"
+                style={{ backgroundImage: service.image, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              >
+                <div className="h-full min-h-[180px] w-full border border-white/5 bg-slate-950/45 p-5 backdrop-blur-[2px]">
+                  <div className="flex h-full flex-col justify-between">
+                    <div className="inline-flex w-fit rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-slate-200">{service.title}</div>
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-bold text-slate-100">{service.title}</h3>
+                      <p className="text-xs text-slate-300">{service.short}</p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-extrabold text-slate-100">Interview categories</h2>
+            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-slate-400">Practice track</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {categoryCards.map((category) => (
+              <button
+                key={category.key}
+                type="button"
+                onClick={() => navigateTo(getInterviewPageKeyForCategory(category.key))}
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-left transition hover:border-emerald-500/40 hover:bg-slate-900/90"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-400">{category.badge}</p>
+                      <h3 className="mt-2 text-lg font-bold text-slate-100">{category.title}</h3>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">{category.description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {category.focus.slice(0, 3).map((item) => (
+                      <span key={item} className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] text-slate-300">{item}</span>
+                    ))}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  };
+
+  const renderInterviewCategoryPage = (categoryKey) => {
+    const category = INTERVIEW_CATEGORY_DETAILS[categoryKey] || INTERVIEW_CATEGORY_DETAILS.personal;
+    const isPersonal = categoryKey === 'personal';
+    const isProgress = categoryKey === 'progress';
+    const personalQuestions = INTERVIEW_PERSONAL_QUESTIONS;
+
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Interviews', href: '/interview' }, { label: category.title }]} />
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400">{category.badge}</div>
+              <h1 className="text-3xl font-extrabold text-slate-100">{category.title}</h1>
+            </div>
+            <button onClick={() => navigateTo('interview')} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold">Back to Interview Hub</button>
+          </div>
+          <p className="mt-5 max-w-3xl text-sm text-slate-300 leading-relaxed">{category.description}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {category.focus.map((focusItem) => (
+              <span key={focusItem} className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[10px] text-slate-300">{focusItem}</span>
+            ))}
+          </div>
+        </section>
+
+        {isProgress ? (
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: 'Practiced questions', value: `${getInterviewProgressSummary().practicedCount}/${getInterviewProgressSummary().totalQuestions}` },
+              { label: 'Draft answers', value: getInterviewProgressSummary().answerCount },
+              { label: 'Completion', value: `${getInterviewProgressSummary().completionRate}%` },
+            ].map((metric) => (
+              <div key={metric.label} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <div className="text-[10px] uppercase font-mono tracking-[0.18em] text-slate-400">{metric.label}</div>
+                <div className="mt-3 text-2xl font-extrabold text-slate-100">{metric.value}</div>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        {isPersonal ? (
+          <div className="space-y-5">
+            {personalQuestions.map((question) => {
+              const answer = interviewActivity.answersByQuestion[question.id] || '';
+              const practiced = interviewActivity.practicedIds.includes(question.id);
+              return (
+                <article key={question.id} className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-7 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-400">Interview question</div>
+                      <h2 className="text-xl font-bold text-slate-100">{question.question}</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleInterviewPracticeToggle(question.id)}
+                      className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${practiced ? 'border-emerald-500 bg-emerald-500 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-emerald-500/50'}`}
+                    >
+                      {practiced ? 'Practiced' : 'Mark as Practiced'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                      <div className="font-semibold text-slate-200">Think Before Answering</div>
+                      <p className="mt-2 text-slate-400">{question.thinkBeforeAnswering}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                      <div className="font-semibold text-slate-200">What the interviewer is assessing</div>
+                      <p className="mt-2 text-slate-400">{question.assessing}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                      <div className="font-semibold text-slate-200">Answer strategy</div>
+                      <p className="mt-2 text-slate-400">{question.strategy}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                      <div className="font-semibold text-slate-200">Common mistakes</div>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-400">
+                        {question.mistakes.map((mistake) => <li key={mistake}>{mistake}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-200">Practice answer</label>
+                    <textarea
+                      value={answer}
+                      onChange={(event) => handleInterviewAnswerChange(question.id, event.target.value)}
+                      placeholder="Draft your answer here..."
+                      className="min-h-[160px] w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <section className="rounded-3xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
+            <h2 className="text-xl font-bold text-slate-100">This interview track is ready for guided practice.</h2>
+            <p className="mt-3 text-sm text-slate-400">Use the category flow to build confidence in structured responses, current-affairs recall, and disciplined communication.</p>
+            <button onClick={() => navigateTo('interview-personal')} className="mt-5 px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Open personal interview practice</button>
+          </section>
+        )}
+      </div>
+    );
+  };
+
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'home':
@@ -4569,6 +4980,26 @@ export default function App() {
         return renderSearchPage();
       case 'forces':
         return renderHomePage();
+      case 'interview':
+        return renderInterviewHubPage();
+      case 'interview-personal':
+        return renderInterviewCategoryPage('personal');
+      case 'interview-academic':
+        return renderInterviewCategoryPage('academic');
+      case 'interview-general-knowledge':
+        return renderInterviewCategoryPage('general-knowledge');
+      case 'interview-current-affairs':
+        return renderInterviewCategoryPage('current-affairs');
+      case 'interview-defense':
+        return renderInterviewCategoryPage('defense');
+      case 'interview-rapid-fire':
+        return renderInterviewCategoryPage('rapid-fire');
+      case 'interview-mock':
+        return renderInterviewCategoryPage('mock');
+      case 'interview-tips':
+        return renderInterviewCategoryPage('tips');
+      case 'interview-progress':
+        return renderInterviewCategoryPage('progress');
       case 'practice':
         return renderPracticePage();
       case 'question-practice':
