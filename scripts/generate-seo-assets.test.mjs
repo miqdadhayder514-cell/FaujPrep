@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { buildDynamicPages, buildHeadTags, buildSitemap, escapeXml, isPublicSlug } from './generate-seo-assets.mjs';
 
 test('sitemap creates absolute escaped locations and lastmod values', () => {
@@ -81,4 +82,52 @@ test('homepage structured data targets the working search URL', () => {
   const tags = buildHeadTags({ path: '/', title: 'FaujPrep', description: 'Preparation', schema: 'website' }, 'https://prep.example');
   assert.match(tags, /SearchAction/);
   assert.match(tags, /https:\/\/prep\.example\/search\?q=\{search_term_string\}/);
+});
+
+test('about, contact, and policy pages remain indexable with distinct metadata', async () => {
+  const { getPageSeo } = await import('../src/lib/seo.js');
+  for (const [currentPage, pathname, title] of [
+    ['about', '/about', 'About FaujPrep'],
+    ['contact', '/contact', 'Contact FaujPrep'],
+    ['privacy', '/privacy', 'Privacy Policy'],
+    ['terms', '/terms', 'Terms of Service'],
+  ]) {
+    const metadata = getPageSeo({ currentPage, pathname });
+    assert.equal(metadata.indexable, true, `${pathname} should be indexable`);
+    assert.match(metadata.title, new RegExp(title));
+    assert.ok(metadata.description.length > 40);
+  }
+});
+
+test('private purchase and admin sign-in pages are not indexed', async () => {
+  const { getPageSeo } = await import('../src/lib/seo.js');
+  for (const currentPage of ['mock-payment', 'admin-login']) {
+    assert.equal(getPageSeo({ currentPage, pathname: `/${currentPage}` }).indexable, false);
+  }
+});
+
+test('about and contact static pages include useful organization structured data', () => {
+  const about = buildHeadTags({
+    path: '/about',
+    title: 'About FaujPrep',
+    description: 'Independent preparation resources.',
+    schema: 'organization',
+  }, 'https://prep.example');
+  const contact = buildHeadTags({
+    path: '/contact',
+    title: 'Contact FaujPrep',
+    description: 'Contact support.',
+    schema: 'contact',
+  }, 'https://prep.example');
+
+  assert.match(about, /"@type":"Organization"/);
+  assert.match(contact, /"@type":"ContactPage"/);
+  assert.match(contact, /miqdadhayder514@gmail\.com/);
+});
+
+test('public copy does not describe live features as future plans', async () => {
+  const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(appSource, /Phase [12]|will be activated in a future release/);
+  assert.match(appSource, /Are full timed mock tests available\?/);
+  assert.match(appSource, /does not currently provide AI-powered advice/);
 });

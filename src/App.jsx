@@ -88,6 +88,8 @@ const FaujPrepLogo = ({ className = "h-14 w-14", textClassName = "text-xl font-b
   </div>
 );
 
+const CONTACT_EMAIL = 'miqdadhayder514@gmail.com';
+
 const Breadcrumbs = ({ items }) => (
   <nav aria-label="Breadcrumb" className="text-xs text-slate-400">
     <ol className="flex flex-wrap items-center gap-2">
@@ -265,19 +267,19 @@ const FAQ_DATA = [
   },
   {
     q: "Can I practice test modules on mobile devices?",
-    a: "Yes! FaujPrep is built with a fluid, mobile-first design system allowing seamless practice on smartphones, tablets, and desktop devices."
+    a: "FaujPrep uses a responsive layout for phones, tablets, and desktop browsers. For the best experience, use an up-to-date browser and a stable internet connection."
   },
   {
-    q: "Will FaujPrep offer full timed mock tests?",
-    a: "Yes. Phase 1 provides full architectural foundations and mock test specifications. Interactive timed mock test execution with automated scoring will launch in Phase 2 alongside backend integration."
+    q: "Are full timed mock tests available?",
+    a: "Yes. FaujPrep offers timed full mock tests and practice sessions. Each test page shows its question count and duration. Paid tests are unlocked for the purchasing account after payment is reviewed and approved."
   },
   {
     q: "Is FaujPrep affiliated with the Armed Forces of Pakistan?",
     a: "No. FaujPrep is a private, independent educational preparation resource. It is not affiliated with, endorsed by, or operated by the Ministry of Defence, Pakistan Army, PAF, Pakistan Navy, or ISSB."
   },
   {
-    q: "When will premium features and AI features be launched?",
-    a: "Premium subscription features, advanced AI-powered answer explanations, and personalized weak-area analytics will be introduced in Phase 2 after backend service integration."
+    q: "Does FaujPrep provide AI-powered advice or personalized analytics?",
+    a: "FaujPrep does not currently provide AI-powered advice or personalized weak-area analytics. Available practice features, test details, and prices are described on their respective pages."
   }
 ];
 
@@ -1230,9 +1232,14 @@ export default function App() {
     setContactErrors(errors);
 
     if (Object.keys(errors).length === 0) {
-      addToast('Contact message received! Dispatch endpoint connects in Phase 2.', 'success');
-      setContactForm({ name: '', email: '', subject: '', message: '' });
-      openModal('Message Received', 'Thank you for contacting FaujPrep. Live email delivery will be enabled in Phase 2.');
+      const body = [
+        `Name: ${contactForm.name.trim()}`,
+        `Reply email: ${contactForm.email.trim()}`,
+        '',
+        contactForm.message.trim(),
+      ].join('\n');
+      const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(contactForm.subject.trim())}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
     }
   };
 
@@ -1805,13 +1812,8 @@ export default function App() {
               "Prepare Smarter. Serve with Purpose."
             </p>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Structured preparation platform for candidates aspiring to join the Pakistan Army, Pakistan Air Force, Pakistan Navy, and clear the ISSB selection process.
+              Independent study guides, practice questions, timed mock tests and current-affairs material for candidates preparing for Pakistan armed-forces entry tests and ISSB.
             </p>
-            <div className="pt-2 flex items-center gap-3">
-              <span className="text-xs font-mono text-slate-400 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-md">
-                Phase 1 Frontend Foundation
-              </span>
-            </div>
           </div>
 
           {/* Column 2: Preparation */}
@@ -1842,11 +1844,11 @@ export default function App() {
           <div className="space-y-3">
             <h4 className="text-xs font-bold font-mono uppercase text-slate-200 tracking-wider">Legal & Support</h4>
             <ul className="space-y-2 text-xs">
-              <li><button onClick={() => navigateTo('contact')} className="hover:text-emerald-400 transition">Contact Us</button></li>
-              <li><button onClick={() => navigateTo('about')} className="hover:text-emerald-400 transition">About FaujPrep</button></li>
-              <li><button onClick={() => navigateTo('privacy')} className="hover:text-emerald-400 transition">Privacy Policy</button></li>
-              <li><button onClick={() => navigateTo('terms')} className="hover:text-emerald-400 transition">Terms of Service</button></li>
-              <li><button onClick={() => navigateTo('disclaimer')} className="hover:text-emerald-400 transition">Official Disclaimer</button></li>
+              <li><a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo('contact'); }} className="hover:text-emerald-400 transition">Contact Us</a></li>
+              <li><a href="/about" onClick={(event) => { event.preventDefault(); navigateTo('about'); }} className="hover:text-emerald-400 transition">About FaujPrep</a></li>
+              <li><a href="/privacy" onClick={(event) => { event.preventDefault(); navigateTo('privacy'); }} className="hover:text-emerald-400 transition">Privacy Policy</a></li>
+              <li><a href="/terms" onClick={(event) => { event.preventDefault(); navigateTo('terms'); }} className="hover:text-emerald-400 transition">Terms of Service</a></li>
+              <li><a href="/disclaimer" onClick={(event) => { event.preventDefault(); navigateTo('disclaimer'); }} className="hover:text-emerald-400 transition">Official Disclaimer</a></li>
             </ul>
           </div>
         </div>
@@ -1854,15 +1856,9 @@ export default function App() {
         <div className="pt-6 pb-4">
           <div
             className="relative overflow-hidden rounded-2xl border border-slate-700/80 shadow-2xl"
-            style={{
-              backgroundImage: "linear-gradient(90deg, rgba(2, 6, 23, 0.30), rgba(2, 6, 23, 0.50)), url('/images/hero%20section.png')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              minHeight: '220px',
-            }}
+            style={{ minHeight: '220px' }}
           >
-            <div className="flex items-center justify-center min-h-[220px] px-6 py-8 text-center">
+            <div className="flex items-center justify-center min-h-[220px] bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 px-6 py-8 text-center">
               <div className="rounded-2xl border border-slate-700/60 bg-slate-950/35 px-5 py-4 shadow-lg backdrop-blur-[2px]">
                 <p className="text-xs sm:text-sm font-mono uppercase tracking-[0.25em] text-emerald-300">FaujPrep</p>
                 <p className="mt-2 text-lg sm:text-2xl font-bold text-slate-100">Prepare for the Forces. Build Your Future.</p>
@@ -1883,9 +1879,9 @@ export default function App() {
           <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4 pt-2">
             <p>© {new Date().getFullYear()} FaujPrep. All rights reserved. Built for disciplined candidate preparation.</p>
             <div className="flex items-center gap-4 text-slate-400">
-              <button onClick={() => navigateTo('privacy')} className="hover:underline">Privacy</button>
-              <button onClick={() => navigateTo('terms')} className="hover:underline">Terms</button>
-              <button onClick={() => navigateTo('disclaimer')} className="hover:underline">Disclaimer</button>
+              <a href="/privacy" onClick={(event) => { event.preventDefault(); navigateTo('privacy'); }} className="hover:underline">Privacy</a>
+              <a href="/terms" onClick={(event) => { event.preventDefault(); navigateTo('terms'); }} className="hover:underline">Terms</a>
+              <a href="/disclaimer" onClick={(event) => { event.preventDefault(); navigateTo('disclaimer'); }} className="hover:underline">Disclaimer</a>
             </div>
           </div>
         </div>
@@ -2292,10 +2288,10 @@ export default function App() {
                   <p className="text-xs text-slate-200 leading-relaxed">{mod.desc}</p>
                 </div>
                 <button
-                  onClick={() => openModal(`Practice: ${mod.title}`, `Interactive exercise execution for "${mod.title}" will be activated in Phase 2 alongside automated timer and performance tracking.`)}
+                  onClick={() => navigateTo('issb')}
                   className="w-full py-2 text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-950/50 hover:bg-amber-950/70 border border-amber-800/50 rounded-lg transition"
                 >
-                  Practice Module
+                  Explore ISSB Preparation
                 </button>
               </div>
             ))}
@@ -4362,27 +4358,27 @@ export default function App() {
   );
 
   const renderContactPage = () => (
-    <div
-      className="relative w-full py-10"
-      style={{
-        backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.32)), url('/images/contact%20faujprep.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <div className="relative w-full bg-gradient-to-b from-slate-900 to-slate-950 py-10 sm:py-14">
     <div className="max-w-3xl mx-auto px-4 space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-extrabold text-slate-100">Contact FaujPrep Support</h1>
-        <p className="text-xs text-slate-400">Have questions about preparation modules or platform access?</p>
+        <p className="text-sm leading-6 text-slate-300">For questions about preparation resources, account access, or payments, email our support address. We aim to reply as soon as possible.</p>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-5 text-center">
+        <p className="text-sm text-slate-300">Email us directly at</p>
+        <a className="mt-1 inline-block text-base font-semibold text-emerald-300 underline underline-offset-4" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
       </div>
 
       <form onSubmit={handleContactSubmit} className="p-6 sm:p-8 rounded-3xl bg-slate-950/75 border border-slate-700/80 space-y-5 shadow-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Your Name</label>
+            <label htmlFor="contact-name" className="text-xs font-semibold text-slate-300">Your Name</label>
             <input
+              id="contact-name"
               type="text"
+              required
+              maxLength={100}
               value={contactForm.name}
               onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
               placeholder="Full Name"
@@ -4392,9 +4388,12 @@ export default function App() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Email Address</label>
+            <label htmlFor="contact-email" className="text-xs font-semibold text-slate-300">Email Address</label>
             <input
+              id="contact-email"
               type="email"
+              required
+              maxLength={254}
               value={contactForm.email}
               onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
               placeholder="candidate@example.com"
@@ -4405,9 +4404,12 @@ export default function App() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Subject</label>
+          <label htmlFor="contact-subject" className="text-xs font-semibold text-slate-300">Subject</label>
           <input
+            id="contact-subject"
             type="text"
+            required
+            maxLength={150}
             value={contactForm.subject}
             onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
             placeholder="Question regarding PMA test bank / technical issue"
@@ -4417,9 +4419,12 @@ export default function App() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Message</label>
+          <label htmlFor="contact-message" className="text-xs font-semibold text-slate-300">Message</label>
           <textarea
+            id="contact-message"
             rows="4"
+            required
+            maxLength={5000}
             value={contactForm.message}
             onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
             placeholder="Type your message here..."
@@ -4432,8 +4437,11 @@ export default function App() {
           type="submit"
           className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg flex items-center justify-center gap-2"
         >
-          <Send className="w-4 h-4" /> Submit Inquiry
+          <Send className="w-4 h-4" /> Open Email to Send Inquiry
         </button>
+        <p className="text-xs leading-5 text-slate-400">
+          This opens your email application with the inquiry filled in. The message is sent only after you review it and press Send. If no email application opens, use the address above.
+        </p>
       </form>
     </div>
     </div>
@@ -4441,20 +4449,14 @@ export default function App() {
 
   const renderLegalPage = (title, type) => (
     <div
-      className={type === 'about' ? 'relative w-full py-10 space-y-6' : 'max-w-4xl mx-auto px-4 py-10 space-y-6'}
-      style={type === 'about' ? {
-        backgroundImage: "linear-gradient(rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.34)), url('/images/about%20faujprep.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      } : undefined}
+      className={type === 'about' ? 'relative w-full bg-gradient-to-b from-slate-900 to-slate-950 py-10 space-y-6' : 'max-w-4xl mx-auto px-4 py-10 space-y-6'}
     >
       <div className={`${type === 'about' ? 'max-w-4xl mx-auto px-4' : ''} space-y-2 border-b border-slate-800 pb-4`}>
         <h1 className="text-3xl font-extrabold text-slate-100">{title}</h1>
-        <p className="text-xs text-slate-400">Last updated: September 2026 • FaujPrep Platform Policies</p>
+        <p className="text-xs text-slate-400">Last updated: October 6, 2026 • FaujPrep Platform Policies</p>
       </div>
 
-      <div className={`p-6 sm:p-8 rounded-3xl ${type === 'about' ? 'max-w-4xl mx-auto bg-slate-950/75 border-slate-700/80' : 'bg-slate-900 border-slate-800'} border space-y-6 text-xs text-slate-300 leading-relaxed`}>
+      <div className={`p-6 sm:p-8 rounded-3xl ${type === 'about' ? 'max-w-4xl mx-auto bg-slate-950/75 border-slate-700/80' : 'bg-slate-900 border-slate-800'} border space-y-6 text-sm text-slate-300 leading-7`}>
         {type === 'disclaimer' && (
           <>
             <h3 className="font-bold text-slate-100 text-sm">Official Non-Affiliation Disclaimer</h3>
@@ -4472,37 +4474,38 @@ export default function App() {
 
         {type === 'privacy' && (
           <>
-            <h3 className="font-bold text-slate-100 text-sm">Privacy Policy Notice</h3>
-            <p>
-              FaujPrep respects candidate privacy. Account information submitted during registration is used solely for organizing candidate test practice data and personal profile preferences.
-            </p>
-            <p>
-              We do not sell candidate data to third-party marketing brokers. In Phase 2, backend services powered by Supabase will employ encrypted authentication protocols.
-            </p>
+            <h2 className="font-bold text-slate-100 text-lg">Information this site handles</h2>
+            <p>Depending on how you use FaujPrep, the platform may process account details such as your email and profile preferences, practice and mock-test progress, and subscription or payment-verification records. If you submit payment proof, the screenshot and details you provide are used to review that purchase. Do not include sensitive personal information that is not needed for support.</p>
+            <p>When you use the Contact page, your message is prepared in your email application and addressed to {CONTACT_EMAIL}. FaujPrep does not receive that message unless you send it and it is delivered to the support inbox.</p>
+            <h2 className="font-bold text-slate-100 text-lg">Services, analytics and advertising</h2>
+            <p>FaujPrep uses Supabase for account and application data, and Vercel Analytics to understand aggregate site usage. These service providers process information as needed to deliver their services under their own privacy terms. FaujPrep does not sell personal information.</p>
+            <p>FaujPrep has applied to use Google AdSense. If Google ads are enabled, Google and its partners may use cookies or similar technologies to provide, measure, and personalize ads, subject to your location, consent choices, and applicable settings. Learn how Google uses information from sites and apps at <a className="text-emerald-300 underline underline-offset-4" href="https://policies.google.com/technologies/ads" target="_blank" rel="noreferrer">Google’s advertising technologies policy</a> and manage ad personalization at <a className="text-emerald-300 underline underline-offset-4" href="https://myadcenter.google.com/" target="_blank" rel="noreferrer">My Ad Center</a>.</p>
+            <h2 className="font-bold text-slate-100 text-lg">Your choices and requests</h2>
+            <p>You can choose not to create an account, and you can manage advertising personalization through Google’s controls. To ask about, correct, or request deletion of information associated with your account, contact <a className="text-emerald-300 underline underline-offset-4" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. We may need to retain records where required to operate the service, resolve disputes, or meet legal obligations.</p>
+            <p>We may update this policy when the site’s features or legal requirements change. The date above indicates the latest policy revision.</p>
           </>
         )}
 
         {type === 'terms' && (
           <>
             <h3 className="font-bold text-slate-100 text-sm">Terms of Service</h3>
-            <p>
-              By accessing FaujPrep materials, candidates agree to use question banks and practice sheets for personal educational preparation only.
-            </p>
-            <p>
-              FaujPrep provides preparation practice tools but makes no explicit or implicit guarantee of selection, commission, or passing official recruitment boards.
-            </p>
+            <p>FaujPrep provides independent educational resources, practice questions, study materials, current-affairs summaries, and mock tests to support personal preparation. You agree to use the site lawfully, respect other users, and not attempt to disrupt, scrape, reverse-engineer, or gain unauthorized access to the service or its data.</p>
+            <p>Some resources are free and some may require payment or an account. Prices and access conditions are shown before purchase. Paid mock-test access is associated with the purchasing account and is enabled after payment verification. Do not share account credentials or paid materials without permission.</p>
+            <p>Questions and explanations are for learning and revision. They may contain errors or become outdated; verify important facts and current recruitment requirements with official sources. FaujPrep does not guarantee a particular score, selection, commission, or recruitment outcome.</p>
+            <p>We may update, correct, suspend, or discontinue site content and features. If you have a question about a purchase or these terms, contact <a className="text-emerald-300 underline underline-offset-4" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
           </>
         )}
 
         {type === 'about' && (
           <>
-            <h3 className="font-bold text-slate-100 text-sm">About FaujPrep</h3>
-            <p>
-              FaujPrep was conceived to standardize entry-test and ISSB preparation for candidates across Pakistan by combining structured subject syllabus breakdowns with modern practice tools.
-            </p>
-            <p>
-              Whether you are preparing for PMA Long Course initial tests, PAF GDP pilot entry, Navy cadet commission, or ISSB psychological tests, FaujPrep provides structured preparation paths.
-            </p>
+            <h2 className="font-bold text-slate-100 text-lg">Independent preparation, in one place</h2>
+            <p>FaujPrep is an independent educational website for people preparing for Pakistan Army, Pakistan Air Force, Pakistan Navy, and ISSB entry and selection tests. It brings together topic practice, timed mock tests, study guides, and current-affairs material so learners can revise in a structured way.</p>
+            <h2 className="font-bold text-slate-100 text-lg">How to use the resources</h2>
+            <p>Start with a preparation path, review the relevant subject material, and use practice questions to find topics that need more work. Timed mocks can help you practise pacing and review explanations after attempting questions. They are learning tools, not official exams or predictions of actual test content.</p>
+            <p>We aim to make the material clear, relevant, and useful for independent revision. Recruitment rules, dates, eligibility, and procedures can change; check those details with the official recruiting organization. Some resources may be updated as the site develops, and readers should contact us if they spot an error or outdated information.</p>
+            <h2 className="font-bold text-slate-100 text-lg">Who we are</h2>
+            <p>FaujPrep is a privately operated, independent preparation platform. It is not affiliated with, endorsed by, or operated by any government, military service, or the Inter Services Selection Board.</p>
+            <p>Questions or corrections? Email <a className="text-emerald-300 underline underline-offset-4" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
           </>
         )}
       </div>

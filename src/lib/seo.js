@@ -4,11 +4,13 @@ export const DEFAULT_META_DESCRIPTION = 'Prepare for Pakistan Army, PAF, Navy an
 
 const PRIVATE_PAGES = new Set([
   'admin',
+  'admin-login',
   'admin-analytics',
   'admin-notifications',
   'notifications',
   'billing',
   'checkout',
+  'mock-payment',
   'dashboard',
   'login',
   'register',
@@ -180,10 +182,29 @@ export function getPageSeo({
     description = 'Compare the free and paid preparation plans available on FaujPrep.';
   } else if (currentPage === 'about') {
     title = 'About FaujPrep | Independent Test Preparation';
-    description = 'Learn about FaujPrep, an independent preparation platform for Pakistan military entry tests and ISSB.';
+    description = "Explore FaujPrep's independent Pakistan military entry-test preparation resources, timed practice, mock tests and study guidance.";
+    structuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: SITE_NAME,
+      email: 'miqdadhayder514@gmail.com',
+      url: absoluteUrl('/'),
+      description,
+    };
   } else if (currentPage === 'contact') {
     title = 'Contact FaujPrep';
-    description = 'Contact the FaujPrep team with questions about the independent preparation platform.';
+    description = 'Get support from FaujPrep about independent preparation resources, account access, or payment questions.';
+    structuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'ContactPage',
+      name: title,
+      description,
+      mainEntity: {
+        '@type': 'Organization',
+        name: SITE_NAME,
+        email: 'miqdadhayder514@gmail.com',
+      },
+    };
   } else if (currentPage === 'dashboard') {
     title = 'Dashboard | FaujPrep';
     description = 'Your private FaujPrep preparation dashboard.';
@@ -219,7 +240,7 @@ export function getPageSeo({
     description = 'Private practice session on FaujPrep.';
   } else if (currentPage === 'privacy') {
     title = 'Privacy Policy | FaujPrep';
-    description = 'Read the FaujPrep privacy policy and learn how account and platform data is handled.';
+    description = 'Read what information FaujPrep processes, how Supabase, Vercel Analytics and Google advertising may be used, and how to contact us.';
   } else if (currentPage === 'terms') {
     title = 'Terms of Service | FaujPrep';
     description = 'Review the terms that apply to using the FaujPrep preparation platform.';

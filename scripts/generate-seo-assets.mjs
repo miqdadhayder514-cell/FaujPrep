@@ -17,10 +17,10 @@ const staticPages = [
   { path: '/practice', title: 'Practice Questions | FaujPrep', description: 'Practice questions across subjects for Pakistan military entry tests with FaujPrep.' },
   { path: '/resources', title: 'Preparation Resources | FaujPrep', description: 'Browse public preparation resources, study materials and current affairs from FaujPrep.' },
   { path: '/pricing', title: 'Plans and Pricing | FaujPrep', description: 'Compare the free and paid preparation plans available on FaujPrep.' },
-  { path: '/about', title: 'About FaujPrep | Independent Test Preparation', description: 'Learn about FaujPrep, an independent preparation platform for Pakistan military entry tests and ISSB.' },
-  { path: '/contact', title: 'Contact FaujPrep', description: 'Contact the FaujPrep team with questions about the independent preparation platform.' },
-  { path: '/privacy', title: 'Privacy Policy | FaujPrep', description: 'Read the FaujPrep privacy policy and learn how account and platform data is handled.' },
-  { path: '/terms', title: 'Terms of Service | FaujPrep', description: 'Review the terms that apply to using the FaujPrep preparation platform.' },
+  { path: '/about', title: 'About FaujPrep | Independent Test Preparation', description: "Explore FaujPrep's independent Pakistan military entry-test preparation resources, timed practice, mock tests and study guidance.", schema: 'organization' },
+  { path: '/contact', title: 'Contact FaujPrep', description: 'Get support from FaujPrep about independent preparation resources, account access, or payment questions.', schema: 'contact' },
+  { path: '/privacy', title: 'Privacy Policy | FaujPrep', description: 'Read what information FaujPrep processes, how Supabase, Vercel Analytics and Google advertising may be used, and how to contact us.' },
+  { path: '/terms', title: 'Terms of Service | FaujPrep', description: 'Review the terms for using FaujPrep preparation resources, accounts, and paid mock tests.' },
   { path: '/disclaimer', title: 'Independent Preparation Disclaimer | FaujPrep', description: 'FaujPrep is an independent educational preparation platform and is not an official military or government website.' },
 ];
 
@@ -74,6 +74,27 @@ function jsonLdFor(page, siteUrl) {
       ...(page.updatedAt ? { dateModified: page.updatedAt } : {}),
       ...(page.image ? { image: page.image } : {}),
       publisher: { '@type': 'Organization', name: 'FaujPrep' },
+    });
+  }
+  if (page.schema === 'organization') {
+    nodes.push({
+      '@type': 'Organization',
+      name: 'FaujPrep',
+      ...(siteUrl ? { url: new URL('/', siteUrl).href } : {}),
+      email: 'miqdadhayder514@gmail.com',
+      description: page.description,
+    });
+  }
+  if (page.schema === 'contact') {
+    nodes.push({
+      '@type': 'ContactPage',
+      name: page.title,
+      description: page.description,
+      mainEntity: {
+        '@type': 'Organization',
+        name: 'FaujPrep',
+        email: 'miqdadhayder514@gmail.com',
+      },
     });
   }
   if (page.breadcrumb?.length) {
