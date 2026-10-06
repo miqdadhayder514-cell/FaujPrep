@@ -5,10 +5,12 @@ create table if not exists public.mock_test_purchase_requests (
   user_id uuid not null references auth.users(id) on delete cascade,
   test_slug text not null check (test_slug in (
     'pma-long-course-159-mock-test-2',
+    'pma-long-course-159-most-repeated-questions-bank',
     'academic-portion-mock-test-2'
   )),
   amount_pkr integer not null check (
     (test_slug = 'pma-long-course-159-mock-test-2' and amount_pkr = 49)
+    or (test_slug = 'pma-long-course-159-most-repeated-questions-bank' and amount_pkr = 79)
     or (test_slug = 'academic-portion-mock-test-2' and amount_pkr = 20)
   ),
   currency text not null default 'PKR' check (currency = 'PKR'),
@@ -45,6 +47,7 @@ for each row execute function public.set_updated_at();
 create table if not exists public.paid_mock_test_question_banks (
   test_slug text primary key check (test_slug in (
     'pma-long-course-159-mock-test-2',
+    'pma-long-course-159-most-repeated-questions-bank',
     'academic-portion-mock-test-2'
   )),
   questions jsonb not null,
@@ -72,6 +75,7 @@ begin
       'test_slug', purchase.test_slug,
       'test_title', case purchase.test_slug
         when 'pma-long-course-159-mock-test-2' then 'PMA Long Course 159 Mock Test 2'
+        when 'pma-long-course-159-most-repeated-questions-bank' then 'PMA Long Course 159 Most Repeated Questions Bank'
         when 'academic-portion-mock-test-2' then 'Academic Portion Mock Test 2'
       end,
       'amount_pkr', purchase.amount_pkr,
@@ -110,6 +114,7 @@ begin
 
   v_amount_pkr := case p_test_slug
     when 'pma-long-course-159-mock-test-2' then 49
+    when 'pma-long-course-159-most-repeated-questions-bank' then 79
     when 'academic-portion-mock-test-2' then 20
     else null
   end;
@@ -186,6 +191,7 @@ begin
       'test_slug', purchase.test_slug,
       'test_title', case purchase.test_slug
         when 'pma-long-course-159-mock-test-2' then 'PMA Long Course 159 Mock Test 2'
+        when 'pma-long-course-159-most-repeated-questions-bank' then 'PMA Long Course 159 Most Repeated Questions Bank'
         when 'academic-portion-mock-test-2' then 'Academic Portion Mock Test 2'
       end,
       'user_id', purchase.user_id,
@@ -318,7 +324,7 @@ begin
   if v_user_id is null then
     raise exception 'Authentication required';
   end if;
-  if p_test_slug not in ('pma-long-course-159-mock-test-2', 'academic-portion-mock-test-2') then
+  if p_test_slug not in ('pma-long-course-159-mock-test-2', 'pma-long-course-159-most-repeated-questions-bank', 'academic-portion-mock-test-2') then
     raise exception 'This mock test is not available for individual purchase';
   end if;
 

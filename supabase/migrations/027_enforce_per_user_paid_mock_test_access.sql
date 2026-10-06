@@ -1,5 +1,8 @@
 begin;
 
+alter table public.paid_mock_test_question_banks enable row level security;
+revoke all on table public.paid_mock_test_question_banks from anon, authenticated;
+
 create or replace function public.get_paid_mock_test_questions(p_test_slug text)
 returns jsonb
 language plpgsql
@@ -12,7 +15,7 @@ begin
   if v_user_id is null then
     raise exception 'Authentication required';
   end if;
-  if p_test_slug not in ('pma-long-course-159-mock-test-2', 'academic-portion-mock-test-2') then
+  if p_test_slug not in ('pma-long-course-159-mock-test-2', 'pma-long-course-159-most-repeated-questions-bank', 'academic-portion-mock-test-2') then
     raise exception 'This mock test is not available for individual purchase';
   end if;
 
