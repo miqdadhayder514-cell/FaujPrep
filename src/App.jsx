@@ -545,6 +545,16 @@ export default function App() {
           };
         })
       : PRACTICE_BANK),
+    ...PAID_MOCK_TEST_PRODUCTS.filter((product) => product.practiceOnly).map((product) => ({
+      id: product.id,
+      title: product.title,
+      force: product.force,
+      category: 'Non-Verbal Intelligence',
+      difficulty: product.difficulty,
+      questionsCount: product.questionsCount,
+      duration: product.duration,
+      paidProduct: product,
+    })),
     MOST_REPEATED_PHYSICS_PRACTICE,
   ];
   const resourceCatalog = backendConfigured
@@ -3393,51 +3403,6 @@ export default function App() {
         </div>
       </div>
 
-      {PAID_MOCK_TEST_PRODUCTS.filter((product) => (
-        product.practiceOnly
-        && (practiceForceFilter === 'All' || product.force === practiceForceFilter)
-        && (practiceCategoryFilter === 'All' || product.category === practiceCategoryFilter)
-        && (!practiceSearch || `${product.title} ${product.category}`.toLowerCase().includes(practiceSearch.toLowerCase()))
-      )).map((product) => {
-        const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
-        const request = purchaseStateMatchesUser
-          ? mockTestPurchaseState.requests.find((item) => item.test_slug === product.id)
-          : null;
-        const hasAccess = request?.status === 'APPROVED';
-        const paymentPending = request?.status === 'PENDING';
-
-        return (
-          <article key={product.id} aria-label="Paid non-verbal practice test" className="rounded-2xl border border-emerald-500/30 bg-slate-900 p-6 sm:p-8 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">{product.force} · Practice Test</span>
-              <span className="text-xs font-mono text-slate-400">{product.category}</span>
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-bold text-slate-100">{product.title}</h2>
-              <p className="text-sm text-slate-400">Timed visual-reasoning assessment with detailed answer explanations.</p>
-            </div>
-            <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-300">
-              <span>{product.questionsCount} questions</span>
-              <span>{product.duration}</span>
-              <span>{formatPKR(product.pricePkr)}</span>
-            </div>
-            {request?.status === 'REJECTED' && (
-              <p className="rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">
-                The previous payment request was rejected. You can submit a new payment proof.
-              </p>
-            )}
-            <button
-              type="button"
-              disabled={paymentPending || mockTestPurchaseState.loading || paidMockTestLoading}
-              onClick={() => hasAccess ? startPaidMockTest(product) : navigateTo('practice-payment', product.id)}
-              className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {hasAccess ? (paidMockTestLoading ? 'Loading test...' : 'Start 40-Minute Test') : paymentPending ? 'Payment Pending Admin Approval' : `Unlock for ${formatPKR(product.pricePkr)}`}
-            </button>
-          </article>
-        );
-      })}
-
       {/* Filter Bar */}
       <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -3526,40 +3491,64 @@ export default function App() {
         />
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-slate-950/55" />
         <div className="relative grid grid-cols-1 gap-6 p-3 md:grid-cols-2 lg:grid-cols-3 sm:p-6">
-          {filteredPractice.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col justify-between space-y-4 rounded-2xl border border-slate-700/80 bg-slate-900/85 p-6 backdrop-blur-sm transition hover:border-emerald-500/40"
-            >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-emerald-400">
-                  Army Navy PAF
-                </span>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                  item.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-400' :
-                  item.difficulty === 'Medium' ? 'bg-amber-950 text-amber-400' :
-                  'bg-rose-950 text-rose-400'
-                }`}>
-                  {item.difficulty}
-                </span>
-              </div>
-              <h3 className="font-bold text-slate-100 text-base leading-snug">{item.title}</h3>
-              <div className="flex items-center gap-4 text-xs text-slate-400 font-mono">
-                <span>{item.questionsCount} Questions</span>
-                <span>•</span>
-                <span>{item.duration}</span>
-              </div>
-            </div>
+          {filteredPractice.map((item) => {
+            const purchaseStateMatchesUser = Boolean(item.paidProduct && session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+            const purchaseRequest = purchaseStateMatchesUser
+              ? mockTestPurchaseState.requests.find((request) => request.test_slug === item.paidProduct.id)
+              : null;
+            const hasPaidTestAccess = purchaseRequest?.status === 'APPROVED';
+            const paymentPending = purchaseRequest?.status === 'PENDING';
 
-              <button
-                onClick={() => item.mockTestSlug ? navigateTo('mock-detail', item.mockTestSlug) : startPracticeSession(item)}
-              className="w-full py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 font-semibold text-xs transition"
-            >
-              {practiceSessionLoading ? 'Loading Questions...' : 'Start Practice Session'}
-            </button>
-            </div>
-          ))}
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col justify-between space-y-4 rounded-2xl border border-slate-700/80 bg-slate-900/85 p-6 backdrop-blur-sm transition hover:border-emerald-500/40"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-emerald-400">
+                      Army Navy PAF
+                    </span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                      item.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-400' :
+                      item.difficulty === 'Medium' ? 'bg-amber-950 text-amber-400' :
+                      'bg-rose-950 text-rose-400'
+                    }`}>
+                      {item.difficulty}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-100 text-base leading-snug">{item.title}</h3>
+                  <div className="flex items-center gap-4 text-xs text-slate-400 font-mono">
+                    <span>{item.questionsCount} Questions</span>
+                    <span>•</span>
+                    <span>{item.duration}</span>
+                    {item.paidProduct && <><span>•</span><span>{formatPKR(item.paidProduct.pricePkr)}</span></>}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={item.paidProduct && (paymentPending || mockTestPurchaseState.loading || paidMockTestLoading)}
+                  onClick={() => item.paidProduct
+                    ? hasPaidTestAccess
+                      ? startPaidMockTest(item.paidProduct)
+                      : navigateTo('practice-payment', item.paidProduct.id)
+                    : item.mockTestSlug
+                      ? navigateTo('mock-detail', item.mockTestSlug)
+                      : startPracticeSession(item)}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 font-semibold text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {item.paidProduct
+                    ? hasPaidTestAccess
+                      ? (paidMockTestLoading ? 'Loading Test...' : 'Start 40-Minute Test')
+                      : paymentPending
+                        ? 'Payment Pending Admin Approval'
+                        : `Unlock for ${formatPKR(item.paidProduct.pricePkr)}`
+                    : practiceSessionLoading ? 'Loading Questions...' : 'Start Practice Session'}
+                </button>
+              </div>
+            );
+          })}
           {filteredPractice.length === 0 && (
             <div className="col-span-full space-y-2 rounded-2xl border border-slate-700/80 bg-slate-900/90 p-12 text-center text-slate-400 backdrop-blur-sm">
               <p className="font-semibold text-slate-200">No practice tests matched your current filter criteria.</p>

@@ -5,6 +5,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_2 } from '../src/data/nonVerbalIntelligenc
 
 const questions = JSON.parse(await readFile(new URL('../src/data/nonVerbalIntelligenceTest2.json', import.meta.url), 'utf8'));
 const migration = await readFile(new URL('../supabase/migrations/035_add_non_verbal_intelligence_test_2.sql', import.meta.url), 'utf8');
+const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 
 test('Non-Verbal Intelligence Test 2 is a 40-minute PKR 49 Practice Test', () => {
   assert.equal(NON_VERBAL_INTELLIGENCE_TEST_2.pricePkr, 49);
@@ -40,4 +41,13 @@ test('the paid-test migration seeds the same explained question bank and purchas
   assert.match(migration, /when 'pma-long-course-159-non-verbal-intelligence-test-2' then 'Non-Verbal Intelligence Test 2 \(Most Repeated Questions\)'/);
   assert.match(migration, /purchase\.status = 'APPROVED'/);
   assert.match(migration, /purchase\.user_id = v_user_id/);
+});
+
+test('both paid non-verbal tests use the Practice Tests card grid and approval-gated actions', () => {
+  assert.match(appSource, /import \{ NON_VERBAL_INTELLIGENCE_TEST_1 \} from '\.\/data\/nonVerbalIntelligenceTest1'/);
+  assert.match(appSource, /import \{ NON_VERBAL_INTELLIGENCE_TEST_2 \} from '\.\/data\/nonVerbalIntelligenceTest2'/);
+  assert.match(appSource, /NON_VERBAL_INTELLIGENCE_TEST_1,\s+NON_VERBAL_INTELLIGENCE_TEST_2,/);
+  assert.match(appSource, /\.\.\.PAID_MOCK_TEST_PRODUCTS\.filter\(\(product\) => product\.practiceOnly\)\.map/);
+  assert.match(appSource, /hasPaidTestAccess\s*\?\s*startPaidMockTest\(item\.paidProduct\)/);
+  assert.match(appSource, /Payment Pending Admin Approval/);
 });
