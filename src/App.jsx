@@ -12,6 +12,8 @@ import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
 import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
+import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest1';
+import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
@@ -389,6 +391,8 @@ const PAID_MOCK_TEST_PRODUCTS = [
   PMA_LONG_COURSE_159_MOCK_TEST_2,
   PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK,
   PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK,
+  NON_VERBAL_INTELLIGENCE_TEST_1,
+  NON_VERBAL_INTELLIGENCE_TEST_2,
 ];
 
 export default function App() {
@@ -514,6 +518,7 @@ export default function App() {
   const [practiceSessionLoading, setPracticeSessionLoading] = useState(false);
   const [mockSecondsLeft, setMockSecondsLeft] = useState(null);
   const [mockAnswers, setMockAnswers] = useState({});
+  const mockAnswersRef = useRef({});
   const [mockMarked, setMockMarked] = useState({});
   const [practiceBranchId, setPracticeBranchId] = useState('');
   const [practiceSubjectId, setPracticeSubjectId] = useState('');
@@ -639,7 +644,7 @@ export default function App() {
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['mock-tests', 'mock-payment'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
 
@@ -665,6 +670,7 @@ export default function App() {
       'mock-tests': '/mock-tests',
       'mock-detail': value ? `/mock-tests/${encodeURIComponent(value)}` : '/mock-tests',
       'mock-payment': value ? `/mock-tests/${encodeURIComponent(value)}/payment` : '/mock-tests',
+      'practice-payment': value ? `/practice-tests/${encodeURIComponent(value)}/payment` : '/practice',
       issb: '/issb',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
@@ -808,6 +814,8 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
+      const practicePaymentPath = path.match(/^\/practice-tests\/([^/]+)\/payment$/i);
+      if (practicePaymentPath) { setCurrentPage('practice-payment'); setSelectedForceId(decodeSlug(practicePaymentPath[1])); return; }
       const mockPaymentPath = path.match(/^\/mock-tests\/([^/]+)\/payment$/i);
       if (mockPaymentPath) { setCurrentPage('mock-payment'); setSelectedForceId(decodeSlug(mockPaymentPath[1])); return; }
       if (normalizedPath.startsWith('/mock-tests/')) { setCurrentPage('mock-detail'); setSelectedForceId(decodeSlug(path.slice('/mock-tests/'.length))); return; }
@@ -1268,12 +1276,37 @@ export default function App() {
       setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
       const hasApprovedPurchase = requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
       if (!hasApprovedPurchase) {
-        navigateTo('mock-payment', product.id);
+        if (product.practiceOnly) navigateTo('practice-payment', product.id);
+        else navigateTo('mock-payment', product.id);
         return;
       }
 
       const questions = await getPaidMockTestQuestions(product.id);
       if (!questions.length) throw new Error('Questions are not available yet. Please contact support.');
+      if (product.timed) {
+        const expiresAt = Date.now() + product.durationMinutes * 60 * 1000;
+        setPracticeSession({
+          mode: 'paid-mock',
+          title: product.title,
+          questions,
+          index: 0,
+          selectedOption: '',
+          result: null,
+          score: 0,
+          answers: [],
+          attemptId: null,
+          expiresAt,
+          finalResult: null,
+          mockReview: [],
+          questionStartedAt: Date.now(),
+        });
+        setMockAnswers({});
+        mockAnswersRef.current = {};
+        setMockMarked({});
+        setMockSecondsLeft(product.durationMinutes * 60);
+        navigateTo('question-practice');
+        return;
+      }
       await startPracticeSession({
         title: product.title,
         questions,
@@ -1560,6 +1593,33 @@ export default function App() {
     }
   };
 
+  const completePaidMockTest = () => {
+    if (practiceSession.mode !== 'paid-mock' || practiceSession.index >= practiceSession.questions.length) return;
+    const mockReview = practiceSession.questions.map((question, index) => {
+      const questionId = question.question_id || question.id;
+      const selectedOption = mockAnswersRef.current[questionId] || '';
+      return {
+        question_id: questionId,
+        question_number: index + 1,
+        question_text: question.question_text,
+        image_url: question.image_url,
+        selected_option: selectedOption,
+        correct_option: question.correct_option,
+        explanation: question.explanation,
+        is_correct: selectedOption === question.correct_option,
+      };
+    });
+    const score = mockReview.filter((answer) => answer.is_correct).length;
+    setPracticeSession((previous) => ({
+      ...previous,
+      index: previous.questions.length,
+      expiresAt: null,
+      finalResult: { score, total_questions: previous.questions.length },
+      mockReview,
+    }));
+    setMockSecondsLeft(null);
+  };
+
   const saveAndMoveMockQuestion = async (nextIndex) => {
     const currentQuestion = practiceSession.questions[practiceSession.index];
     const currentAnswer = mockAnswers[currentQuestion?.question_id || currentQuestion?.id];
@@ -1572,11 +1632,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (practiceSession.mode !== 'mock' || !practiceSession.expiresAt || currentPage !== 'question-practice') return undefined;
+    if (!['mock', 'paid-mock'].includes(practiceSession.mode) || !practiceSession.expiresAt || currentPage !== 'question-practice') return undefined;
     const timer = window.setInterval(() => {
       const seconds = Math.max(0, Math.ceil((practiceSession.expiresAt - Date.now()) / 1000));
       setMockSecondsLeft(seconds);
-      if (seconds === 0) completeMockTest();
+      if (seconds === 0) {
+        if (practiceSession.mode === 'paid-mock') completePaidMockTest();
+        else completeMockTest();
+      }
     }, 1000);
     return () => window.clearInterval(timer);
   }, [practiceSession.mode, practiceSession.expiresAt, currentPage]);
@@ -3330,6 +3393,51 @@ export default function App() {
         </div>
       </div>
 
+      {PAID_MOCK_TEST_PRODUCTS.filter((product) => (
+        product.practiceOnly
+        && (practiceForceFilter === 'All' || product.force === practiceForceFilter)
+        && (practiceCategoryFilter === 'All' || product.category === practiceCategoryFilter)
+        && (!practiceSearch || `${product.title} ${product.category}`.toLowerCase().includes(practiceSearch.toLowerCase()))
+      )).map((product) => {
+        const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+        const request = purchaseStateMatchesUser
+          ? mockTestPurchaseState.requests.find((item) => item.test_slug === product.id)
+          : null;
+        const hasAccess = request?.status === 'APPROVED';
+        const paymentPending = request?.status === 'PENDING';
+
+        return (
+          <article key={product.id} aria-label="Paid non-verbal practice test" className="rounded-2xl border border-emerald-500/30 bg-slate-900 p-6 sm:p-8 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">{product.force} · Practice Test</span>
+              <span className="text-xs font-mono text-slate-400">{product.category}</span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-slate-100">{product.title}</h2>
+              <p className="text-sm text-slate-400">Timed visual-reasoning assessment with detailed answer explanations.</p>
+            </div>
+            <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-300">
+              <span>{product.questionsCount} questions</span>
+              <span>{product.duration}</span>
+              <span>{formatPKR(product.pricePkr)}</span>
+            </div>
+            {request?.status === 'REJECTED' && (
+              <p className="rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">
+                The previous payment request was rejected. You can submit a new payment proof.
+              </p>
+            )}
+            <button
+              type="button"
+              disabled={paymentPending || mockTestPurchaseState.loading || paidMockTestLoading}
+              onClick={() => hasAccess ? startPaidMockTest(product) : navigateTo('practice-payment', product.id)}
+              className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {hasAccess ? (paidMockTestLoading ? 'Loading test...' : 'Start 40-Minute Test') : paymentPending ? 'Payment Pending Admin Approval' : `Unlock for ${formatPKR(product.pricePkr)}`}
+            </button>
+          </article>
+        );
+      })}
+
       {/* Filter Bar */}
       <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -3478,31 +3586,45 @@ export default function App() {
   const renderQuestionPracticePage = () => {
     const question = practiceSession.questions[practiceSession.index];
     const isFinished = !question;
+    const isTimedMock = ['mock', 'paid-mock'].includes(practiceSession.mode);
+    const finalScore = practiceSession.finalResult?.score ?? practiceSession.score;
     if (isFinished) {
       return (
         <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-6">
           <Award className="w-12 h-12 text-amber-400 mx-auto" />
           <h1 className="text-3xl font-extrabold text-slate-100">Practice Session Complete</h1>
-          <div className="grid grid-cols-3 gap-3 text-center"><div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="block text-xl font-bold text-slate-100">{practiceSession.questions.length}</span><span className="text-[10px] text-slate-500">Questions</span></div><div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="block text-xl font-bold text-emerald-400">{practiceSession.mode === 'mock' && practiceSession.finalResult ? practiceSession.finalResult.score : practiceSession.score}</span><span className="text-[10px] text-slate-500">Correct</span></div><div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="block text-xl font-bold text-slate-100">{practiceSession.questions.length ? Math.round(((practiceSession.mode === 'mock' && practiceSession.finalResult ? practiceSession.finalResult.score : practiceSession.score) / practiceSession.questions.length) * 100) : 0}%</span><span className="text-[10px] text-slate-500">Score</span></div></div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="block text-xl font-bold text-slate-100">{practiceSession.questions.length}</span><span className="text-[10px] text-slate-500">Questions</span></div>
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="block text-xl font-bold text-emerald-400">{finalScore}</span><span className="text-[10px] text-slate-500">Correct</span></div>
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="block text-xl font-bold text-slate-100">{practiceSession.questions.length ? Math.round((finalScore / practiceSession.questions.length) * 100) : 0}%</span><span className="text-[10px] text-slate-500">Score</span></div>
+          </div>
           <div className="flex justify-center gap-3"><button onClick={() => navigateTo('practice')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Practice Again</button><button onClick={() => navigateTo('home')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-200 font-bold text-sm">Back Home</button></div>
           {practiceSession.mode === 'practice' && practiceSession.answers?.length > 0 && <div className="text-left space-y-3 pt-6"><h2 className="text-xl font-bold text-slate-100">Review Answers</h2>{practiceSession.answers.map((answer, reviewIndex) => { const reviewQuestion = practiceSession.questions.find((item) => item.id === answer.questionId); return <div key={answer.questionId} className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2"><p className="text-sm text-slate-200">{reviewIndex + 1}. {reviewQuestion?.question_text}</p><p className="text-xs text-slate-400">Your answer: <span className="text-slate-200">{answer.selectedOption}</span> · Correct answer: <span className="text-emerald-400">{answer.result.correct_option}</span></p><p className="text-xs text-slate-400">{answer.result.explanation || 'No explanation is available for this question yet.'}</p></div>; })}</div>}
-          {practiceSession.mode === 'mock' && practiceSession.mockReview?.length > 0 && <div className="text-left space-y-3 pt-6"><h2 className="text-xl font-bold text-slate-100">Review Answers</h2>{practiceSession.mockReview.map((answer) => <div key={answer.question_id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2"><p className="text-sm text-slate-200">{answer.question_number}. {answer.question_text}</p><p className="text-xs text-slate-400">Your answer: <span className={answer.is_correct ? 'text-emerald-400' : 'text-rose-300'}>{answer.selected_option || 'Unanswered'}</span> · Correct answer: <span className="text-emerald-400">{answer.correct_option}</span></p><p className="text-xs text-slate-400">{answer.explanation || 'No explanation is available for this question yet.'}</p></div>)}</div>}
+          {isTimedMock && practiceSession.mockReview?.length > 0 && <div className="text-left space-y-3 pt-6"><h2 className="text-xl font-bold text-slate-100">Review Answers</h2>{practiceSession.mockReview.map((answer) => <div key={answer.question_id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2"><p className="text-sm text-slate-200">{answer.question_number}. {answer.question_text}</p>{answer.image_url && <img src={answer.image_url} alt={`Question ${answer.question_number} figures`} className="max-h-80 w-full object-contain rounded-xl border border-slate-800 bg-white" />}<p className="text-xs text-slate-400">Your answer: <span className={answer.is_correct ? 'text-emerald-400' : 'text-rose-300'}>{answer.selected_option || 'Unanswered'}</span> · Correct answer: <span className="text-emerald-400">{answer.correct_option}</span></p><p className="text-xs leading-relaxed text-slate-300">{answer.explanation || 'No explanation is available for this question yet.'}</p></div>)}</div>}
         </div>
       );
     }
     const questionKey = question.question_id || question.id;
-    const selectedOption = practiceSession.mode === 'mock' ? (mockAnswers[questionKey] || '') : practiceSession.selectedOption;
+    const selectedOption = isTimedMock ? (mockAnswers[questionKey] || '') : practiceSession.selectedOption;
+    const moveToQuestion = (nextIndex) => {
+      if (practiceSession.mode === 'paid-mock') {
+        setPracticeSession((previous) => ({ ...previous, index: nextIndex, questionStartedAt: Date.now() }));
+        return;
+      }
+      saveAndMoveMockQuestion(nextIndex);
+    };
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+        {practiceSession.title && <h1 className="text-xl font-bold text-slate-100">{practiceSession.title}</h1>}
         <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
           <span>Question {practiceSession.index + 1} of {practiceSession.questions.length}</span>
-          <span>{practiceSession.mode === 'mock' ? `Time ${Math.floor((mockSecondsLeft || 0) / 60)}:${String((mockSecondsLeft || 0) % 60).padStart(2, '0')}` : `Score ${practiceSession.score}`}</span>
+          <span>{isTimedMock ? `Time ${Math.floor((mockSecondsLeft || 0) / 60)}:${String((mockSecondsLeft || 0) % 60).padStart(2, '0')}` : `Score ${practiceSession.score}`}</span>
         </div>
         <div className="h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${((practiceSession.index + 1) / practiceSession.questions.length) * 100}%` }} /></div>
-        {practiceSession.mode === 'mock' && <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">{practiceSession.questions.map((item, questionIndex) => { const key = item.question_id || item.id; return <button key={key} onClick={() => saveAndMoveMockQuestion(questionIndex)} className={`h-8 rounded-lg border text-[10px] font-mono ${questionIndex === practiceSession.index ? 'border-emerald-400 text-emerald-300' : mockMarked[key] ? 'border-amber-400 text-amber-300' : mockAnswers[key] ? 'border-slate-500 text-slate-300' : 'border-slate-800 text-slate-500'}`}>{questionIndex + 1}</button>; })}</div>}
+        {isTimedMock && <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">{practiceSession.questions.map((item, questionIndex) => { const key = item.question_id || item.id; return <button key={key} onClick={() => moveToQuestion(questionIndex)} className={`h-8 rounded-lg border text-[10px] font-mono ${questionIndex === practiceSession.index ? 'border-emerald-400 text-emerald-300' : mockMarked[key] ? 'border-amber-400 text-amber-300' : mockAnswers[key] ? 'border-slate-500 text-slate-300' : 'border-slate-800 text-slate-500'}`}>{questionIndex + 1}</button>; })}</div>}
         <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6">
-          <QuestionCard question={question} selectedOption={selectedOption} submitted={practiceSession.mode === 'mock' ? false : Boolean(practiceSession.result)} onSelect={(option) => practiceSession.mode === 'mock' ? setMockAnswers((previous) => ({ ...previous, [questionKey]: option })) : setPracticeSession((previous) => ({ ...previous, selectedOption: option }))} />
+          <QuestionCard question={question} selectedOption={selectedOption} submitted={isTimedMock ? false : Boolean(practiceSession.result)} onSelect={(option) => isTimedMock ? setMockAnswers((previous) => { const nextAnswers = { ...previous, [questionKey]: option }; mockAnswersRef.current = nextAnswers; return nextAnswers; }) : setPracticeSession((previous) => ({ ...previous, selectedOption: option }))} />
           {practiceSession.result && (
             <div className={`p-4 rounded-xl border ${practiceSession.result.is_correct ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200' : 'border-rose-500/40 bg-rose-950/40 text-rose-200'}`}>
               <p className="font-semibold">{practiceSession.result.is_correct ? 'Correct answer' : 'Answer submitted'}</p>
@@ -3513,10 +3635,10 @@ export default function App() {
           )}
           <div className="flex justify-end gap-3">
             <button onClick={() => navigateTo('practice')} className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Exit</button>
-            {practiceSession.mode === 'mock' && <button onClick={() => setMockMarked((previous) => ({ ...previous, [questionKey]: !previous[questionKey] }))} className="px-4 py-2.5 rounded-xl bg-amber-950/50 text-amber-200 text-xs font-semibold">{mockMarked[questionKey] ? 'Unmark Review' : 'Mark for Review'}</button>}
-            {practiceSession.index > 0 && <button onClick={() => practiceSession.mode === 'mock' ? saveAndMoveMockQuestion(practiceSession.index - 1) : (() => { const previous = practiceSession.answers?.[practiceSession.index - 1]; setPracticeSession((state) => ({ ...state, index: state.index - 1, selectedOption: previous?.selectedOption || '', result: previous?.result || null, questionStartedAt: Date.now() })); })()} className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Previous</button>}
-            {practiceSession.mode === 'mock' ? (
-              <>{practiceSession.index < practiceSession.questions.length - 1 ? <button onClick={() => saveAndMoveMockQuestion(practiceSession.index + 1)} className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">Next</button> : <button onClick={() => { if (window.confirm('Submit this mock test now?')) completeMockTest(); }} className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">Submit Test</button>}</>
+            {isTimedMock && <button onClick={() => setMockMarked((previous) => ({ ...previous, [questionKey]: !previous[questionKey] }))} className="px-4 py-2.5 rounded-xl bg-amber-950/50 text-amber-200 text-xs font-semibold">{mockMarked[questionKey] ? 'Unmark Review' : 'Mark for Review'}</button>}
+            {practiceSession.index > 0 && <button onClick={() => isTimedMock ? moveToQuestion(practiceSession.index - 1) : (() => { const previous = practiceSession.answers?.[practiceSession.index - 1]; setPracticeSession((state) => ({ ...state, index: state.index - 1, selectedOption: previous?.selectedOption || '', result: previous?.result || null, questionStartedAt: Date.now() })); })()} className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Previous</button>}
+            {isTimedMock ? (
+              <>{practiceSession.index < practiceSession.questions.length - 1 ? <button onClick={() => moveToQuestion(practiceSession.index + 1)} className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">Next</button> : <button onClick={() => { if (window.confirm('Submit this mock test now?')) { if (practiceSession.mode === 'paid-mock') completePaidMockTest(); else completeMockTest(); } }} className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">Submit Test</button>}</>
             ) : !practiceSession.result ? (
               <button disabled={!practiceSession.selectedOption} onClick={submitPracticeAnswer} className="px-5 py-2.5 rounded-xl bg-emerald-500 disabled:opacity-40 text-slate-950 font-bold text-xs">Submit Answer</button>
             ) : (
@@ -3548,7 +3670,9 @@ export default function App() {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <button type="button" onClick={() => navigateTo('mock-tests')} className="text-xs text-emerald-400 hover:underline">Back to Mock Tests</button>
+        <button type="button" onClick={() => navigateTo(product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
+          Back to {product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
+        </button>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
             <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · Permanent access after approval</p>
@@ -5007,6 +5131,8 @@ export default function App() {
       case 'mock-tests':
         return renderMockTestsPage();
       case 'mock-payment':
+        return renderMockTestPaymentPage();
+      case 'practice-payment':
         return renderMockTestPaymentPage();
       case 'mock-detail':
         return renderMockTestDetailPage();
