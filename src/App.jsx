@@ -380,8 +380,103 @@ const DEFAULT_PAYMENT_SETTINGS = {
   instructions: 'Important: In JazzCash or any bank transfer flow, select NAYAPAY and send the exact amount to the account details below. Then submit the payment proof on FaujPrep for manual verification.',
 };
 
+const PAID_PRACTICE_TEST_PRODUCTS = [
+  {
+    id: 'pma-verbal-intelligence-test-2',
+    title: 'PMA Long Course Initial Test — Verbal Intelligence Test 2',
+    force: 'Pakistan Army',
+    category: 'Verbal Intelligence',
+    difficulty: 'Medium',
+    duration: '25 mins',
+    durationMinutes: 25,
+    questionsCount: 50,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+  {
+    id: 'pma-verbal-intelligence-test-3',
+    title: 'PMA Long Course Initial Test — Verbal Intelligence Test 3',
+    force: 'Pakistan Army',
+    category: 'Verbal Intelligence',
+    difficulty: 'Medium',
+    duration: '25 mins',
+    durationMinutes: 25,
+    questionsCount: 50,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+  {
+    id: 'pma-non-verbal-intelligence-test-2',
+    title: 'PMA Long Course Initial Test — Non-Verbal Intelligence Test 2',
+    force: 'Pakistan Army',
+    category: 'Non-Verbal Intelligence',
+    difficulty: 'Medium',
+    duration: '25 mins',
+    durationMinutes: 25,
+    questionsCount: 50,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+  {
+    id: 'pma-non-verbal-intelligence-test-3',
+    title: 'PMA Long Course Initial Test — Non-Verbal Intelligence Test 3',
+    force: 'Pakistan Army',
+    category: 'Non-Verbal Intelligence',
+    difficulty: 'Medium',
+    duration: '25 mins',
+    durationMinutes: 25,
+    questionsCount: 50,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+  {
+    id: 'pma-analogy-test',
+    title: 'PMA Long Course Initial Test — Analogy Test',
+    force: 'Pakistan Army',
+    category: 'Analogy',
+    difficulty: 'Medium',
+    duration: '25 mins',
+    durationMinutes: 25,
+    questionsCount: 50,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+  {
+    id: 'pma-mathematical-series-test',
+    title: 'PMA Long Course Initial Test — Mathematical Series Test',
+    force: 'Pakistan Army',
+    category: 'Mathematical Series',
+    difficulty: 'Medium',
+    duration: '25 mins',
+    durationMinutes: 25,
+    questionsCount: 50,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+  {
+    id: 'army-initial-practice-mock',
+    title: 'Army Initial Practice Mock',
+    force: 'Pakistan Army',
+    category: 'Mock Test',
+    difficulty: 'Medium',
+    duration: '30 mins',
+    durationMinutes: 30,
+    questionsCount: 10,
+    pricePkr: 14,
+    practiceOnly: true,
+    timed: true,
+  },
+];
+
 const PAID_MOCK_TEST_PRODUCTS = [
   ...PAID_NOTE_PRODUCTS,
+  ...PAID_PRACTICE_TEST_PRODUCTS,
   ACADEMIC_PORTION_MOCK_TEST_1,
   ACADEMIC_PORTION_MOCK_TEST_2,
   PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3,
@@ -524,10 +619,12 @@ export default function App() {
   const [dashboardState, setDashboardState] = useState({ loading: false, error: null, summary: null });
   const [interviewActivity, setInterviewActivity] = useState({ practicedIds: [], answersByQuestion: {} });
 
+  const paidPracticeProductIds = new Set((backendConfigured ? backendData.mockTests : []).map((test) => test.slug));
   const practiceCatalog = [
     ...(backendConfigured
       ? backendData.mockTests.filter((test) => test.slug !== 'first-full-mock-test').map((test) => {
           const branch = backendData.branches.find((item) => item.id === test.branch_id);
+          const paidProduct = PAID_PRACTICE_TEST_PRODUCTS.find((product) => product.id === test.slug);
           return {
             id: test.id,
             title: test.title,
@@ -537,14 +634,15 @@ export default function App() {
             questionsCount: test.total_questions,
             duration: `${test.duration_minutes} mins`,
             mockTestSlug: test.slug,
+            ...(paidProduct ? { paidProduct } : {}),
           };
         })
       : PRACTICE_BANK),
-    ...PAID_MOCK_TEST_PRODUCTS.filter((product) => product.practiceOnly).map((product) => ({
+    ...PAID_MOCK_TEST_PRODUCTS.filter((product) => product.practiceOnly && !paidPracticeProductIds.has(product.id)).map((product) => ({
       id: product.id,
       title: product.title,
       force: product.force,
-      category: 'Non-Verbal Intelligence',
+      category: product.category || 'Non-Verbal Intelligence',
       difficulty: product.difficulty,
       questionsCount: product.questionsCount,
       duration: product.duration,
@@ -1321,6 +1419,12 @@ export default function App() {
 
       if (product.isNote) {
         navigateTo('paid-note-viewer', product.id);
+        return;
+      }
+
+      const backendMockTest = backendConfigured ? backendData.mockTests.find((test) => test.slug === product.id) : null;
+      if (backendMockTest) {
+        await startMockSession(backendMockTest);
         return;
       }
 

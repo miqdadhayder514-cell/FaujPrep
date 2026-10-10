@@ -25,6 +25,7 @@ const mostRepeatedQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../
 const mustComeQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MustComeQuestionsBank.json', import.meta.url)), 'utf8'));
 const academicTestOneQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/academicPortionMockTest1.json', import.meta.url)), 'utf8'));
 const appSource = readFileSync(fileURLToPath(new URL('../src/App.jsx', import.meta.url)), 'utf8');
+const paidPracticeMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/040_add_paid_practice_test_slugs_pkr_14.sql', import.meta.url)), 'utf8');
 
 const getSeededBank = (migrationSource, slug) => {
   const prefix = `('${slug}', convert_from(decode('`;
@@ -158,4 +159,30 @@ test('protected database seed contains the complete paid question banks', () => 
   assert.ok(pmaQuestions.every((question) => question.correct_option && question.explanation));
   assert.ok(seededMostRepeatedQuestions.every((question) => question.correct_option && question.explanation));
   assert.ok(academicQuestions.every((question) => question.correct_option && question.explanation));
+});
+
+test('practice tests can be paid at PKR 14 each and stay behind purchase gating', () => {
+  const paidSlugs = [
+    'pma-verbal-intelligence-test-2',
+    'pma-verbal-intelligence-test-3',
+    'pma-non-verbal-intelligence-test-2',
+    'pma-non-verbal-intelligence-test-3',
+    'pma-analogy-test',
+    'pma-mathematical-series-test',
+    'army-initial-practice-mock',
+  ];
+
+  for (const slug of paidSlugs) {
+    assert.match(appSource, new RegExp(`id: '${slug}'`, 'i'));
+    assert.match(appSource, new RegExp(`pricePkr: 14`, 'i'));
+  }
+
+  for (const slug of paidSlugs) {
+    assert.match(paidPracticeMigration, new RegExp(`'${slug}' and amount_pkr = 14`, 'i'));
+  }
+
+  assert.match(appSource, /const PAID_PRACTICE_TEST_PRODUCTS = \[/i);
+  assert.match(paidPracticeMigration, /mock_test_purchase_requests_test_slug_check/i);
+  assert.match(paidPracticeMigration, /army-initial-practice-mock' and amount_pkr = 14/i);
+  assert.match(appSource, /startPaidMockTest = async \(product\) => \{/i);
 });
