@@ -17,6 +17,22 @@ Candidate progress, billing, and payment records use a persistent anonymous sess
 
 Only the publishable anon key belongs in `.env.local`. Never put a service-role key in this frontend project.
 
+### Uploading private paid-note PDFs
+
+Paid PDFs must be uploaded to the private `paid-notes` Storage bucket before approved candidates can view them. For the Crack Interview PDF, upload `interview/PMA_Long_Course_159_Interview fully Cracked.pdf` using this exact object name:
+
+```text
+pma-long-course-159-interview-fully-cracked.pdf
+```
+
+Alternatively, run the targeted uploader from `my-app` with `SUPABASE_URL` and a current `SUPABASE_SERVICE_ROLE_KEY` available only in your local process environment:
+
+```powershell
+npm run upload:paid-notes -- --product=pma-long-course-159-interview-fully-cracked
+```
+
+Never put the service-role key in `.env.local`, commit it, or share it in chat. The uploader reads the source PDF from the repository's `interview` folder for this product; other paid notes continue to use the `Notes` folder.
+
 When variables are absent, FaujPrep shows an explicit database setup notice. It does not pretend that authentication, live content, or progress tracking are connected.
 
 ## Analytics

@@ -1053,7 +1053,9 @@ export default function App() {
           const missingFile = /object not found|not found/i.test(error.message || '');
           setPaidNoteViewerState({
             loading: false,
-            error: missingFile ? 'This PDF is not available yet. Please contact support.' : error.message || 'Unable to load this note.',
+            error: missingFile && product.interviewResource
+              ? 'The Crack Interview PDF has not been uploaded to the private paid-notes storage bucket yet. An administrator must upload it as pma-long-course-159-interview-fully-cracked.pdf.'
+              : missingFile ? 'This PDF is not available yet. Please contact support.' : error.message || 'Unable to load this note.',
             url: null,
           });
         }

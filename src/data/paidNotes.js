@@ -34,6 +34,7 @@ export const PAID_NOTE_PRODUCTS = [
   {
     id: 'pma-long-course-159-interview-fully-cracked',
     title: 'PMA_Long_Course_159_Interview fully Cracked',
+    sourceDirectory: 'interview',
     sourceFile: 'PMA_Long_Course_159_Interview fully Cracked.pdf',
     downloadPath: 'pma-long-course-159-interview-fully-cracked.pdf',
     pricePkr: 150,

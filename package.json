@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && node scripts/generate-seo-assets.mjs",
     "lint": "eslint .",
     "test": "node --test scripts/*.test.mjs",
+    "upload:paid-notes": "node scripts/upload-paid-notes.mjs",
     "test:seo": "node --test scripts/generate-seo-assets.test.mjs scripts/analytics-events.test.mjs scripts/analytics-migration.test.mjs",
     "preview": "vite preview"
   },

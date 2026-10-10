@@ -4,6 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { PAID_NOTE_PRODUCTS } from '../src/data/paidNotes.js';
 
+const requestedProductId = process.argv.find((argument) => argument.startsWith('--product='))?.slice('--product='.length);
+const products = requestedProductId
+  ? PAID_NOTE_PRODUCTS.filter((product) => product.id === requestedProductId)
+  : PAID_NOTE_PRODUCTS;
+if (!products.length) {
+  throw new Error(`Unknown paid-note product: ${requestedProductId}`);
+}
+
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !serviceRoleKey) {
@@ -12,9 +20,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 if (!serviceRoleKey.startsWith('sb_secret_')) {
   throw new Error('Use a replacement Supabase secret key beginning with sb_secret_; legacy service_role JWT keys are not supported.');
 }
-
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const notesDirectory = resolve(projectRoot, 'Notes');
 let lastFetchFailure = null;
 const diagnosticFetch = async (input, init) => {
   try {
@@ -41,8 +47,9 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-for (const product of PAID_NOTE_PRODUCTS) {
-  const file = await readFile(resolve(notesDirectory, product.sourceFile));
+for (const product of products) {
+  const sourceDirectory = product.sourceDirectory || 'Notes';
+  const file = await readFile(resolve(projectRoot, sourceDirectory, product.sourceFile));
   const { error } = await supabase.storage.from('paid-notes').upload(product.downloadPath, file, {
     cacheControl: '3600',
     contentType: 'application/pdf',
