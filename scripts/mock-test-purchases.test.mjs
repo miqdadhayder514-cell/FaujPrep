@@ -109,11 +109,13 @@ test('paid test UI refreshes anonymous ownership and never bypasses approval', (
   const paidProducts = appSource.slice(appSource.indexOf('const PAID_MOCK_TEST_PRODUCTS'), appSource.indexOf('];', appSource.indexOf('const PAID_MOCK_TEST_PRODUCTS')));
   const startHandler = appSource.slice(appSource.indexOf('const startPaidMockTest'), appSource.indexOf('const handleAdminPaymentAction', appSource.indexOf('const startPaidMockTest')));
   const paymentPage = appSource.slice(appSource.indexOf('const renderMockTestPaymentPage'), appSource.indexOf('const renderMockTestsPage', appSource.indexOf('const renderMockTestPaymentPage')));
+  const mockTestsPage = appSource.slice(appSource.indexOf('const renderMockTestsPage'), appSource.indexOf('const renderResourcesPage', appSource.indexOf('const renderMockTestsPage')));
 
   assert.match(paidProducts, /PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK/);
   assert.match(paidProducts, /PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK/);
   assert.match(paidProducts, /ACADEMIC_PORTION_MOCK_TEST_1/);
   assert.match(appSource, /renderPaidTestAction\(localMockTest\)/);
+  assert.match(mockTestsPage, /grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4/);
   assert.match(appSource, /localMockTest\.questionsCount/);
   assert.doesNotMatch(appSource, /localMockTest\.questions\.length/);
   assert.match(cardAction, /request\?\.status === 'APPROVED'/);

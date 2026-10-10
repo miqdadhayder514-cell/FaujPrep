@@ -11,6 +11,7 @@ import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
 import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
 import { PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3 } from './data/pmaLong159AcademicPortionMockTest3';
 import { PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS } from './data/pmaLongCourseAcademicPortionMostRepeatedQuestions';
+import { PAID_NOTE_PRODUCTS } from './data/paidNotes';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
 import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
@@ -18,7 +19,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest
 import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
-import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, upsertPaymentSettings } from './lib/subscriptions';
+import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteDownloadUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
 import { ensureAnonymousSession } from './lib/supabase';
@@ -47,6 +48,7 @@ import {
   Info,
   ExternalLink,
   Clock,
+  Download,
   Sliders,
   ArrowRight,
   Eye,
@@ -379,6 +381,7 @@ const DEFAULT_PAYMENT_SETTINGS = {
 };
 
 const PAID_MOCK_TEST_PRODUCTS = [
+  ...PAID_NOTE_PRODUCTS,
   ACADEMIC_PORTION_MOCK_TEST_1,
   ACADEMIC_PORTION_MOCK_TEST_2,
   PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3,
@@ -635,7 +638,7 @@ export default function App() {
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
 
@@ -1230,8 +1233,7 @@ export default function App() {
     setMockTestPaymentState({ loading: true, error: null, result: null });
     try {
       const user = session?.user || (await ensureAnonymousSession()).user;
-      const response = await submitMockTestPaymentProof({
-        testSlug: product.id,
+      const paymentPayload = {
         senderName,
         senderPhone,
         paymentDate: mockTestPaymentForm.paymentDate,
@@ -1239,7 +1241,10 @@ export default function App() {
         notes: mockTestPaymentForm.notes,
         paymentScreenshot: mockTestPaymentForm.paymentScreenshot,
         userId: user.id,
-      });
+      };
+      const response = product.isNote
+        ? await submitPaidNotePaymentProof({ ...paymentPayload, noteSlug: product.id })
+        : await submitMockTestPaymentProof({ ...paymentPayload, testSlug: product.id });
       setMockTestPaymentState({ loading: false, error: null, result: response });
       setMockTestPaymentForm({ senderName: '', senderPhone: '', paymentDate: '', paymentTime: '', notes: '', paymentScreenshot: null });
       await refreshMockTestPurchases();
@@ -1260,6 +1265,12 @@ export default function App() {
       if (!hasApprovedPurchase) {
         if (product.practiceOnly) navigateTo('practice-payment', product.id);
         else navigateTo('mock-payment', product.id);
+        return;
+      }
+
+      if (product.isNote) {
+        const downloadUrl = await getPaidNoteDownloadUrl(product.id, product.downloadPath);
+        window.location.assign(downloadUrl);
         return;
       }
 
@@ -1308,7 +1319,8 @@ export default function App() {
     if (!paymentId) return;
     setAdminPaymentAction({ loading: true, error: null });
     try {
-      const isMockTestPurchase = purchaseType === 'MOCK_TEST';
+      const isNotePurchase = purchaseType === 'NOTE';
+      const isMockTestPurchase = purchaseType === 'MOCK_TEST' || isNotePurchase;
       const response = action === 'approve'
         ? isMockTestPurchase
           ? await approveMockTestPurchase(paymentId, adminNotes)
@@ -1319,7 +1331,9 @@ export default function App() {
       setAdminPaymentAction({ loading: false, error: null });
       addToast(
         isMockTestPurchase
-          ? response?.status === 'APPROVED' ? 'Mock-test access approved permanently.' : 'Mock-test payment rejected.'
+          ? isNotePurchase
+            ? response?.status === 'APPROVED' ? 'Note download approved.' : 'Note payment rejected.'
+            : response?.status === 'APPROVED' ? 'Mock-test access approved permanently.' : 'Mock-test payment rejected.'
           : response?.status === 'APPROVED' ? 'Payment approved and subscription activated.' : 'Payment rejected and no premium access was granted.',
         response?.status === 'APPROVED' ? 'success' : 'info'
       );
@@ -3631,8 +3645,8 @@ export default function App() {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <button type="button" onClick={() => navigateTo(product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
-          Back to {product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
+        <button type="button" onClick={() => navigateTo(product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
+          Back to {product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
         </button>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
@@ -3644,15 +3658,15 @@ export default function App() {
 
           {hasAccess ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
-              <p className="font-semibold text-emerald-200">This test is already unlocked on your account.</p>
+              <p className="font-semibold text-emerald-200">{product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
               <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">
-                {paidMockTestLoading ? 'Loading test...' : 'Start Test'}
+                {paidMockTestLoading ? product.isNote ? 'Preparing download...' : 'Loading test...' : product.isNote ? 'Download PDF' : 'Start Test'}
               </button>
             </div>
           ) : latestRequest?.status === 'PENDING' ? (
             <div className="rounded-xl border border-amber-500/30 bg-amber-950/30 p-5 space-y-2">
               <h2 className="text-lg font-bold text-amber-200">Payment Pending Review</h2>
-              <p className="text-sm text-amber-100/80">Your proof was submitted. Access will unlock permanently after admin approval.</p>
+              <p className="text-sm text-amber-100/80">Your proof was submitted. {product.isNote ? 'The download will unlock' : 'Access will unlock permanently'} after admin approval.</p>
             </div>
           ) : (
             <>
@@ -3729,7 +3743,7 @@ export default function App() {
     const renderPaidTestAction = (product) => {
       const request = getPurchaseRequest(product);
       if (request?.status === 'APPROVED') {
-        return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? 'Loading test...' : 'Start Test'}</button>;
+        return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? product.isNote ? 'Preparing download...' : 'Loading test...' : product.isNote ? 'Download PDF' : 'Start Test'}</button>;
       }
       if (request?.status === 'PENDING') {
         return <button disabled className="w-full rounded-xl border border-amber-500/30 bg-amber-950/40 py-3 text-sm font-bold text-amber-200">Payment Pending Admin Approval</button>;
@@ -3749,6 +3763,7 @@ export default function App() {
         {!backendConfigured && <div className="p-8 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-sm text-amber-200">Configure Supabase to load full mock tests.</div>}
         {backendConfigured && backendLoading && <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-sm text-slate-400">Loading full mock tests...</div>}
 
+        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
@@ -3892,15 +3907,45 @@ export default function App() {
             <button onClick={() => navigateTo('mock-detail', fullMockTest.slug)} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">View Test Details</button>
           </article>
         )}
+        </div>
         {backendConfigured && !backendLoading && !fullMockTest && <p className="max-w-3xl rounded-2xl border border-dashed border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">The full mock test has not been added to the database yet.</p>}
       </div>
     );
   };
 
   const renderResourcesPage = () => (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-3">
-      <h1 className="text-3xl font-extrabold text-slate-100">Notes</h1>
-      <p className="text-sm text-slate-400">No notes available.</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-extrabold text-slate-100">Notes</h1>
+        <p className="text-sm text-slate-400">Downloadable PMA study notes · PKR 14 each</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {PAID_NOTE_PRODUCTS.map((product) => {
+          const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+          const request = purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((item) => item.test_slug === product.id) : null;
+
+          return (
+            <article key={product.id} className="flex min-h-52 flex-col justify-between gap-5 rounded-xl border border-slate-800 bg-slate-900 p-5">
+              <div className="space-y-3">
+                <span className="inline-flex rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">PDF Notes</span>
+                <h2 className="text-lg font-bold leading-snug text-slate-100">{product.title}</h2>
+                <p className="text-sm font-semibold text-emerald-300">{formatPKR(product.pricePkr)}</p>
+              </div>
+              {request?.status === 'APPROVED' ? (
+                <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">
+                  <Download className="h-4 w-4" />{paidMockTestLoading ? 'Preparing download...' : 'Download PDF'}
+                </button>
+              ) : request?.status === 'PENDING' ? (
+                <button type="button" disabled className="min-h-11 w-full rounded-lg border border-amber-500/30 bg-amber-950/40 px-4 py-2.5 text-sm font-bold text-amber-200">Payment Pending Approval</button>
+              ) : mockTestPurchaseState.loading ? (
+                <button type="button" disabled className="min-h-11 w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-400">Checking Access...</button>
+              ) : (
+                <button type="button" onClick={() => navigateTo('mock-payment', product.id)} className="min-h-11 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-400">{request?.status === 'REJECTED' ? 'Resubmit Payment' : 'Buy & Download'} · {formatPKR(product.pricePkr)}</button>
+              )}
+            </article>
+          );
+        })}
+      </div>
     </div>
   );
 
@@ -4395,7 +4440,7 @@ export default function App() {
                   <div key={payment.id} className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-slate-200">{payment.purchase_type === 'MOCK_TEST' ? payment.test_title : payment.plan_name || payment.plan_slug || 'Plan'}</p>
+                        <p className="font-semibold text-slate-200">{payment.purchase_type === 'MOCK_TEST' || payment.purchase_type === 'NOTE' ? payment.test_title : payment.plan_name || payment.plan_slug || 'Plan'}</p>
                         <p className="text-[11px] text-slate-400">{payment.user_email || payment.user_id}</p>
                       </div>
                       <span className={`text-[10px] uppercase font-mono px-2 py-1 rounded ${payment.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : payment.status === 'REJECTED' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}`}>
@@ -4404,7 +4449,7 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
                       <span>Amount: {formatPKR(payment.amount_pkr || 0)}</span>
-                      <span>Method: {payment.purchase_type === 'MOCK_TEST' ? 'NayaPay' : payment.payment_method || 'JAZZCASH_MANUAL'}</span>
+                      <span>Method: {payment.purchase_type !== 'PLAN' ? 'NayaPay' : payment.payment_method || 'JAZZCASH_MANUAL'}</span>
                       <span>Sender: {payment.sender_name || '—'}</span>
                     </div>
                     {payment.screenshotUrl && (

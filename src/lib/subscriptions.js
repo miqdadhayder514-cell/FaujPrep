@@ -188,6 +188,50 @@ export async function submitMockTestPaymentProof(payload) {
   return data;
 }
 
+export async function submitPaidNotePaymentProof(payload) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Paid note downloads require a configured account.');
+  }
+
+  const screenshotPath = await uploadPaymentScreenshot(payload.userId, payload.paymentScreenshot);
+  const { data, error } = await supabase.rpc('submit_paid_note_payment_proof', {
+    p_note_slug: payload.noteSlug,
+    p_sender_name: payload.senderName,
+    p_sender_phone: payload.senderPhone,
+    p_payment_date: payload.paymentDate,
+    p_payment_time: payload.paymentTime || null,
+    p_payment_screenshot_url: screenshotPath,
+    p_notes: payload.notes || null,
+  });
+  if (error) {
+    await supabase.storage.from('payment-screenshots').remove([screenshotPath]);
+    throw error;
+  }
+  return data;
+}
+
+export async function getPaidNoteDownloadUrl(noteSlug, downloadPath) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Paid note downloads require a configured account.');
+  }
+
+  const allowedPaths = {
+    'pma-academic-notes': 'pma-academic-notes.pdf',
+    'pma-academic-tests-notes': 'pma-academic-tests-notes.pdf',
+    'pma-non-verbal-intelligence-notes': 'pma-non-verbal-intelligence-notes.pdf',
+    'pma-verbal-intelligence-notes': 'pma-verbal-intelligence-notes.pdf',
+  };
+  if (allowedPaths[noteSlug] !== downloadPath) {
+    throw new Error('This paid note download is not available.');
+  }
+
+  const { data, error } = await supabase.storage
+    .from('paid-notes')
+    .createSignedUrl(downloadPath, 300, { download: true });
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 export async function getMyMockTestPurchases() {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase.rpc('get_my_mock_test_purchases');
@@ -217,15 +261,24 @@ export async function getAdminPaymentQueue() {
     return [];
   }
 
-  const [planQueue, mockTestQueue] = await Promise.all([
+  const [planQueue, mockTestQueue, noteQueue] = await Promise.all([
     supabase.rpc('get_admin_payment_queue'),
     supabase.rpc('get_admin_mock_test_purchase_queue'),
+    supabase.rpc('get_admin_paid_note_purchase_queue'),
   ]);
   if (planQueue.error) throw planQueue.error;
   if (mockTestQueue.error) throw mockTestQueue.error;
+  if (noteQueue.error) throw noteQueue.error;
+  const noteSlugs = new Set([
+    'pma-academic-notes',
+    'pma-academic-tests-notes',
+    'pma-non-verbal-intelligence-notes',
+    'pma-verbal-intelligence-notes',
+  ]);
   const payments = [
     ...(Array.isArray(planQueue.data) ? planQueue.data : []).map((payment) => ({ ...payment, purchase_type: 'PLAN' })),
-    ...(Array.isArray(mockTestQueue.data) ? mockTestQueue.data : []),
+    ...(Array.isArray(mockTestQueue.data) ? mockTestQueue.data : []).filter((payment) => !noteSlugs.has(payment.test_slug)),
+    ...(Array.isArray(noteQueue.data) ? noteQueue.data : []),
   ];
   return Promise.all(payments.map(async (payment) => {
     const screenshotPath = payment.payment_screenshot_url;
