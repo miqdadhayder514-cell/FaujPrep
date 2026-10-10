@@ -210,7 +210,7 @@ export async function submitPaidNotePaymentProof(payload) {
   return data;
 }
 
-export async function getPaidNoteDownloadUrl(noteSlug, downloadPath) {
+export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
   if (!isSupabaseConfigured) {
     throw new Error('Paid note downloads require a configured account.');
   }
@@ -225,11 +225,9 @@ export async function getPaidNoteDownloadUrl(noteSlug, downloadPath) {
     throw new Error('This paid note download is not available.');
   }
 
-  const { data, error } = await supabase.storage
-    .from('paid-notes')
-    .createSignedUrl(downloadPath, 3600);
+  const { data, error } = await supabase.storage.from('paid-notes').download(downloadPath);
   if (error) throw error;
-  return data.signedUrl;
+  return URL.createObjectURL(data);
 }
 
 export async function getMyMockTestPurchases() {

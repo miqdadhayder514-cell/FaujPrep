@@ -23,7 +23,7 @@ test('notes use the responsive Notes grid and approval-gated download actions', 
   assert.match(appSource, /paid-note-viewer/);
   assert.match(appSource, /<iframe[\s\S]*?src=\{paidNoteViewerState\.url\}/);
   assert.match(appSource, /submitPaidNotePaymentProof/);
-  assert.match(appSource, /getPaidNoteDownloadUrl/);
+  assert.match(appSource, /getPaidNoteViewerUrl/);
 });
 
 test('note purchases are fixed at PKR 14 and private files require the matching approved purchase', () => {
@@ -36,6 +36,7 @@ test('note purchases are fixed at PKR 14 and private files require the matching 
     assert.ok(migration.includes(`when '${product.id}' then '${product.title}'`));
   }
   assert.match(subscriptionsSource, /get_admin_paid_note_purchase_queue/);
-  assert.match(subscriptionsSource, /\.from\('paid-notes'\)[\s\S]*?createSignedUrl\(downloadPath, 3600\)/);
-  assert.doesNotMatch(subscriptionsSource, /createSignedUrl\(downloadPath, 3600, \{ download: true \}\)/);
+  assert.match(subscriptionsSource, /\.from\('paid-notes'\)\.download\(downloadPath\)/);
+  assert.match(subscriptionsSource, /URL\.createObjectURL\(data\)/);
+  assert.match(appSource, /PDF is not available yet/);
 });

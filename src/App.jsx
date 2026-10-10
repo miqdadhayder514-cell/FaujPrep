@@ -19,7 +19,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest
 import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
-import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteDownloadUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
+import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
 import { ensureAnonymousSession } from './lib/supabase';
@@ -567,6 +567,7 @@ export default function App() {
       return undefined;
     }
     let active = true;
+    let objectUrl = null;
     getMyUnreadNotificationCount()
       .then((count) => active && setNotificationUnreadCount(count))
       .catch(() => active && setNotificationUnreadCount(0));
@@ -664,17 +665,30 @@ export default function App() {
         if (!requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED')) {
           throw new Error('An approved purchase is required to view this note.');
         }
-        const url = await getPaidNoteDownloadUrl(product.id, product.downloadPath);
-        if (!active) return;
+        objectUrl = await getPaidNoteViewerUrl(product.id, product.downloadPath);
+        if (!active) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
         setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
-        setPaidNoteViewerState({ loading: false, error: null, url });
+        setPaidNoteViewerState({ loading: false, error: null, url: objectUrl });
       } catch (error) {
-        if (active) setPaidNoteViewerState({ loading: false, error: error.message || 'Unable to load this note.', url: null });
+        if (active) {
+          const missingFile = /object not found|not found/i.test(error.message || '');
+          setPaidNoteViewerState({
+            loading: false,
+            error: missingFile ? 'This PDF is not available yet. Please contact support.' : error.message || 'Unable to load this note.',
+            url: null,
+          });
+        }
       }
     };
     loadPaidNote();
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [currentPage, selectedForceId, session?.user?.id]);
 
   const routeFromPage = (page, value = null) => {
