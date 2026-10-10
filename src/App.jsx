@@ -19,7 +19,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest
 import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
-import { approveMockTestPurchase, approvePaymentTransaction, createPlanCheckout, formatPKR, getAdminPaymentQueue, getCurrentUserSubscription, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
+import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
 import { ensureAnonymousSession } from './lib/supabase';
@@ -371,6 +371,268 @@ const INTERVIEW_PERSONAL_QUESTIONS = [
   },
 ];
 
+const createInterviewQuestion = (id, question, thinkBeforeAnswering, assessing, strategy, mistakes) => ({
+  id,
+  question,
+  thinkBeforeAnswering,
+  assessing,
+  strategy,
+  mistakes,
+});
+
+const INTERVIEW_QUESTION_SETS = {
+  personal: INTERVIEW_PERSONAL_QUESTIONS,
+  academic: [
+    createInterviewQuestion(
+      'academic-strongest-subject',
+      'Which subject is your strongest, and why?',
+      'Choose a subject you can explain with confidence and support your choice with a specific example.',
+      'The interviewer is assessing subject confidence, clear communication, and whether you can support a claim with evidence.',
+      'Name the subject, give one example of a topic or achievement, and explain how you continue to build your understanding.',
+      ['Claiming expertise without an example', 'Listing marks without explaining what you learned', 'Giving a memorized definition instead of a direct answer'],
+    ),
+    createInterviewQuestion(
+      'academic-explain-concept',
+      'Explain an important concept from a subject you have studied.',
+      'Select a concept you genuinely understand; do not choose one only because it sounds impressive.',
+      'The interviewer is checking whether you understand fundamentals and can explain them in your own words.',
+      'Define the concept simply, explain its key steps or parts, then give a short example or practical use.',
+      ['Using jargon without explaining it', 'Rushing through steps or assumptions', 'Bluffing when you cannot recall a detail'],
+    ),
+    createInterviewQuestion(
+      'academic-favorite-topic',
+      'What topic in your studies interested you most, and what did it teach you?',
+      'Think of a real topic that made you curious or changed how you approach a problem.',
+      'The interviewer is looking for curiosity, reflection, and the ability to connect learning to personal growth.',
+      'Name the topic, explain what interested you, and finish with one specific lesson or skill you gained.',
+      ['Giving only the topic name', 'Turning the answer into an unrelated lecture', 'Claiming a lesson without a personal example'],
+    ),
+    createInterviewQuestion(
+      'academic-improvement-plan',
+      'Which subject has been most challenging for you, and how are you improving?',
+      'Be honest and choose a challenge you are actively addressing with a practical study plan.',
+      'The interviewer is assessing self-awareness, discipline, and whether you respond constructively to difficulty.',
+      'State the subject briefly, identify the specific difficulty, then describe the routine or help you use to improve.',
+      ['Blaming teachers or circumstances', 'Saying you have no weaknesses', 'Describing a problem without an improvement action'],
+    ),
+  ],
+  'general-knowledge': [
+    createInterviewQuestion(
+      'gk-constitution',
+      'Why is a constitution important to a country?',
+      'Think about how a constitution defines institutions, responsibilities, rights, and limits on authority.',
+      'The interviewer is assessing civic understanding and your ability to explain an idea impartially.',
+      'Give a plain-language definition, mention the framework it provides, and explain why consistent rules matter.',
+      ['Confusing a constitution with ordinary legislation', 'Making unsupported political claims', 'Using slogans instead of explaining the idea'],
+    ),
+    createInterviewQuestion(
+      'gk-geography',
+      'How can a country’s geography influence its economy and security?',
+      'Consider location, terrain, climate, natural resources, borders, and access to trade routes.',
+      'The interviewer is checking analytical thinking and whether you can connect facts to broader effects.',
+      'Choose two geographic factors and explain one economic and one security implication for each.',
+      ['Listing places without explaining their importance', 'Treating geography as the only cause of an outcome', 'Guessing facts instead of keeping the answer general'],
+    ),
+    createInterviewQuestion(
+      'gk-national-day',
+      'What is the significance of Pakistan Day, observed on 23 March?',
+      'Recall the Lahore Resolution and the historical context; distinguish the resolution from later constitutional milestones.',
+      'The interviewer is assessing historical awareness and careful use of dates and context.',
+      'State the date and event, explain its place in the Pakistan Movement, and keep the answer focused.',
+      ['Mixing up 23 March with Independence Day', 'Giving dates without context', 'Adding details you are not sure about'],
+    ),
+    createInterviewQuestion(
+      'gk-international-organizations',
+      'What is the purpose of the United Nations, and what are its limitations?',
+      'Consider international cooperation, peace and security, humanitarian work, and the role of member states.',
+      'The interviewer is looking for balanced reasoning rather than an idealized or dismissive view.',
+      'Describe its main purpose, give one area of work, and note that outcomes depend on member-state cooperation.',
+      ['Claiming it can enforce every decision everywhere', 'Reducing a complex institution to a slogan', 'Presenting opinion as established fact'],
+    ),
+  ],
+  'current-affairs': [
+    createInterviewQuestion(
+      'affairs-national-issue',
+      'Which recent development in Pakistan do you consider most important, and why?',
+      'Choose a development you can verify from reliable reporting. Be clear about its date and separate confirmed facts from analysis.',
+      'The interviewer is assessing awareness, source judgment, balance, and the ability to explain relevance without becoming partisan.',
+      'Summarize what happened, state why it matters to people or the country, then give a measured view of its implications.',
+      ['Repeating an unverified social-media claim', 'Giving a partisan speech instead of an analysis', 'Confusing your opinion with a confirmed fact'],
+    ),
+    createInterviewQuestion(
+      'affairs-international-development',
+      'Describe a recent international development and explain its possible effect on Pakistan.',
+      'Select a current event from a reliable, dated source and identify a plausible connection to Pakistan.',
+      'The interviewer is checking global awareness and whether you can reason carefully about international effects.',
+      'Give a short factual summary, identify one relevant connection such as trade or regional stability, and avoid overstating certainty.',
+      ['Choosing an event you cannot accurately summarize', 'Claiming a direct effect without a clear link', 'Presenting speculation as a certainty'],
+    ),
+    createInterviewQuestion(
+      'affairs-regional-relations',
+      'What makes stable relations with neighbouring countries important?',
+      'Consider trade, border management, regional security, people-to-people ties, and diplomatic dialogue.',
+      'The interviewer is assessing maturity, regional awareness, and respectful communication.',
+      'Explain two practical benefits of stability and acknowledge that complex issues require sustained dialogue.',
+      ['Making sweeping statements about entire populations', 'Ignoring security or economic dimensions', 'Offering a simplistic solution to a complex issue'],
+    ),
+    createInterviewQuestion(
+      'affairs-source-checking',
+      'How do you check whether a current-affairs report is reliable?',
+      'Think about the original source, publication date, corroboration, and the difference between reporting and commentary.',
+      'The interviewer is testing media literacy and intellectual honesty.',
+      'Explain how you verify the date and source, compare independent reporting, and correct your view if better evidence appears.',
+      ['Trusting a headline or forwarded message alone', 'Using only sources that confirm your view', 'Pretending to know a detail you have not checked'],
+    ),
+  ],
+  defense: [
+    createInterviewQuestion(
+      'defense-service-branches',
+      'What are the distinct roles of the Army, Air Force, and Navy?',
+      'Think about land, air, and maritime responsibilities while recognizing that modern operations require coordination.',
+      'The interviewer is checking basic defense awareness and whether you understand service roles without exaggeration.',
+      'Describe each service in a sentence, then explain why coordination and joint planning matter.',
+      ['Treating one service as more important than the others', 'Confusing service roles', 'Making claims about current operations without reliable information'],
+    ),
+    createInterviewQuestion(
+      'defense-civilian-authority',
+      'Why is professional discipline important in the armed forces?',
+      'Consider lawful conduct, trust, readiness, teamwork, and accountability.',
+      'The interviewer is assessing values, maturity, and understanding of service responsibilities.',
+      'Define discipline in practical terms and connect it to reliable teamwork, lawful orders, and public trust.',
+      ['Equating discipline with unquestioning behaviour in every circumstance', 'Using only abstract words', 'Ignoring accountability and lawful conduct'],
+    ),
+    createInterviewQuestion(
+      'defense-geography',
+      'Which geographic features are important to Pakistan’s national security and connectivity?',
+      'Review major borders, mountain ranges, coastline, and trade corridors from reliable maps or textbooks.',
+      'The interviewer is assessing geographic knowledge and the ability to explain strategic relevance accurately.',
+      'Name a few features you know well and explain one security or connectivity implication for each.',
+      ['Guessing locations or border details', 'Listing names without explaining relevance', 'Making politically sensitive claims without context'],
+    ),
+    createInterviewQuestion(
+      'defense-national-resilience',
+      'How can citizens contribute to national resilience during a crisis?',
+      'Consider accurate information, community support, preparedness, lawful conduct, and responsible use of resources.',
+      'The interviewer is looking for civic responsibility and calm, practical thinking.',
+      'Offer two realistic actions and explain how they support community safety and public trust.',
+      ['Spreading unverified information', 'Suggesting unsafe or unlawful actions', 'Treating resilience as only a government responsibility'],
+    ),
+  ],
+  'rapid-fire': [
+    createInterviewQuestion(
+      'rapid-fire-integrity',
+      'In one or two sentences, what does integrity mean to you?',
+      'Give a concise meaning and one practical example of acting honestly when it is difficult.',
+      'The interviewer is assessing clarity, values, and concise communication.',
+      'Use a direct definition followed by one brief example; aim for 20–30 seconds.',
+      ['Giving a long speech', 'Using a definition with no personal meaning', 'Claiming perfection'],
+    ),
+    createInterviewQuestion(
+      'rapid-fire-teamwork',
+      'What role do you usually take in a team?',
+      'Choose a genuine role and be ready to describe a real situation that supports it.',
+      'The interviewer is checking teamwork, self-awareness, and flexibility.',
+      'Name your usual contribution, give a brief example, and show that you can adapt when the team needs something different.',
+      ['Calling yourself the leader in every situation', 'Taking credit for the whole team', 'Giving no example'],
+    ),
+    createInterviewQuestion(
+      'rapid-fire-disagreement',
+      'How do you respond when you disagree with a teammate?',
+      'Focus on listening, respectful discussion, shared objectives, and appropriate escalation if needed.',
+      'The interviewer is assessing composure, judgment, and cooperation under pressure.',
+      'Answer in three steps: listen, explain your view respectfully, and agree on a constructive next step.',
+      ['Making disagreement personal', 'Saying you always avoid conflict', 'Suggesting you would ignore a serious concern'],
+    ),
+    createInterviewQuestion(
+      'rapid-fire-setback',
+      'What would you do after making a mistake?',
+      'Consider taking responsibility, correcting any impact, learning, and communicating when appropriate.',
+      'The interviewer is looking for accountability and practical judgment.',
+      'State that you would acknowledge it, address consequences promptly, and change your approach to reduce repetition.',
+      ['Hiding the mistake', 'Blaming someone else automatically', 'Overreacting instead of focusing on correction'],
+    ),
+    createInterviewQuestion(
+      'rapid-fire-pressure',
+      'How do you stay composed under pressure?',
+      'Think of a real technique you use, such as prioritizing tasks, checking facts, or taking a brief pause.',
+      'The interviewer is assessing self-management and whether your approach is realistic.',
+      'Name one technique and support it with a short example; keep the answer under 30 seconds.',
+      ['Claiming you never feel pressure', 'Giving a technique you do not use', 'Confusing confidence with rushing'],
+    ),
+  ],
+  mock: [
+    createInterviewQuestion(
+      'mock-introduction',
+      'Please introduce yourself and summarize the experiences that best represent you.',
+      'Prepare a concise introduction that reflects your real background, responsibilities, and achievements.',
+      'The interviewer is assessing organization, confidence, relevance, and consistency with your application.',
+      'Use a clear opening, one or two relevant examples, and a brief closing that invites the next question.',
+      ['Reciting every personal detail', 'Making claims that conflict with your records', 'Memorizing a script so rigidly that it sounds unnatural'],
+    ),
+    createInterviewQuestion(
+      'mock-service-motivation',
+      'Why are you applying for this service and what do you understand about its responsibilities?',
+      'Connect personal motivation with an accurate understanding of service and responsibility.',
+      'The interviewer is checking informed motivation, commitment, and realistic expectations.',
+      'Explain why the role fits your values, show what you understand about its demands, and avoid promises you cannot support.',
+      ['Focusing only on uniform, status, or benefits', 'Confusing one service’s role with another', 'Offering a rehearsed answer without personal substance'],
+    ),
+    createInterviewQuestion(
+      'mock-leadership-example',
+      'Describe a time you took responsibility or helped a group reach a goal.',
+      'Choose a specific example where your own contribution and the group outcome are clear.',
+      'The interviewer is assessing initiative, cooperation, accountability, and reflection.',
+      'Briefly explain the situation, your action, the result, and what you learned. Credit others where appropriate.',
+      ['Taking credit for others’ work', 'Giving a vague example with no action', 'Claiming success without reflecting on the outcome'],
+    ),
+    createInterviewQuestion(
+      'mock-setback-response',
+      'Tell me about a setback and what you changed afterward.',
+      'Choose a genuine setback that you can discuss professionally and safely.',
+      'The interviewer is assessing resilience, honesty, and the ability to learn.',
+      'Describe the challenge briefly, explain your response, and identify a specific change you made afterward.',
+      ['Blaming others throughout', 'Sharing unnecessary private details', 'Ending without a lesson or improvement'],
+    ),
+    createInterviewQuestion(
+      'mock-final-question',
+      'Is there anything else you would like the board to know?',
+      'Use this as a concise closing, not an opportunity to repeat your full introduction.',
+      'The interviewer is assessing judgment, composure, and your ability to close respectfully.',
+      'Add one relevant point not yet covered, reaffirm your interest briefly, and thank the board.',
+      ['Repeating previous answers at length', 'Making demands or unsupported claims', 'Ending abruptly without courtesy'],
+    ),
+  ],
+};
+
+const INTERVIEW_TIP_GUIDES = [
+  {
+    title: 'Structure, do not memorize',
+    detail: 'Prepare key points and real examples rather than fixed scripts. A natural, direct answer is easier to adapt to follow-up questions.',
+  },
+  {
+    title: 'Be accurate and honest',
+    detail: 'Use facts you can verify, especially for current affairs. If you do not know something, say so calmly instead of guessing.',
+  },
+  {
+    title: 'Keep answers focused',
+    detail: 'Answer the question first, support your point with one relevant example, and stop when the point is complete.',
+  },
+  {
+    title: 'Show respect and composure',
+    detail: 'Listen without interrupting, maintain a calm tone, and disagree with ideas respectfully rather than reacting personally.',
+  },
+  {
+    title: 'Review your own application',
+    detail: 'Be ready to discuss your education, interests, achievements, responsibilities, and any details you have submitted.',
+  },
+  {
+    title: 'Use balanced examples',
+    detail: 'When discussing a strength or setback, explain what you did and what you learned. Avoid blaming others or presenting yourself as perfect.',
+  },
+];
+
+const ALL_INTERVIEW_QUESTIONS = Object.values(INTERVIEW_QUESTION_SETS).flat();
+
 const DEFAULT_PAYMENT_SETTINGS = {
   payment_method: 'JAZZCASH_MANUAL',
   bank_name: 'NAYAPAY',
@@ -486,6 +748,12 @@ const PAID_MOCK_TEST_PRODUCTS = [
   PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK,
   NON_VERBAL_INTELLIGENCE_TEST_1,
   NON_VERBAL_INTELLIGENCE_TEST_2,
+  {
+    id: 'live-interview-assessment',
+    title: 'Live Interview Video Assessment',
+    pricePkr: 250,
+    isLiveInterview: true,
+  },
 ];
 
 export default function App() {
@@ -538,9 +806,16 @@ export default function App() {
   });
   const [mockTestPaymentState, setMockTestPaymentState] = useState({ loading: false, error: null, result: null });
   const [paidMockTestLoading, setPaidMockTestLoading] = useState(false);
+  const [liveInterviewSubmission, setLiveInterviewSubmission] = useState({ loading: false, error: null, item: null });
+  const [liveInterviewUpload, setLiveInterviewUpload] = useState({ loading: false, error: null, success: null });
+  const [liveInterviewVideoFile, setLiveInterviewVideoFile] = useState(null);
+  const [liveInterviewConsent, setLiveInterviewConsent] = useState(false);
   const [paidNoteViewerState, setPaidNoteViewerState] = useState({ loading: false, error: null, url: null });
   const [adminPaymentQueue, setAdminPaymentQueue] = useState([]);
   const [adminPaymentAction, setAdminPaymentAction] = useState({ loading: false, error: null });
+  const [adminInterviewSubmissions, setAdminInterviewSubmissions] = useState({ loading: false, error: null, items: [] });
+  const [adminInterviewFeedback, setAdminInterviewFeedback] = useState({});
+  const [adminInterviewAssessment, setAdminInterviewAssessment] = useState({ savingId: null, error: null });
   const [contentTopics, setContentTopics] = useState([]);
   const [contentLoading, setContentLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -737,7 +1012,7 @@ export default function App() {
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer', 'interview-live'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
 
@@ -792,6 +1067,41 @@ export default function App() {
     };
   }, [currentPage, selectedForceId, session?.user?.id]);
 
+  useEffect(() => {
+    if (currentPage !== 'interview-live') {
+      setLiveInterviewSubmission({ loading: false, error: null, item: null });
+      setLiveInterviewUpload({ loading: false, error: null, success: null });
+      setLiveInterviewVideoFile(null);
+      setLiveInterviewConsent(false);
+      return undefined;
+    }
+    if (!backendConfigured) {
+      setLiveInterviewSubmission({ loading: false, error: 'Live interview submissions require a configured account.', item: null });
+      return undefined;
+    }
+
+    let mounted = true;
+    setLiveInterviewSubmission({ loading: true, error: null, item: null });
+    ensureAnonymousSession()
+      .then(() => getMyLiveInterviewSubmission())
+      .then((item) => {
+        if (mounted) setLiveInterviewSubmission({ loading: false, error: null, item });
+      })
+      .catch((error) => {
+        if (mounted) {
+          const migrationMissing = error.code === 'PGRST202' || error.message?.includes('get_my_live_interview_submission');
+          setLiveInterviewSubmission({
+            loading: false,
+            error: migrationMissing
+              ? 'Live Interview is not enabled on this site yet. The administrator must apply migration 041_live_interview_video_assessment.sql.'
+              : error.message || 'Unable to load your live interview status.',
+            item: null,
+          });
+        }
+      });
+    return () => { mounted = false; };
+  }, [currentPage, backendConfigured, session?.user?.id]);
+
   const routeFromPage = (page, value = null) => {
     const routeMap = {
       home: '/',
@@ -801,6 +1111,7 @@ export default function App() {
       search: '/search',
       practice: '/practice',
       interview: '/interview',
+      'interview-live': '/interview/live',
       'interview-personal': '/interview/personal',
       'interview-academic': '/interview/academic',
       'interview-general-knowledge': '/interview/general-knowledge',
@@ -972,6 +1283,7 @@ export default function App() {
         '/search': 'search',
         '/practice': 'practice',
           '/interview': 'interview',
+          '/interview/live': 'interview-live',
           '/interview/personal': 'interview-personal',
           '/interview/academic': 'interview-academic',
           '/interview/general-knowledge': 'interview-general-knowledge',
@@ -1075,6 +1387,24 @@ export default function App() {
 
     return () => { mounted = false; };
   }, [session?.user?.id, session?.user?.email, session?.user?.email_confirmed_at, session?.user?.confirmed_at]);
+
+  useEffect(() => {
+    if (currentPage !== 'admin' || !session?.user || !isPrimaryAdmin(session.user)) {
+      setAdminInterviewSubmissions({ loading: false, error: null, items: [] });
+      return undefined;
+    }
+
+    let mounted = true;
+    setAdminInterviewSubmissions((previous) => ({ ...previous, loading: true, error: null }));
+    getAdminLiveInterviewSubmissions()
+      .then((items) => {
+        if (mounted) setAdminInterviewSubmissions({ loading: false, error: null, items });
+      })
+      .catch((error) => {
+        if (mounted) setAdminInterviewSubmissions({ loading: false, error: error.message || 'Unable to load interview videos.', items: [] });
+      });
+    return () => { mounted = false; };
+  }, [currentPage, session?.user?.id, session?.user?.email, session?.user?.email_confirmed_at, session?.user?.confirmed_at]);
 
   useEffect(() => {
     if (!session?.user) {
@@ -1406,6 +1736,51 @@ export default function App() {
     }
   };
 
+  const handleLiveInterviewVideoSubmission = async (event) => {
+    event.preventDefault();
+    if (!liveInterviewConsent) {
+      setLiveInterviewUpload({ loading: false, error: 'Confirm the camera and recording requirements before submitting.', success: null });
+      return;
+    }
+    if (!liveInterviewVideoFile) {
+      setLiveInterviewUpload({ loading: false, error: 'Choose your interview video before submitting.', success: null });
+      return;
+    }
+
+    setLiveInterviewUpload({ loading: true, error: null, success: null });
+    try {
+      const currentSession = await ensureAnonymousSession();
+      const requests = await getMyMockTestPurchases();
+      setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
+      if (!requests.some((request) => request.test_slug === 'live-interview-assessment' && request.status === 'APPROVED')) {
+        throw new Error('Your PKR 250 live interview payment must be approved before you can upload a video.');
+      }
+      await submitLiveInterviewVideo({ userId: currentSession.user.id, videoFile: liveInterviewVideoFile });
+      const submission = await getMyLiveInterviewSubmission();
+      setLiveInterviewSubmission({ loading: false, error: null, item: submission });
+      setLiveInterviewVideoFile(null);
+      setLiveInterviewConsent(false);
+      setLiveInterviewUpload({ loading: false, error: null, success: 'Your interview video was submitted securely for admin assessment.' });
+    } catch (error) {
+      setLiveInterviewUpload({ loading: false, error: error.message || 'Unable to submit your interview video.', success: null });
+    }
+  };
+
+  const handleLiveInterviewAssessmentSave = async (submissionId) => {
+    const feedback = (adminInterviewFeedback[submissionId] || '').trim();
+    setAdminInterviewAssessment({ savingId: submissionId, error: null });
+    try {
+      await assessLiveInterviewSubmission(submissionId, feedback);
+      const items = await getAdminLiveInterviewSubmissions();
+      setAdminInterviewSubmissions({ loading: false, error: null, items });
+      addToast('Interview assessment saved and shared with the candidate.', 'success');
+    } catch (error) {
+      setAdminInterviewAssessment({ savingId: null, error: error.message || 'Unable to save the interview assessment.' });
+      return;
+    }
+    setAdminInterviewAssessment({ savingId: null, error: null });
+  };
+
   const startPaidMockTest = async (product) => {
     if (!product) return;
     setPaidMockTestLoading(true);
@@ -1422,6 +1797,10 @@ export default function App() {
 
       if (product.isNote) {
         navigateTo('paid-note-viewer', product.id);
+        return;
+      }
+      if (product.isLiveInterview) {
+        navigateTo('interview-live');
         return;
       }
 
@@ -3802,28 +4181,28 @@ export default function App() {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <button type="button" onClick={() => navigateTo(product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
-          Back to {product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
+        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
+          Back to {product.isLiveInterview ? 'Live Interview' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
         </button>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
-            <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · Permanent access after approval</p>
-            <h1 className="text-3xl font-extrabold text-slate-100">How to Pay</h1>
+            <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · {product.isLiveInterview ? 'Video upload after approval' : 'Permanent access after approval'}</p>
+            <h1 className="text-3xl font-extrabold text-slate-100">{product.isLiveInterview ? 'Pay for Live Interview Assessment' : 'How to Pay'}</h1>
             <p className="text-sm text-slate-400">{product.title}</p>
-            <p className="text-2xl font-bold text-emerald-300">{formatPKR(product.pricePkr)}</p>
+            <p className="text-2xl font-bold text-emerald-300">{product.isLiveInterview ? 'PKR 250' : formatPKR(product.pricePkr)}</p>
           </div>
 
           {hasAccess ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
-              <p className="font-semibold text-emerald-200">{product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
+              <p className="font-semibold text-emerald-200">{product.isLiveInterview ? 'Your live interview assessment is approved.' : product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
               <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">
-                {paidMockTestLoading ? product.isNote ? 'Opening notes...' : 'Loading test...' : product.isNote ? 'View Notes' : 'Start Test'}
+                {paidMockTestLoading ? product.isNote ? 'Opening notes...' : product.isLiveInterview ? 'Opening interview...' : 'Loading test...' : product.isNote ? 'View Notes' : product.isLiveInterview ? 'Continue to interview' : 'Start Test'}
               </button>
             </div>
           ) : latestRequest?.status === 'PENDING' ? (
             <div className="rounded-xl border border-amber-500/30 bg-amber-950/30 p-5 space-y-2">
               <h2 className="text-lg font-bold text-amber-200">Payment Pending Review</h2>
-              <p className="text-sm text-amber-100/80">Your proof was submitted. {product.isNote ? 'The download will unlock' : 'Access will unlock permanently'} after admin approval.</p>
+              <p className="text-sm text-amber-100/80">Your proof was submitted. {product.isLiveInterview ? 'Video upload will be enabled' : product.isNote ? 'The download will unlock' : 'Access will unlock permanently'} after admin approval.</p>
             </div>
           ) : (
             <>
@@ -3848,7 +4227,7 @@ export default function App() {
                     <p className="mt-1 text-base font-bold text-slate-100">{paymentSettings.account_number || '0000000000000'}</p>
                   </div>
                 </div>
-                <p className="text-sm leading-6 text-emerald-100/90">Transfer exactly {formatPKR(product.pricePkr)} to this NayaPay account, then submit your payment details and screenshot for admin verification.</p>
+                <p className="text-sm leading-6 text-emerald-100/90">Transfer exactly {product.isLiveInterview ? 'PKR 250' : formatPKR(product.pricePkr)} to this NayaPay account, then submit your payment details and screenshot for admin verification.</p>
               </div>
 
               <form onSubmit={handleMockTestPaymentSubmission} className="space-y-4">
@@ -4689,6 +5068,51 @@ export default function App() {
           </div>
         </div>
 
+        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-100">Live interview video assessments</h2>
+              <p className="mt-1 text-xs text-slate-400">Private recordings are available only to authorized administrators.</p>
+            </div>
+            <span className="text-[10px] uppercase font-mono text-amber-400">{adminInterviewSubmissions.items.length} videos</span>
+          </div>
+          {adminInterviewSubmissions.error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">{adminInterviewSubmissions.error}</p>}
+          {adminInterviewAssessment.error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">{adminInterviewAssessment.error}</p>}
+          {adminInterviewSubmissions.loading ? (
+            <p role="status" className="text-sm text-slate-400">Loading submitted interview videos…</p>
+          ) : adminInterviewSubmissions.items.length ? (
+            <div className="grid gap-5 lg:grid-cols-2">
+              {adminInterviewSubmissions.items.map((submission) => (
+                <article key={submission.id} className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-100">{submission.user_email || submission.user_id}</p>
+                      <p className="mt-1 text-xs text-slate-400">Submitted {new Date(submission.created_at).toLocaleString('en-PK')}</p>
+                    </div>
+                    <span className={`rounded px-2 py-1 text-[10px] font-mono uppercase ${submission.status === 'ASSESSED' ? 'border border-emerald-800 bg-emerald-950 text-emerald-300' : 'border border-amber-800 bg-amber-950 text-amber-300'}`}>{submission.status}</span>
+                  </div>
+                  <video controls preload="metadata" src={submission.videoUrl} className="max-h-[420px] w-full rounded-xl bg-black" aria-label={`Interview video submitted by ${submission.user_email || 'candidate'}`} />
+                  <label className="block space-y-2 text-xs font-semibold text-slate-300">
+                    Assessment feedback for candidate
+                    <textarea
+                      value={adminInterviewFeedback[submission.id] ?? submission.admin_feedback ?? ''}
+                      maxLength={5000}
+                      onChange={(event) => setAdminInterviewFeedback((previous) => ({ ...previous, [submission.id]: event.target.value }))}
+                      placeholder="Share specific feedback on clarity, confidence, presentation, and answers."
+                      className="min-h-28 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-slate-100"
+                    />
+                  </label>
+                  <button type="button" onClick={() => handleLiveInterviewAssessmentSave(submission.id)} disabled={adminInterviewAssessment.savingId === submission.id} className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-60">
+                    {adminInterviewAssessment.savingId === submission.id ? 'Saving assessment…' : submission.status === 'ASSESSED' ? 'Update Assessment' : 'Save Assessment'}
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-6 text-sm text-slate-400">No paid live interview videos have been submitted yet.</div>
+          )}
+        </section>
+
         <AdminContentManager
           branches={backendData.branches}
           exams={backendData.exams}
@@ -4965,12 +5389,12 @@ export default function App() {
   const getInterviewProgressSummary = () => {
     const practicedCount = interviewActivity.practicedIds.length;
     const answerCount = Object.values(interviewActivity.answersByQuestion || {}).filter((answer) => typeof answer === 'string' && answer.trim().length > 0).length;
-    const completionRate = INTERVIEW_PERSONAL_QUESTIONS.length ? Math.round((practicedCount / INTERVIEW_PERSONAL_QUESTIONS.length) * 100) : 0;
+    const completionRate = ALL_INTERVIEW_QUESTIONS.length ? Math.round((practicedCount / ALL_INTERVIEW_QUESTIONS.length) * 100) : 0;
     return {
       practicedCount,
       answerCount,
       completionRate,
-      totalQuestions: INTERVIEW_PERSONAL_QUESTIONS.length,
+      totalQuestions: ALL_INTERVIEW_QUESTIONS.length,
     };
   };
 
@@ -5043,6 +5467,9 @@ export default function App() {
                 <div className="flex flex-wrap gap-3">
                   <button onClick={() => navigateTo('interview-personal')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Start Personal Practice</button>
                   <button onClick={() => navigateTo('interview-progress')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-100 font-semibold text-sm border border-slate-700">Track Progress</button>
+                  <button onClick={() => navigateTo('interview-live')} className="animate-pulse motion-reduce:animate-none rounded-xl border border-amber-300/70 bg-amber-400/10 px-5 py-3 text-sm font-extrabold text-amber-200 shadow-[0_0_24px_rgba(251,191,36,0.35)] transition hover:bg-amber-400/20 hover:shadow-[0_0_32px_rgba(251,191,36,0.55)]">
+                    ✨ NEW · Live Interview · PKR 250
+                  </button>
                 </div>
               </div>
 
@@ -5151,11 +5578,130 @@ export default function App() {
     );
   };
 
+  const renderLiveInterviewPage = () => {
+    const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+    const purchase = purchaseStateMatchesUser
+      ? mockTestPurchaseState.requests.find((request) => request.test_slug === 'live-interview-assessment')
+      : null;
+    const isApproved = purchase?.status === 'APPROVED';
+    const questions = [
+      'Gentleman, introduce yourself.',
+      'Why do you want to join the military forces?',
+      'What are your hobbies?',
+      'What will you do if you are recommended?',
+      'If you are not recommended, what will you do?',
+    ];
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-7">
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Interviews', href: '/interview' }, { label: 'Live Interview' }]} />
+        <section className="rounded-3xl border border-amber-400/40 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/30 p-6 sm:p-8 shadow-[0_0_30px_rgba(251,191,36,0.12)] space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-mono uppercase tracking-[0.18em] text-amber-300">Live Interview · New</p>
+              <h1 className="mt-2 text-3xl font-extrabold text-slate-100">Interview Video Assessment</h1>
+            </div>
+            <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-bold text-amber-200">PKR 250</span>
+          </div>
+          <p className="text-sm leading-6 text-slate-300">
+            {isApproved
+              ? 'Record one video answering each question below with your face visible on camera. Your approved payment unlocks these questions and video submission.'
+              : 'The interview questions and video submission become available after your PKR 250 payment is approved by an administrator.'}
+          </p>
+          {isApproved && (
+            <ol className="space-y-3">
+              {questions.map((question, index) => (
+                <li key={question} className="flex gap-3 rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm text-slate-100">
+                  <span className="font-mono font-bold text-amber-300">{index + 1}.</span>
+                  <span>{question}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div>
+            <h2 className="text-xl font-bold text-slate-100">Instructions for candidates</h2>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-300">
+              <li>Once the questions are unlocked, prepare one video answering them in order. Speak naturally, clearly, and honestly; do not read a prepared script.</li>
+              <li>Keep your face clearly visible throughout. Place the camera at eye level, use a quiet space with good front lighting, and check your audio before recording.</li>
+              <li>Wear neat, appropriate clothing, sit upright, and give focused answers. Avoid editing or adding other people to the recording.</li>
+              <li>Submit an MP4, WebM, or MOV video up to 100 MB. Your video is stored privately and is only made available to authorized administrators for assessment.</li>
+            </ul>
+          </div>
+
+          {liveInterviewSubmission.loading || mockTestPurchaseState.loading ? (
+            <p role="status" className="text-sm text-slate-400">Checking payment and submission status…</p>
+          ) : liveInterviewSubmission.error ? (
+            <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-4 text-sm text-rose-200">{liveInterviewSubmission.error}</p>
+          ) : liveInterviewSubmission.item ? (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5 space-y-3">
+              <p className="text-sm font-bold text-emerald-200">
+                {liveInterviewSubmission.item.status === 'ASSESSED' ? 'Your interview has been assessed.' : 'Your video has been submitted for admin assessment.'}
+              </p>
+              <p className="text-xs text-slate-400">Submitted {new Date(liveInterviewSubmission.item.created_at).toLocaleString('en-PK')}</p>
+              {liveInterviewSubmission.item.status === 'ASSESSED' && liveInterviewSubmission.item.admin_feedback && (
+                <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">Administrator feedback</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-200">{liveInterviewSubmission.item.admin_feedback}</p>
+                </div>
+              )}
+            </div>
+          ) : isApproved ? (
+            <form onSubmit={handleLiveInterviewVideoSubmission} className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5">
+              <h2 className="text-lg font-bold text-emerald-200">Payment approved — submit your interview video</h2>
+              <label className="block space-y-2 text-xs font-semibold text-slate-300">
+                Interview video (MP4, WebM, or MOV; maximum 100 MB)
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  required
+                  onChange={(event) => setLiveInterviewVideoFile(event.target.files?.[0] || null)}
+                  className="block w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-xs text-slate-100 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-slate-200"
+                />
+              </label>
+              {liveInterviewVideoFile && <p className="text-xs text-slate-400">Selected: {liveInterviewVideoFile.name}</p>}
+              <label className="flex items-start gap-3 text-xs leading-5 text-slate-300">
+                <input type="checkbox" checked={liveInterviewConsent} onChange={(event) => setLiveInterviewConsent(event.target.checked)} required className="mt-1 accent-emerald-500" />
+                <span>I confirm this is my own recording, my face is visible, and I consent to authorized FaujPrep administrators viewing it for this assessment.</span>
+              </label>
+              {liveInterviewUpload.error && <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">{liveInterviewUpload.error}</p>}
+              {liveInterviewUpload.success && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-3 text-sm text-emerald-200">{liveInterviewUpload.success}</p>}
+              <button type="submit" disabled={liveInterviewUpload.loading || !liveInterviewVideoFile || !liveInterviewConsent} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">
+                {liveInterviewUpload.loading ? 'Uploading securely…' : 'Submit Interview Video'}
+              </button>
+            </form>
+          ) : purchase?.status === 'PENDING' ? (
+            <div role="status" className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 space-y-2">
+              <h2 className="font-bold text-amber-200">Payment awaiting admin approval</h2>
+              <p className="text-sm text-amber-100/80">Your interview questions and video upload will become available once your PKR 250 payment is approved.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 space-y-3">
+              {purchase?.status === 'REJECTED' && (
+                <div className="space-y-1 text-sm text-rose-200">
+                  <p className="font-semibold">Your previous payment was rejected.</p>
+                  {purchase.admin_notes && <p>{purchase.admin_notes}</p>}
+                </div>
+              )}
+              <p className="text-sm text-slate-300">Pay PKR 250 and submit your payment screenshot for admin verification. The interview questions and video upload are enabled only after approval.</p>
+              <button type="button" onClick={() => navigateTo('mock-payment', 'live-interview-assessment')} className="w-full rounded-xl bg-amber-400 py-3 text-sm font-extrabold text-slate-950 hover:bg-amber-300">
+                Pay PKR 250 for Assessment
+              </button>
+            </div>
+          )}
+          <button type="button" onClick={() => navigateTo('interview')} className="text-xs text-emerald-300 hover:underline">Back to Interview Preparation</button>
+        </section>
+      </div>
+    );
+  };
+
   const renderInterviewCategoryPage = (categoryKey) => {
     const category = INTERVIEW_CATEGORY_DETAILS[categoryKey] || INTERVIEW_CATEGORY_DETAILS.personal;
-    const isPersonal = categoryKey === 'personal';
     const isProgress = categoryKey === 'progress';
-    const personalQuestions = INTERVIEW_PERSONAL_QUESTIONS;
+    const isTips = categoryKey === 'tips';
+    const questions = INTERVIEW_QUESTION_SETS[categoryKey] || [];
 
     return (
       <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
@@ -5192,9 +5738,18 @@ export default function App() {
           </section>
         ) : null}
 
-        {isPersonal ? (
+        {isTips ? (
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {INTERVIEW_TIP_GUIDES.map((tip) => (
+              <article key={tip.title} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <h2 className="font-semibold text-slate-100">{tip.title}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">{tip.detail}</p>
+              </article>
+            ))}
+          </section>
+        ) : !isProgress && questions.length > 0 ? (
           <div className="space-y-5">
-            {personalQuestions.map((question) => {
+            {questions.map((question) => {
               const answer = interviewActivity.answersByQuestion[question.id] || '';
               const practiced = interviewActivity.practicedIds.includes(question.id);
               return (
@@ -5240,6 +5795,7 @@ export default function App() {
                       value={answer}
                       onChange={(event) => handleInterviewAnswerChange(question.id, event.target.value)}
                       placeholder="Draft your answer here..."
+                      aria-label={`Practice answer: ${question.question}`}
                       className="min-h-[160px] w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
@@ -5247,13 +5803,7 @@ export default function App() {
               );
             })}
           </div>
-        ) : (
-          <section className="rounded-3xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
-            <h2 className="text-xl font-bold text-slate-100">This interview track is ready for guided practice.</h2>
-            <p className="mt-3 text-sm text-slate-400">Use the category flow to build confidence in structured responses, current-affairs recall, and disciplined communication.</p>
-            <button onClick={() => navigateTo('interview-personal')} className="mt-5 px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Open personal interview practice</button>
-          </section>
-        )}
+        ) : null}
       </div>
     );
   };
@@ -5282,6 +5832,8 @@ export default function App() {
         return renderHomePage();
       case 'interview':
         return renderInterviewHubPage();
+      case 'interview-live':
+        return renderLiveInterviewPage();
       case 'interview-personal':
         return renderInterviewCategoryPage('personal');
       case 'interview-academic':

@@ -237,6 +237,75 @@ export async function getMyMockTestPurchases() {
   return Array.isArray(data) ? data : [];
 }
 
+export async function getMyLiveInterviewSubmission() {
+  if (!isSupabaseConfigured) {
+    throw new Error('Live interview submissions require a configured account.');
+  }
+  const { data, error } = await supabase.rpc('get_my_live_interview_submission');
+  if (error) throw error;
+  return data || null;
+}
+
+export async function submitLiveInterviewVideo({ userId, videoFile }) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Live interview submissions require a configured account.');
+  }
+
+  const videoExtensions = {
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
+  };
+  const extension = videoExtensions[videoFile?.type];
+  if (!extension || videoFile.size > 100 * 1024 * 1024) {
+    throw new Error('Choose an MP4, WebM, or MOV video no larger than 100 MB.');
+  }
+
+  const videoPath = `${userId}/${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await supabase.storage.from('live-interview-videos').upload(videoPath, videoFile, {
+    cacheControl: '3600',
+    contentType: videoFile.type,
+    upsert: false,
+  });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase.rpc('submit_live_interview_video', { p_video_path: videoPath });
+  if (error) {
+    const { error: cleanupError } = await supabase.storage.from('live-interview-videos').remove([videoPath]);
+    if (cleanupError) throw new Error(`${error.message} The uploaded file could not be cleaned up: ${cleanupError.message}`);
+    throw error;
+  }
+  return data;
+}
+
+export async function getAdminLiveInterviewSubmissions() {
+  if (!isSupabaseConfigured) {
+    throw new Error('Live interview submissions require a configured account.');
+  }
+  const { data, error } = await supabase.rpc('get_admin_live_interview_submissions');
+  if (error) throw error;
+  const submissions = Array.isArray(data) ? data : [];
+  return Promise.all(submissions.map(async (submission) => {
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('live-interview-videos')
+      .createSignedUrl(submission.video_path, 3600);
+    if (signedUrlError) throw signedUrlError;
+    return { ...submission, videoUrl: signedUrlData.signedUrl };
+  }));
+}
+
+export async function assessLiveInterviewSubmission(submissionId, feedback) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Live interview submissions require a configured account.');
+  }
+  const { data, error } = await supabase.rpc('admin_assess_live_interview_submission', {
+    p_submission_id: submissionId,
+    p_admin_feedback: feedback,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function getPaidMockTestQuestions(testSlug) {
   if (!isSupabaseConfigured) throw new Error('Paid mock-test access requires a configured account.');
   const { data, error } = await supabase.rpc('get_paid_mock_test_questions', { p_test_slug: testSlug });
