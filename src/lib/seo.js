@@ -175,8 +175,8 @@ export function getPageSeo({
       description = subject.description || `Practice topics and questions for ${subject.name}.`;
     }
   } else if (currentPage === 'resources') {
-    title = 'Preparation Resources | FaujPrep';
-    description = 'Browse public preparation resources, study materials and current affairs from FaujPrep.';
+    title = 'Notes | FaujPrep';
+    description = 'Browse notes for Pakistan military test preparation on FaujPrep.';
   } else if (currentPage === 'pricing') {
     title = 'Plans and Pricing | FaujPrep';
     description = 'Compare the free and paid preparation plans available on FaujPrep.';

@@ -40,7 +40,6 @@ import {
   Lock,
   User,
   Mail,
-  FileText,
   Compass,
   Zap,
   BarChart2,
@@ -245,15 +244,6 @@ const MOCK_TESTS_DATA = [
   { id: 'm-paf', title: 'PAF Officer Cadet Initial Aptitude & Physics Mock', force: 'Pakistan Air Force', duration: '100 Minutes', format: 'Timed Sectional Testing', difficulty: 'High Precision' },
   { id: 'm-navy', title: 'PN Cadet Initial Test Comprehensive Simulation', force: 'Pakistan Navy', duration: '90 Minutes', format: 'Sectional Timer Format', difficulty: 'Challenging' },
   { id: 'm-issb', title: 'ISSB Screening Day Intelligence Battery', force: 'ISSB', duration: '60 Minutes', format: 'Rapid Speed & Accuracy Test', difficulty: 'Very High Speed' },
-];
-
-const RESOURCES_DATA = [
-  { id: 'r1', title: 'PMA Initial Academic Syllabus & Pattern Guide', force: 'Army', category: 'Syllabus', type: 'PDF Guide' },
-  { id: 'r2', title: 'PAF GDP Physics Key Concepts & Formula Sheet', force: 'PAF', category: 'Formulae', type: 'Study Sheet' },
-  { id: 'r3', title: 'Pakistan Navy Initial Test Model Question Paper', force: 'Navy', category: 'Sample Paper', type: 'Practice Guide' },
-  { id: 'r4', title: 'ISSB Word Association Test 300 Practice Words Prompt Bank', force: 'ISSB', category: 'Psychological', type: 'Prompt List' },
-  { id: 'r5', title: 'Non-Verbal Spatial Intelligence Diagram Matrix Guide', force: 'All', category: 'Intelligence', type: 'Visual Guide' },
-  { id: 'r6', title: 'Initial Test Physical Standards & Preparation Routine', force: 'All', category: 'Physical', type: 'Fitness Guide' },
 ];
 
 const FAQ_DATA = [
@@ -501,10 +491,6 @@ export default function App() {
   const [practiceCategoryFilter, setPracticeCategoryFilter] = useState('All');
   const [practiceDifficultyFilter, setPracticeDifficultyFilter] = useState('All');
 
-  /* Resources Filters */
-  const [resourceSearch, setResourceSearch] = useState('');
-  const [resourceCategoryFilter, setResourceCategoryFilter] = useState('All');
-
   /* FAQ Accordion state */
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
@@ -562,16 +548,6 @@ export default function App() {
     })),
     MOST_REPEATED_PHYSICS_PRACTICE,
   ];
-  const resourceCatalog = backendConfigured
-    ? backendData.studyMaterials.map((material) => ({
-        id: material.id,
-        title: material.title,
-      slug: material.slug,
-        force: 'Database',
-        category: material.material_type || 'Guide',
-        type: material.material_type || 'Study Material',
-      }))
-    : RESOURCES_DATA;
   const issbCatalog = backendConfigured
     ? backendData.issbModules.map((module) => ({
         id: module.id,
@@ -1100,15 +1076,6 @@ export default function App() {
       return matchSearch && matchForce && matchCategory && matchDifficulty;
     });
   }, [practiceCatalog, practiceSearch, practiceForceFilter, practiceCategoryFilter, practiceDifficultyFilter]);
-
-  /* Filter logic for resources */
-  const filteredResources = useMemo(() => {
-    return resourceCatalog.filter((item) => {
-      const matchSearch = item.title.toLowerCase().includes(resourceSearch.toLowerCase()) || item.category.toLowerCase().includes(resourceSearch.toLowerCase());
-      const matchCategory = resourceCategoryFilter === 'All' || item.category === resourceCategoryFilter || item.force === resourceCategoryFilter;
-      return matchSearch && matchCategory;
-    });
-  }, [resourceCatalog, resourceSearch, resourceCategoryFilter]);
 
   const activeSubscription = subscriptionState.summary?.subscription || { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 };
   const activePlanSlug = activeSubscription.plan_slug || 'free';
@@ -1891,7 +1858,7 @@ export default function App() {
             onClick={() => navigateTo('resources')}
             className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'resources' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
-            Resources
+            Notes
           </button>
           <button
             onClick={() => navigateTo('study-materials')}
@@ -1962,7 +1929,7 @@ export default function App() {
                 {renderMobileNavLink('practice', 'Practice Tests')}
                 {renderMobileNavLink('mock-tests', 'Full Mock Tests', ['mock-tests', 'mock-detail'])}
                 {renderMobileNavLink('interview', 'Interviews', ['interview', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock', 'interview-tips', 'interview-progress'])}
-                {renderMobileNavLink('resources', 'Resources')}
+                {renderMobileNavLink('resources', 'Notes')}
                 {renderMobileNavLink('study-materials', 'Study Materials', ['study-materials', 'study-material-detail'])}
                 {renderMobileNavLink('current-affairs', 'Current Affairs', ['current-affairs', 'current-affairs-detail'])}
               </section>
@@ -2020,11 +1987,11 @@ export default function App() {
 
           {/* Column 3: Platform Resources */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold font-mono uppercase text-slate-200 tracking-wider">Resources</h4>
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-200 tracking-wider">Explore</h4>
             <ul className="space-y-2 text-xs">
               <li><button onClick={() => navigateTo('practice')} className="hover:text-emerald-400 transition">Practice Tests</button></li>
               <li><button onClick={() => navigateTo('mock-tests')} className="hover:text-emerald-400 transition">Full Mock Tests</button></li>
-              <li><button onClick={() => navigateTo('resources')} className="hover:text-emerald-400 transition">Guides & Papers</button></li>
+              <li><button onClick={() => navigateTo('resources')} className="hover:text-emerald-400 transition">Notes</button></li>
               <li><button onClick={() => navigateTo('study-materials')} className="hover:text-emerald-400 transition">Study Materials</button></li>
               <li><button onClick={() => navigateTo('current-affairs')} className="hover:text-emerald-400 transition">Current Affairs</button></li>
               <li><button onClick={() => navigateTo('pricing')} className="hover:text-emerald-400 transition">Pricing Plans</button></li>
@@ -3931,58 +3898,9 @@ export default function App() {
   };
 
   const renderResourcesPage = () => (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div className="space-y-3">
-        <h1 className="text-3xl font-extrabold text-slate-100">Preparation Resources Library</h1>
-        <p className="text-sm text-slate-400 max-w-xl">
-          Downloadable syllabus outlines, key formula sheets, word association prompt banks, and preparation guides.
-        </p>
-      </div>
-
-      {/* Resource Search Bar */}
-      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-          <input
-            type="text"
-            placeholder="Search guides, formula sheets..."
-            value={resourceSearch}
-            onChange={(e) => setResourceSearch(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-        <select
-          value={resourceCategoryFilter}
-          onChange={(e) => setResourceCategoryFilter(e.target.value)}
-          className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-        >
-          <option value="All">All Categories</option>
-          <option value="Army">Pakistan Army</option>
-          <option value="PAF">Pakistan Air Force</option>
-          <option value="Navy">Pakistan Navy</option>
-          <option value="ISSB">ISSB</option>
-        </select>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredResources.map((res) => (
-          <div key={res.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-[10px] font-mono text-emerald-400">
-                <span className="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-slate-300">{res.type}</span>
-                <span>{res.force}</span>
-              </div>
-              <h3 className="font-bold text-slate-100 text-base">{res.title}</h3>
-            </div>
-            <button
-              onClick={() => res.slug ? navigateTo('study-material-detail', res.slug) : navigateTo('study-materials')}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
-            >
-              <FileText className="w-4 h-4 text-emerald-400" /> Read Resource Guide
-            </button>
-          </div>
-        ))}
-      </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-3">
+      <h1 className="text-3xl font-extrabold text-slate-100">Notes</h1>
+      <p className="text-sm text-slate-400">No notes available.</p>
     </div>
   );
 
