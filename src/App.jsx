@@ -1012,7 +1012,7 @@ export default function App() {
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer', 'interview-live'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer', 'interview', 'interview-live'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
 
@@ -1848,6 +1848,26 @@ export default function App() {
       addToast(error.message || 'Unable to load this mock test.', 'error');
     } finally {
       setPaidMockTestLoading(false);
+    }
+  };
+
+  const openPaidInterviewResource = async () => {
+    const product = PAID_NOTE_PRODUCTS.find((item) => item.interviewResource);
+    if (!product) {
+      addToast('The interview preparation PDF is not available.', 'error');
+      return;
+    }
+    try {
+      const currentSession = await ensureAnonymousSession();
+      const requests = await getMyMockTestPurchases();
+      setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
+      if (requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED')) {
+        navigateTo('paid-note-viewer', product.id);
+      } else {
+        navigateTo('mock-payment', product.id);
+      }
+    } catch (error) {
+      addToast(error.message || 'Unable to check interview PDF access.', 'error');
     }
   };
 
@@ -4181,8 +4201,8 @@ export default function App() {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
-          Back to {product.isLiveInterview ? 'Live Interview' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
+        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.interviewResource ? 'interview' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
+          Back to {product.isLiveInterview ? 'Live Interview' : product.interviewResource ? 'Interview Preparation' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
         </button>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
@@ -4456,7 +4476,7 @@ export default function App() {
         <p className="text-sm text-slate-400">Online PMA study notes · PKR 14 each</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {PAID_NOTE_PRODUCTS.map((product) => {
+        {PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource).map((product) => {
           const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
           const request = purchaseStateMatchesUser
             ? mockTestPurchaseState.requests.find((item) => (
@@ -4493,7 +4513,7 @@ export default function App() {
     const product = PAID_NOTE_PRODUCTS.find((item) => item.id === selectedForceId);
     return (
       <div className="max-w-7xl mx-auto space-y-5 px-4 py-8 sm:px-6 lg:px-8">
-        <button type="button" onClick={() => navigateTo('resources')} className="text-sm font-semibold text-emerald-400 hover:text-emerald-300">Back to Notes</button>
+        <button type="button" onClick={() => navigateTo(product?.interviewResource ? 'interview' : 'resources')} className="text-sm font-semibold text-emerald-400 hover:text-emerald-300">Back to {product?.interviewResource ? 'Interview Preparation' : 'Notes'}</button>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold text-slate-100">{product?.title || 'View Notes'}</h1>
           <span className="text-xs font-mono text-slate-400">Purchased note</span>
@@ -5466,7 +5486,10 @@ export default function App() {
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <button onClick={() => navigateTo('interview-personal')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Start Personal Practice</button>
-                  <button onClick={() => navigateTo('interview-progress')} className="px-5 py-3 rounded-xl bg-slate-800 text-slate-100 font-semibold text-sm border border-slate-700">Track Progress</button>
+                  <button onClick={openPaidInterviewResource} className="space-y-1 rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-left text-slate-100 transition hover:border-emerald-500/50">
+                    <span className="block text-sm font-bold">Crack Interview · PKR 150</span>
+                    <span className="block text-[10px] font-medium text-slate-400">PMA_Long_Course_159_Interview fully Cracked</span>
+                  </button>
                   <button onClick={() => navigateTo('interview-live')} className="animate-pulse motion-reduce:animate-none rounded-xl border border-amber-300/70 bg-amber-400/10 px-5 py-3 text-sm font-extrabold text-amber-200 shadow-[0_0_24px_rgba(251,191,36,0.35)] transition hover:bg-amber-400/20 hover:shadow-[0_0_32px_rgba(251,191,36,0.55)]">
                     ✨ NEW · Live Interview · PKR 250
                   </button>
