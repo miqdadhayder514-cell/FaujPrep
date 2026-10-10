@@ -19,10 +19,10 @@ Only the publishable anon key belongs in `.env.local`. Never put a service-role 
 
 ### Uploading private paid-note PDFs
 
-Paid PDFs must be uploaded to the private `paid-notes` Storage bucket before approved candidates can view them. For the Crack Interview PDF, upload `interview/PMA_Long_Course_159_Interview fully Cracked.pdf` using this exact object name:
+Paid PDFs must be uploaded to the private `paid-notes` Storage bucket before approved candidates can view them. For the Crack Interview PDF, upload `interview/pma-long-course-159-interview-fully-cracked.pdf.pdf` using this exact object name:
 
 ```text
-pma-long-course-159-interview-fully-cracked.pdf
+pma-long-course-159-interview-fully-cracked.pdf.pdf
 ```
 
 Alternatively, run the targeted uploader from `my-app` with `SUPABASE_URL` and a current `SUPABASE_SERVICE_ROLE_KEY` available only in your local process environment:

@@ -220,7 +220,7 @@ export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
     'pma-academic-tests-notes': 'pma-academic-tests-notes.pdf',
     'pma-non-verbal-intelligence-notes': 'pma-non-verbal-intelligence-notes.pdf',
     'pma-verbal-intelligence-notes': 'pma-verbal-intelligence-notes.pdf',
-    'pma-long-course-159-interview-fully-cracked': 'pma-long-course-159-interview-fully-cracked.pdf',
+    'pma-long-course-159-interview-fully-cracked': 'pma-long-course-159-interview-fully-cracked.pdf.pdf',
   };
   if (allowedPaths[noteSlug] !== downloadPath) {
     throw new Error('This paid note download is not available.');

@@ -8,6 +8,7 @@ const paidNotesSource = readFileSync(fileURLToPath(new URL('../src/data/paidNote
 const subscriptionsSource = readFileSync(fileURLToPath(new URL('../src/lib/subscriptions.js', import.meta.url)), 'utf8');
 const migrationSource = readFileSync(fileURLToPath(new URL('../supabase/migrations/041_live_interview_video_assessment.sql', import.meta.url)), 'utf8');
 const paidInterviewMigrationSource = readFileSync(fileURLToPath(new URL('../supabase/migrations/042_paid_interview_preparation_pdf.sql', import.meta.url)), 'utf8');
+const doubleExtensionMigrationSource = readFileSync(fileURLToPath(new URL('../supabase/migrations/043_paid_interview_pdf_double_extension.sql', import.meta.url)), 'utf8');
 
 test('live interview includes the five prompts, instructions, and approved-payment upload flow', () => {
   for (const question of [
@@ -46,16 +47,17 @@ test('live interview payments and private videos are authorization-gated in the 
 test('paid interview PDF is linked from the interview hub and requires approved payment', () => {
   assert.match(paidNotesSource, /id: 'pma-long-course-159-interview-fully-cracked'/);
   assert.match(paidNotesSource, /title: 'PMA_Long_Course_159_Interview fully Cracked'/);
-  assert.match(paidNotesSource, /sourceFile: 'PMA_Long_Course_159_Interview fully Cracked\.pdf'/);
-  assert.ok(existsSync(fileURLToPath(new URL('../../interview/PMA_Long_Course_159_Interview fully Cracked.pdf', import.meta.url))));
-  assert.match(paidNotesSource, /downloadPath: 'pma-long-course-159-interview-fully-cracked\.pdf'/);
+  assert.match(paidNotesSource, /sourceFile: 'pma-long-course-159-interview-fully-cracked\.pdf\.pdf'/);
+  assert.ok(existsSync(fileURLToPath(new URL('../../interview/pma-long-course-159-interview-fully-cracked.pdf.pdf', import.meta.url))));
+  assert.match(paidNotesSource, /downloadPath: 'pma-long-course-159-interview-fully-cracked\.pdf\.pdf'/);
   assert.match(paidNotesSource, /pricePkr: 150/);
   assert.match(appSource, /Crack Interview · PKR 150/);
   assert.match(appSource, /requests\.some\(\(request\) => request\.test_slug === product\.id && request\.status === 'APPROVED'\)/);
   assert.match(appSource, /PAID_NOTE_PRODUCTS\.filter\(\(product\) => !product\.interviewResource\)/);
-  assert.match(subscriptionsSource, /'pma-long-course-159-interview-fully-cracked': 'pma-long-course-159-interview-fully-cracked\.pdf'/);
+  assert.match(subscriptionsSource, /'pma-long-course-159-interview-fully-cracked': 'pma-long-course-159-interview-fully-cracked\.pdf\.pdf'/);
   assert.match(paidInterviewMigrationSource, /test_slug = 'pma-long-course-159-interview-fully-cracked' and amount_pkr = 150/);
   assert.match(paidInterviewMigrationSource, /purchase\.test_slug = 'pma-long-course-159-interview-fully-cracked' and p_object_name = 'pma-long-course-159-interview-fully-cracked\.pdf'/);
   assert.match(paidInterviewMigrationSource, /when 'pma-long-course-159-interview-fully-cracked' then 150/);
   assert.match(paidInterviewMigrationSource, /'pma-long-course-159-interview-fully-cracked'\s*\)\s*\n\s*\), '\[\]'::jsonb\)/);
+  assert.match(doubleExtensionMigrationSource, /p_object_name in \([\s\S]*?'pma-long-course-159-interview-fully-cracked\.pdf\.pdf'/);
 });

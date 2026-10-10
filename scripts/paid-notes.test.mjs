@@ -6,6 +6,7 @@ import { PAID_NOTE_PRODUCTS } from '../src/data/paidNotes.js';
 
 const migration = await readFile(new URL('../supabase/migrations/039_paid_note_downloads.sql', import.meta.url), 'utf8');
 const interviewMigration = await readFile(new URL('../supabase/migrations/042_paid_interview_preparation_pdf.sql', import.meta.url), 'utf8');
+const doubleExtensionMigration = await readFile(new URL('../supabase/migrations/043_paid_interview_pdf_double_extension.sql', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const subscriptionsSource = await readFile(new URL('../src/lib/subscriptions.js', import.meta.url), 'utf8');
 
@@ -52,7 +53,8 @@ test('note purchases are fixed at PKR 14 and private files require the matching 
     assert.ok(migration.includes(`when '${product.id}' then '${product.title}'`));
   }
   const interviewProduct = PAID_NOTE_PRODUCTS.find((item) => item.interviewResource);
-  assert.ok(interviewMigration.includes(`purchase.test_slug = '${interviewProduct.id}' and p_object_name = '${interviewProduct.downloadPath}'`));
+  assert.ok(doubleExtensionMigration.includes(`purchase.test_slug = '${interviewProduct.id}'`));
+  assert.ok(doubleExtensionMigration.includes(interviewProduct.downloadPath));
   assert.ok(interviewMigration.includes(`when '${interviewProduct.id}' then '${interviewProduct.title}'`));
   assert.match(subscriptionsSource, /get_admin_paid_note_purchase_queue/);
   assert.match(subscriptionsSource, /\.from\('paid-notes'\)\.download\(downloadPath\)/);
