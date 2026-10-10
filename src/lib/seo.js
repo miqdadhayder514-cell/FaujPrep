@@ -16,6 +16,7 @@ const PRIVATE_PAGES = new Set([
   'register',
   'profile',
   'question-practice',
+  'paid-note-viewer',
   'mock-detail',
   'mock-result',
   'not-found',

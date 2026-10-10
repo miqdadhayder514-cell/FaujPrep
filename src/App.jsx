@@ -443,6 +443,7 @@ export default function App() {
   });
   const [mockTestPaymentState, setMockTestPaymentState] = useState({ loading: false, error: null, result: null });
   const [paidMockTestLoading, setPaidMockTestLoading] = useState(false);
+  const [paidNoteViewerState, setPaidNoteViewerState] = useState({ loading: false, error: null, url: null });
   const [adminPaymentQueue, setAdminPaymentQueue] = useState([]);
   const [adminPaymentAction, setAdminPaymentAction] = useState({ loading: false, error: null });
   const [contentTopics, setContentTopics] = useState([]);
@@ -638,9 +639,43 @@ export default function App() {
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
+
+  useEffect(() => {
+    if (currentPage !== 'paid-note-viewer') {
+      setPaidNoteViewerState({ loading: false, error: null, url: null });
+      return undefined;
+    }
+
+    const product = PAID_NOTE_PRODUCTS.find((item) => item.id === selectedForceId);
+    if (!product) {
+      setPaidNoteViewerState({ loading: false, error: 'This note is not available.', url: null });
+      return undefined;
+    }
+
+    let active = true;
+    setPaidNoteViewerState({ loading: true, error: null, url: null });
+    const loadPaidNote = async () => {
+      try {
+        const currentSession = await ensureAnonymousSession();
+        const requests = await getMyMockTestPurchases();
+        if (!requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED')) {
+          throw new Error('An approved purchase is required to view this note.');
+        }
+        const url = await getPaidNoteDownloadUrl(product.id, product.downloadPath);
+        if (!active) return;
+        setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
+        setPaidNoteViewerState({ loading: false, error: null, url });
+      } catch (error) {
+        if (active) setPaidNoteViewerState({ loading: false, error: error.message || 'Unable to load this note.', url: null });
+      }
+    };
+    loadPaidNote();
+
+    return () => { active = false; };
+  }, [currentPage, selectedForceId, session?.user?.id]);
 
   const routeFromPage = (page, value = null) => {
     const routeMap = {
@@ -668,6 +703,7 @@ export default function App() {
       issb: '/issb',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
+      'paid-note-viewer': value ? `/notes/${encodeURIComponent(value)}` : '/resources',
       'study-materials': '/study-materials',
       'study-material-detail': value ? `/study-materials/${encodeURIComponent(value)}` : '/study-materials',
       'current-affairs': '/current-affairs',
@@ -808,6 +844,7 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
+      if (normalizedPath.startsWith('/notes/')) { setCurrentPage('paid-note-viewer'); setSelectedForceId(decodeSlug(path.slice('/notes/'.length))); return; }
       const practicePaymentPath = path.match(/^\/practice-tests\/([^/]+)\/payment$/i);
       if (practicePaymentPath) { setCurrentPage('practice-payment'); setSelectedForceId(decodeSlug(practicePaymentPath[1])); return; }
       const mockPaymentPath = path.match(/^\/mock-tests\/([^/]+)\/payment$/i);
@@ -1269,8 +1306,7 @@ export default function App() {
       }
 
       if (product.isNote) {
-        const downloadUrl = await getPaidNoteDownloadUrl(product.id, product.downloadPath);
-        window.location.assign(downloadUrl);
+        navigateTo('paid-note-viewer', product.id);
         return;
       }
 
@@ -3660,7 +3696,7 @@ export default function App() {
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
               <p className="font-semibold text-emerald-200">{product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
               <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">
-                {paidMockTestLoading ? product.isNote ? 'Preparing download...' : 'Loading test...' : product.isNote ? 'Download PDF' : 'Start Test'}
+                {paidMockTestLoading ? product.isNote ? 'Opening notes...' : 'Loading test...' : product.isNote ? 'View Notes' : 'Start Test'}
               </button>
             </div>
           ) : latestRequest?.status === 'PENDING' ? (
@@ -3743,7 +3779,7 @@ export default function App() {
     const renderPaidTestAction = (product) => {
       const request = getPurchaseRequest(product);
       if (request?.status === 'APPROVED') {
-        return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? product.isNote ? 'Preparing download...' : 'Loading test...' : product.isNote ? 'Download PDF' : 'Start Test'}</button>;
+        return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? product.isNote ? 'Opening notes...' : 'Loading test...' : product.isNote ? 'View Notes' : 'Start Test'}</button>;
       }
       if (request?.status === 'PENDING') {
         return <button disabled className="w-full rounded-xl border border-amber-500/30 bg-amber-950/40 py-3 text-sm font-bold text-amber-200">Payment Pending Admin Approval</button>;
@@ -3917,7 +3953,7 @@ export default function App() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-extrabold text-slate-100">Notes</h1>
-        <p className="text-sm text-slate-400">Downloadable PMA study notes · PKR 14 each</p>
+        <p className="text-sm text-slate-400">Online PMA study notes · PKR 14 each</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {PAID_NOTE_PRODUCTS.map((product) => {
@@ -3932,15 +3968,15 @@ export default function App() {
                 <p className="text-sm font-semibold text-emerald-300">{formatPKR(product.pricePkr)}</p>
               </div>
               {request?.status === 'APPROVED' ? (
-                <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">
-                  <Download className="h-4 w-4" />{paidMockTestLoading ? 'Preparing download...' : 'Download PDF'}
+                <button type="button" onClick={() => navigateTo('paid-note-viewer', product.id)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950">
+                  <BookOpen className="h-4 w-4" />View Notes
                 </button>
               ) : request?.status === 'PENDING' ? (
                 <button type="button" disabled className="min-h-11 w-full rounded-lg border border-amber-500/30 bg-amber-950/40 px-4 py-2.5 text-sm font-bold text-amber-200">Payment Pending Approval</button>
               ) : mockTestPurchaseState.loading ? (
                 <button type="button" disabled className="min-h-11 w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-400">Checking Access...</button>
               ) : (
-                <button type="button" onClick={() => navigateTo('mock-payment', product.id)} className="min-h-11 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-400">{request?.status === 'REJECTED' ? 'Resubmit Payment' : 'Buy & Download'} · {formatPKR(product.pricePkr)}</button>
+                <button type="button" onClick={() => navigateTo('mock-payment', product.id)} className="min-h-11 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-400">{request?.status === 'REJECTED' ? 'Resubmit Payment' : 'Buy to View'} · {formatPKR(product.pricePkr)}</button>
               )}
             </article>
           );
@@ -3948,6 +3984,33 @@ export default function App() {
       </div>
     </div>
   );
+
+  const renderPaidNoteViewerPage = () => {
+    const product = PAID_NOTE_PRODUCTS.find((item) => item.id === selectedForceId);
+    return (
+      <div className="max-w-7xl mx-auto space-y-5 px-4 py-8 sm:px-6 lg:px-8">
+        <button type="button" onClick={() => navigateTo('resources')} className="text-sm font-semibold text-emerald-400 hover:text-emerald-300">Back to Notes</button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold text-slate-100">{product?.title || 'View Notes'}</h1>
+          <span className="text-xs font-mono text-slate-400">Purchased note</span>
+        </div>
+        {paidNoteViewerState.loading && <div role="status" className="flex h-[70dvh] min-h-[420px] items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-sm text-slate-400">Preparing your note...</div>}
+        {paidNoteViewerState.error && (
+          <div role="alert" className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-xl border border-rose-500/30 bg-rose-950/20 p-6 text-center">
+            <p className="text-sm text-rose-200">{paidNoteViewerState.error}</p>
+            <button type="button" onClick={() => navigateTo('resources')} className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-100">Back to Notes</button>
+          </div>
+        )}
+        {paidNoteViewerState.url && (
+          <iframe
+            title={product?.title || 'Purchased notes'}
+            src={paidNoteViewerState.url}
+            className="h-[75dvh] min-h-[480px] w-full rounded-xl border border-slate-800 bg-white"
+          />
+        )}
+      </div>
+    );
+  };
 
   const renderPricingPage = () => {
     const plans = planCatalog.length ? planCatalog : [
@@ -5128,6 +5191,8 @@ export default function App() {
         return renderQuestionPracticePage();
       case 'resources':
         return renderResourcesPage();
+      case 'paid-note-viewer':
+        return renderPaidNoteViewerPage();
       case 'study-materials':
         return renderStudyMaterialsPage();
       case 'study-material-detail':

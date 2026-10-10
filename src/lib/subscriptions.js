@@ -227,7 +227,7 @@ export async function getPaidNoteDownloadUrl(noteSlug, downloadPath) {
 
   const { data, error } = await supabase.storage
     .from('paid-notes')
-    .createSignedUrl(downloadPath, 300, { download: true });
+    .createSignedUrl(downloadPath, 3600);
   if (error) throw error;
   return data.signedUrl;
 }

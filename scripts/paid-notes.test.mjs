@@ -17,8 +17,11 @@ test('four PMA notes are priced individually and have source PDFs', async () => 
 
 test('notes use the responsive Notes grid and approval-gated download actions', () => {
   assert.match(appSource, /grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4/);
-  assert.match(appSource, /Buy & Download/);
-  assert.match(appSource, /Download PDF/);
+  assert.match(appSource, /Buy to View/);
+  assert.match(appSource, /View Notes/);
+  assert.doesNotMatch(appSource, /Download PDF/);
+  assert.match(appSource, /paid-note-viewer/);
+  assert.match(appSource, /<iframe[\s\S]*?src=\{paidNoteViewerState\.url\}/);
   assert.match(appSource, /submitPaidNotePaymentProof/);
   assert.match(appSource, /getPaidNoteDownloadUrl/);
 });
@@ -33,5 +36,6 @@ test('note purchases are fixed at PKR 14 and private files require the matching 
     assert.ok(migration.includes(`when '${product.id}' then '${product.title}'`));
   }
   assert.match(subscriptionsSource, /get_admin_paid_note_purchase_queue/);
-  assert.match(subscriptionsSource, /\.from\('paid-notes'\)[\s\S]*?createSignedUrl/);
+  assert.match(subscriptionsSource, /\.from\('paid-notes'\)[\s\S]*?createSignedUrl\(downloadPath, 3600\)/);
+  assert.doesNotMatch(subscriptionsSource, /createSignedUrl\(downloadPath, 3600, \{ download: true \}\)/);
 });
