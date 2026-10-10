@@ -567,7 +567,6 @@ export default function App() {
       return undefined;
     }
     let active = true;
-    let objectUrl = null;
     getMyUnreadNotificationCount()
       .then((count) => active && setNotificationUnreadCount(count))
       .catch(() => active && setNotificationUnreadCount(0));
@@ -657,6 +656,7 @@ export default function App() {
     }
 
     let active = true;
+  let objectUrl = null;
     setPaidNoteViewerState({ loading: true, error: null, url: null });
     const loadPaidNote = async () => {
       try {
