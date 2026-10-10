@@ -114,6 +114,8 @@ test('paid test UI refreshes anonymous ownership and never bypasses approval', (
   assert.match(paidProducts, /PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK/);
   assert.match(paidProducts, /ACADEMIC_PORTION_MOCK_TEST_1/);
   assert.match(appSource, /renderPaidTestAction\(localMockTest\)/);
+  assert.match(appSource, /localMockTest\.questionsCount/);
+  assert.doesNotMatch(appSource, /localMockTest\.questions\.length/);
   assert.match(cardAction, /request\?\.status === 'APPROVED'/);
   assert.doesNotMatch(cardAction, /canAccessPremiumResources/);
   assert.match(startHandler, /await ensureAnonymousSession\(\)/);

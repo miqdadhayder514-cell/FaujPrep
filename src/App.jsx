@@ -3792,7 +3792,7 @@ export default function App() {
             <p className="text-sm leading-6 text-slate-400">Complete PMA Long Course Academic Practice Set 2: English, Mathematics, Islamiyat, Pakistan Studies, and Physics, with answers and explanations from the source.</p>
           </div>
           <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{localMockTest.questions.length}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{localMockTest.questionsCount}</strong>Questions</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">60 mins</strong>Duration</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
           </div>
