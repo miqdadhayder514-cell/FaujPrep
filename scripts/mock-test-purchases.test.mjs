@@ -185,4 +185,47 @@ test('practice tests can be paid at PKR 14 each and stay behind purchase gating'
   assert.match(paidPracticeMigration, /mock_test_purchase_requests_test_slug_check/i);
   assert.match(paidPracticeMigration, /army-initial-practice-mock' and amount_pkr = 14/i);
   assert.match(appSource, /startPaidMockTest = async \(product\) => \{/i);
+
+  const existingPaidSlugs = [
+    'pma-long-course-159-mock-test-2',
+    'pma-long-course-159-most-repeated-questions-bank',
+    'pma-long-course-159-must-come-questions-bank',
+    'academic-portion-mock-test-2',
+    'pma-long-course-159-non-verbal-intelligence-test-1',
+    'pma-long-course-159-non-verbal-intelligence-test-2',
+    'academic-portion-mock-test-1',
+    'pma-long-course-159-academic-portion-mock-test-3',
+    'pma-long-course-academic-portion-most-repeated-questions',
+  ];
+  const paidNoteSlugs = [
+    'pma-academic-notes',
+    'pa-academic-notes',
+    'pma-academic-tests-notes',
+    'pma-non-verbal-intelligence-notes',
+    'pma-verbal-intelligence-notes',
+  ];
+
+  const questionBankAllowlist = paidPracticeMigration.match(
+    /add constraint paid_mock_test_question_banks_test_slug_check\s+check \(test_slug in \(([\s\S]*?)\)\);/i,
+  )?.[1];
+  const purchaseAllowlist = paidPracticeMigration.match(
+    /add constraint mock_test_purchase_requests_test_slug_check\s+check \(test_slug in \(([\s\S]*?)\)\);/i,
+  )?.[1];
+
+  assert.ok(questionBankAllowlist, 'Missing paid question-bank slug allowlist');
+  assert.ok(purchaseAllowlist, 'Missing paid purchase slug allowlist');
+  for (const slug of existingPaidSlugs) {
+    assert.match(questionBankAllowlist, new RegExp(`'${slug}'`));
+    assert.match(purchaseAllowlist, new RegExp(`'${slug}'`));
+  }
+  for (const slug of paidNoteSlugs) {
+    assert.match(purchaseAllowlist, new RegExp(`'${slug}'`));
+  }
+
+  assert.match(paidPracticeMigration, /pma-long-course-159-non-verbal-intelligence-test-1' and amount_pkr = 49/i);
+  assert.match(paidPracticeMigration, /academic-portion-mock-test-1' and amount_pkr = 30/i);
+  assert.match(paidPracticeMigration, /test_slug in \([\s\S]*?'pa-academic-notes'[\s\S]*?\) and amount_pkr = 14/i);
+  assert.match(paidPracticeMigration, /purchase\.test_slug in \([\s\S]*?'pa-academic-notes'/i);
+  assert.match(paidPracticeMigration, /purchase\.test_slug in \('pma-academic-notes', 'pa-academic-notes'\)/i);
+  assert.match(readFileSync(fileURLToPath(new URL('../src/lib/subscriptions.js', import.meta.url)), 'utf8'), /'pa-academic-notes'/i);
 });

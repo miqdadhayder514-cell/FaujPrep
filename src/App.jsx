@@ -760,7 +760,10 @@ export default function App() {
       try {
         const currentSession = await ensureAnonymousSession();
         const requests = await getMyMockTestPurchases();
-        if (!requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED')) {
+        if (!requests.some((request) => (
+          (request.test_slug === product.id || (product.id === 'pma-academic-notes' && request.test_slug === 'pa-academic-notes'))
+          && request.status === 'APPROVED'
+        ))) {
           throw new Error('An approved purchase is required to view this note.');
         }
         objectUrl = await getPaidNoteViewerUrl(product.id, product.downloadPath);
@@ -4076,7 +4079,11 @@ export default function App() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {PAID_NOTE_PRODUCTS.map((product) => {
           const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
-          const request = purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((item) => item.test_slug === product.id) : null;
+          const request = purchaseStateMatchesUser
+            ? mockTestPurchaseState.requests.find((item) => (
+              item.test_slug === product.id || (product.id === 'pma-academic-notes' && item.test_slug === 'pa-academic-notes')
+            ))
+            : null;
 
           return (
             <article key={product.id} className="flex min-h-52 flex-col justify-between gap-5 rounded-xl border border-slate-800 bg-slate-900 p-5">

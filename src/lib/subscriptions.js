@@ -269,6 +269,7 @@ export async function getAdminPaymentQueue() {
   if (noteQueue.error) throw noteQueue.error;
   const noteSlugs = new Set([
     'pma-academic-notes',
+    'pa-academic-notes',
     'pma-academic-tests-notes',
     'pma-non-verbal-intelligence-notes',
     'pma-verbal-intelligence-notes',
