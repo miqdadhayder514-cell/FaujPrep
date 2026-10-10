@@ -9,6 +9,8 @@ import NotificationCenter from './components/NotificationCenter';
 import QuestionCard from './components/QuestionCard';
 import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
 import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
+import { PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3 } from './data/pmaLong159AcademicPortionMockTest3';
+import { PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS } from './data/pmaLongCourseAcademicPortionMostRepeatedQuestions';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
 import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
@@ -387,7 +389,10 @@ const DEFAULT_PAYMENT_SETTINGS = {
 };
 
 const PAID_MOCK_TEST_PRODUCTS = [
+  ACADEMIC_PORTION_MOCK_TEST_1,
   ACADEMIC_PORTION_MOCK_TEST_2,
+  PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3,
+  PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS,
   PMA_LONG_COURSE_159_MOCK_TEST_2,
   PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK,
   PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK,
@@ -3747,6 +3752,8 @@ export default function App() {
     const fullMockTest = backendData.mockTests.find((test) => test.slug === 'first-full-mock-test');
     const localMockTest = ACADEMIC_PORTION_MOCK_TEST_1;
     const localMockTest2 = ACADEMIC_PORTION_MOCK_TEST_2;
+    const pmaAcademicMockTest3 = PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3;
+    const pmaMostRepeatedAcademicQuestions = PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS;
     const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
     const pmaMostRepeatedQuestionsBank = PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK;
     const pmaMustComeQuestionsBank = PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK;
@@ -3778,7 +3785,7 @@ export default function App() {
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
-            <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {localMockTest.pricePkr}</span>
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-slate-100">Academic Portion Mock Test 1</h2>
@@ -3789,14 +3796,7 @@ export default function App() {
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">60 mins</strong>Duration</div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
           </div>
-          <button onClick={() => startPracticeSession({
-            title: localMockTest.title,
-            questions: localMockTest.questions,
-            questionsCount: localMockTest.questions.length,
-            duration: localMockTest.duration,
-            difficulty: localMockTest.difficulty,
-            preserveQuestionOrder: true,
-          })} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">Start Academic Portion Mock Test 1</button>
+          {renderPaidTestAction(localMockTest)}
         </article>
 
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
@@ -3815,6 +3815,42 @@ export default function App() {
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(localMockTest2.pricePkr)}</strong>One-time</div>
           </div>
           {renderPaidTestAction(localMockTest2)}
+        </article>
+
+        <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {pmaAcademicMockTest3.pricePkr}</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-100">{pmaAcademicMockTest3.title}</h2>
+            <p className="text-sm leading-6 text-slate-400">120 academic questions across Pakistan Studies, General Knowledge, Islamiyat, Physics, and English.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaAcademicMockTest3.questionsCount}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaAcademicMockTest3.duration}</strong>Duration</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(pmaAcademicMockTest3.pricePkr)}</strong>One-time</div>
+          </div>
+          {renderPaidTestAction(pmaAcademicMockTest3)}
+        </article>
+
+        <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+            <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {pmaMostRepeatedAcademicQuestions.pricePkr}</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-100">{pmaMostRepeatedAcademicQuestions.title}</h2>
+            <p className="text-sm leading-6 text-slate-400">120 most-repeated academic questions across Pakistan Studies, General Knowledge, Islamiyat, Physics, and English.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMostRepeatedAcademicQuestions.questionsCount}</strong>Questions</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMostRepeatedAcademicQuestions.duration}</strong>Duration</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(pmaMostRepeatedAcademicQuestions.pricePkr)}</strong>One-time</div>
+          </div>
+          {renderPaidTestAction(pmaMostRepeatedAcademicQuestions)}
         </article>
 
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">

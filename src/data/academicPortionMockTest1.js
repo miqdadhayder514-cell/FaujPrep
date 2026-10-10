@@ -1,5 +1,3 @@
-import ACADEMIC_PORTION_MOCK_TEST_1_QUESTIONS from './academicPortionMockTest1.json';
-
 export const ACADEMIC_PORTION_MOCK_TEST_1 = {
   id: 'academic-portion-mock-test-1',
   title: 'Academic Portion Mock Test 1',
@@ -7,8 +5,6 @@ export const ACADEMIC_PORTION_MOCK_TEST_1 = {
   category: 'Academic',
   difficulty: 'Medium',
   duration: '60 mins',
-  questionsCount: ACADEMIC_PORTION_MOCK_TEST_1_QUESTIONS.length,
-  questions: ACADEMIC_PORTION_MOCK_TEST_1_QUESTIONS,
+  questionsCount: 100,
+  pricePkr: 30,
 };
-
-export default ACADEMIC_PORTION_MOCK_TEST_1_QUESTIONS;

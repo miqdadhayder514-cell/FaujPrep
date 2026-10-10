@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { ACADEMIC_PORTION_MOCK_TEST_1 } from '../src/data/academicPortionMockTest1.js';
 import { ACADEMIC_PORTION_MOCK_TEST_2 } from '../src/data/academicPortionMockTest2.js';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from '../src/data/pmaLongCourse159MockTest2.js';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from '../src/data/pmaLongCourse159MostRepeatedQuestionsBank.js';
@@ -16,10 +17,13 @@ const legacyPurchaseConstraintMigration = readFileSync(fileURLToPath(new URL('..
 const paymentAccessRepairMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/031_repair_mock_test_payment_and_access.sql', import.meta.url)), 'utf8');
 const mustComePurchaseMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/032_add_must_come_mock_test_purchase.sql', import.meta.url)), 'utf8');
 const mustComeBankMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/033_seed_must_come_mock_test_question_bank.sql', import.meta.url)), 'utf8');
+const paidAcademicTestMigration = readFileSync(fileURLToPath(new URL('../supabase/migrations/036_add_paid_academic_portion_mock_test_1.sql', import.meta.url)), 'utf8');
+const academicTestOneModule = readFileSync(fileURLToPath(new URL('../src/data/academicPortionMockTest1.js', import.meta.url)), 'utf8');
 const academicModule = readFileSync(fileURLToPath(new URL('../src/data/academicPortionMockTest2.js', import.meta.url)), 'utf8');
 const pmaModule = readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MockTest2.js', import.meta.url)), 'utf8');
 const mostRepeatedQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MostRepeatedQuestionsBank.json', import.meta.url)), 'utf8'));
 const mustComeQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/pmaLongCourse159MustComeQuestionsBank.json', import.meta.url)), 'utf8'));
+const academicTestOneQuestions = JSON.parse(readFileSync(fileURLToPath(new URL('../src/data/academicPortionMockTest1.json', import.meta.url)), 'utf8'));
 const appSource = readFileSync(fileURLToPath(new URL('../src/App.jsx', import.meta.url)), 'utf8');
 
 const getSeededBank = (migrationSource, slug) => {
@@ -33,6 +37,13 @@ const getSeededBank = (migrationSource, slug) => {
 };
 
 test('mock-test payments use fixed product prices and pending approval', () => {
+  assert.equal(ACADEMIC_PORTION_MOCK_TEST_1.title, 'Academic Portion Mock Test 1');
+  assert.equal(ACADEMIC_PORTION_MOCK_TEST_1.questionsCount, 100);
+  assert.equal(ACADEMIC_PORTION_MOCK_TEST_1.pricePkr, 30);
+  assert.doesNotMatch(academicTestOneModule, /academicPortionMockTest1\.json/);
+  assert.match(paidAcademicTestMigration, /academic-portion-mock-test-1' and amount_pkr = 30/);
+  assert.match(paidAcademicTestMigration, /academic-portion-mock-test-1' then 30/);
+  assert.match(paidAcademicTestMigration, /academic-portion-mock-test-1' then 'Academic Portion Mock Test 1'/);
   assert.equal(PMA_LONG_COURSE_159_MOCK_TEST_2.title, 'PMA Long Course 159 Mock Test 2');
   assert.equal(PMA_LONG_COURSE_159_MOCK_TEST_2.pricePkr, 49);
   assert.equal(PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK.title, 'PMA Long Course 159 Most Repeated Questions Bank');
@@ -101,6 +112,8 @@ test('paid test UI refreshes anonymous ownership and never bypasses approval', (
 
   assert.match(paidProducts, /PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK/);
   assert.match(paidProducts, /PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK/);
+  assert.match(paidProducts, /ACADEMIC_PORTION_MOCK_TEST_1/);
+  assert.match(appSource, /renderPaidTestAction\(localMockTest\)/);
   assert.match(cardAction, /request\?\.status === 'APPROVED'/);
   assert.doesNotMatch(cardAction, /canAccessPremiumResources/);
   assert.match(startHandler, /await ensureAnonymousSession\(\)/);
@@ -110,6 +123,7 @@ test('paid test UI refreshes anonymous ownership and never bypasses approval', (
 });
 
 test('protected database seed contains the complete paid question banks', () => {
+  const academicTestOneSeed = getSeededBank(paidAcademicTestMigration, 'academic-portion-mock-test-1');
   const pmaQuestions = getSeededBank(bankMigration, 'pma-long-course-159-mock-test-2');
   const seededMostRepeatedQuestions = getSeededBank(bankMigration, 'pma-long-course-159-most-repeated-questions-bank');
   const updatedMostRepeatedQuestions = getSeededBank(mostRepeatedBankMigration, 'pma-long-course-159-most-repeated-questions-bank');
@@ -134,6 +148,8 @@ test('protected database seed contains the complete paid question banks', () => 
   assert.notEqual(seededMostRepeatedQuestions[0].question_text, pmaQuestions[0].question_text);
   assert.ok(seededMostRepeatedQuestions.slice(60, 120).every((question) => question.image_url));
   assert.equal(academicQuestions.length, 100);
+  assert.deepEqual(academicTestOneSeed, academicTestOneQuestions);
+  assert.match(paidAcademicTestMigration, /purchase\.user_id = v_user_id[\s\S]*?purchase\.test_slug = p_test_slug[\s\S]*?purchase\.status = 'APPROVED'/);
   assert.equal(pmaQuestions[60].image_url, '/images/mock-tests/pma-lc159-mock-test-2/q061.png');
   assert.ok(pmaQuestions.every((question) => question.correct_option && question.explanation));
   assert.ok(seededMostRepeatedQuestions.every((question) => question.correct_option && question.explanation));
