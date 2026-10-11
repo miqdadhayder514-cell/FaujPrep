@@ -1,0 +1,17 @@
+{
+  "rewrites": [
+    { "source": "/search", "destination": "/index.html" },
+    { "source": "/interview", "destination": "/index.html" },
+    { "source": "/interview/:path*", "destination": "/index.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/billing", "destination": "/index.html" },
+    { "source": "/checkout", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/:path*", "destination": "/index.html" },
+    { "source": "/notifications", "destination": "/index.html" },
+    { "source": "/account", "destination": "/index.html" },
+    { "source": "/notes/:slug", "destination": "/index.html" },
+    { "source": "/mock-tests/:slug/payment", "destination": "/index.html" },
+    { "source": "/practice-tests/:slug/payment", "destination": "/index.html" }
+  ]
+}

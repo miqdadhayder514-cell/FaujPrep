@@ -6,6 +6,10 @@ Set `VITE_SITE_URL` to the canonical deployed origin (`https://fauj-prep.vercel.
 
 Without `VITE_SITE_URL`, the app still sets runtime canonical URLs from the browser origin, but build-generated sitemap locations and static canonical tags are omitted rather than guessed.
 
+## Direct page refreshes
+
+The Vercel deployment uses `vercel.json` rewrites to send client-routed pages (including interview categories, payment pages, account, and admin routes) to the React entry point when opened directly or refreshed. Routes with generated SEO HTML shells are left untouched.
+
 ## Interview practice
 
 Personal, academic, general-knowledge, current-affairs, defense, rapid-fire, and mock interview practice each require a one-time PKR 50 purchase. Candidates submit payment proof through the existing manual-payment flow; the category unlocks only after an administrator approves the purchase in the admin payment queue. Apply `supabase/migrations/044_paid_interview_category_practice.sql` followed by `supabase/migrations/045_interview_category_price_pkr_50.sql` after the earlier migrations to enable the category products and server-side price checks.
