@@ -12,6 +12,7 @@ import { ACADEMIC_PORTION_MOCK_TEST_2 } from './data/academicPortionMockTest2';
 import { PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3 } from './data/pmaLong159AcademicPortionMockTest3';
 import { PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS } from './data/pmaLongCourseAcademicPortionMostRepeatedQuestions';
 import { PAID_NOTE_PRODUCTS } from './data/paidNotes';
+import { INTERVIEW_MODEL_ANSWERS } from './data/interviewModelAnswers';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
 import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
@@ -22,6 +23,7 @@ import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, 
 import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
+import { evaluateInterviewAnswers } from './lib/interviewEvaluation';
 import { ensureAnonymousSession } from './lib/supabase';
 import { getMyUnreadNotificationCount } from './lib/notifications';
 import { trackAnalyticsEvent, trackPageView } from './lib/analytics';
@@ -334,6 +336,50 @@ const INTERVIEW_CATEGORY_DETAILS = {
     description: 'Track preparation based on actual activity and interview practice completion.',
     focus: ['Completion trends', 'Practice consistency', 'Performance review'],
   },
+};
+
+const INTERVIEW_COUNTER_QUESTIONS = {
+  personal: [
+    'Can you give a specific example that demonstrates this quality?',
+    'How would people who know you well describe this, and why?',
+    'What have you done recently to prepare yourself for service?',
+  ],
+  academic: [
+    'Can you explain how you would apply that idea to a practical problem?',
+    'What evidence or example supports your explanation?',
+    'If you had to teach this concept to a beginner, what would you emphasize?',
+  ],
+  'general-knowledge': [
+    'What reliable source would you use to verify that information?',
+    'Why is this important for Pakistan or its citizens?',
+    'What related fact would help put this answer in context?',
+  ],
+  'current-affairs': [
+    'What is one likely consequence of this development for Pakistan?',
+    'Which reliable source supports your view?',
+    'What is a reasonable alternative perspective on this issue?',
+  ],
+  defense: [
+    'How does this principle apply to the responsibilities of a service member?',
+    'What is one example that illustrates its importance?',
+    'How would you explain this to someone unfamiliar with the topic?',
+  ],
+  'rapid-fire': [
+    'What would be your first action, and why?',
+    'What risk would you consider before deciding?',
+    'How would you explain your decision in one clear sentence?',
+  ],
+  mock: [
+    'What specific example supports your answer?',
+    'What would you do if the interviewer challenged that point?',
+    'How would you connect this answer to your readiness for service?',
+  ],
+};
+
+const getInterviewCounterQuestion = (categoryKey, questionId) => {
+  const followUps = INTERVIEW_COUNTER_QUESTIONS[categoryKey] || INTERVIEW_COUNTER_QUESTIONS.mock;
+  const index = [...questionId].reduce((total, character) => total + character.charCodeAt(0), 0);
+  return followUps[index % followUps.length];
 };
 
 const INTERVIEW_PERSONAL_QUESTIONS = [
@@ -739,6 +785,15 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
 const PAID_MOCK_TEST_PRODUCTS = [
   ...PAID_NOTE_PRODUCTS,
   ...PAID_PRACTICE_TEST_PRODUCTS,
+  ...Object.entries(INTERVIEW_CATEGORY_DETAILS)
+    .filter(([key]) => INTERVIEW_COUNTER_QUESTIONS[key])
+    .map(([key, category]) => ({
+      id: `interview-practice-${key}`,
+      title: `${category.title} Interview Practice`,
+      pricePkr: 50,
+      isInterviewPractice: true,
+      interviewCategory: key,
+    })),
   ACADEMIC_PORTION_MOCK_TEST_1,
   ACADEMIC_PORTION_MOCK_TEST_2,
   PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3,
@@ -893,6 +948,7 @@ export default function App() {
   const [practiceSubjects, setPracticeSubjects] = useState([]);
   const [dashboardState, setDashboardState] = useState({ loading: false, error: null, summary: null });
   const [interviewActivity, setInterviewActivity] = useState({ practicedIds: [], answersByQuestion: {} });
+  const [interviewEvaluations, setInterviewEvaluations] = useState({});
 
   const paidPracticeProductIds = new Set((backendConfigured ? backendData.mockTests : []).map((test) => test.slug));
   const practiceCatalog = [
@@ -1001,20 +1057,34 @@ export default function App() {
       return;
     }
 
-    setMockTestPurchaseState((previous) => ({ ...previous, loading: true, userId: null }));
+    setMockTestPurchaseState((previous) => ({ ...previous, loading: true, error: null }));
     try {
       const currentSession = await ensureAnonymousSession();
       const requests = await getMyMockTestPurchases();
-      setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
-    } catch {
-      setMockTestPurchaseState({ loading: false, requests: [], userId: null });
+      setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id, error: null });
+    } catch (error) {
+      setMockTestPurchaseState({ loading: false, requests: [], userId: null, error: error.message || 'Unable to check your interview access.' });
     }
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer', 'interview', 'interview-live'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer', 'interview', 'interview-live', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
+
+  useEffect(() => {
+    if (!currentPage.startsWith('interview-') || currentPage === 'interview-live' || currentPage === 'interview-tips' || currentPage === 'interview-progress') return undefined;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshMockTestPurchases();
+    };
+    const interval = window.setInterval(refreshWhenVisible, 10000);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
+  }, [currentPage, refreshMockTestPurchases]);
 
   useEffect(() => {
     if (currentPage !== 'paid-note-viewer') {
@@ -1803,6 +1873,10 @@ export default function App() {
       }
       if (product.isLiveInterview) {
         navigateTo('interview-live');
+        return;
+      }
+      if (product.isInterviewPractice) {
+        navigateTo(getInterviewPageKeyForCategory(product.interviewCategory));
         return;
       }
 
@@ -4203,22 +4277,22 @@ export default function App() {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.interviewResource ? 'interview' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
-          Back to {product.isLiveInterview ? 'Live Interview' : product.interviewResource ? 'Interview Preparation' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
+        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.isInterviewPractice ? getInterviewPageKeyForCategory(product.interviewCategory) : product.interviewResource ? 'interview' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
+          Back to {product.isLiveInterview ? 'Live Interview' : product.isInterviewPractice ? product.title : product.interviewResource ? 'Interview Preparation' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
         </button>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
             <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · {product.isLiveInterview ? 'Video upload after approval' : 'Permanent access after approval'}</p>
-            <h1 className="text-3xl font-extrabold text-slate-100">{product.isLiveInterview ? 'Pay for Live Interview Assessment' : 'How to Pay'}</h1>
+            <h1 className="text-3xl font-extrabold text-slate-100">{product.isLiveInterview ? 'Pay for Live Interview Assessment' : product.isInterviewPractice ? 'Unlock Interview Practice' : 'How to Pay'}</h1>
             <p className="text-sm text-slate-400">{product.title}</p>
             <p className="text-2xl font-bold text-emerald-300">{product.isLiveInterview ? 'PKR 250' : formatPKR(product.pricePkr)}</p>
           </div>
 
           {hasAccess ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
-              <p className="font-semibold text-emerald-200">{product.isLiveInterview ? 'Your live interview assessment is approved.' : product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
+              <p className="font-semibold text-emerald-200">{product.isLiveInterview ? 'Your live interview assessment is approved.' : product.isInterviewPractice ? 'This interview category is unlocked on your account.' : product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
               <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">
-                {paidMockTestLoading ? product.isNote ? 'Opening notes...' : product.isLiveInterview ? 'Opening interview...' : 'Loading test...' : product.isNote ? 'View Notes' : product.isLiveInterview ? 'Continue to interview' : 'Start Test'}
+                {paidMockTestLoading ? product.isNote ? 'Opening notes...' : product.isLiveInterview || product.isInterviewPractice ? 'Opening interview...' : 'Loading test...' : product.isNote ? 'View Notes' : product.isLiveInterview ? 'Continue to interview' : product.isInterviewPractice ? 'Open Interview Practice' : 'Start Test'}
               </button>
             </div>
           ) : latestRequest?.status === 'PENDING' ? (
@@ -5029,7 +5103,7 @@ export default function App() {
                   <div key={payment.id} className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-slate-200">{payment.purchase_type === 'MOCK_TEST' || payment.purchase_type === 'NOTE' ? payment.test_title : payment.plan_name || payment.plan_slug || 'Plan'}</p>
+                        <p className="font-semibold text-slate-200">{payment.purchase_type === 'MOCK_TEST' || payment.purchase_type === 'NOTE' ? payment.test_title || PAID_MOCK_TEST_PRODUCTS.find((product) => product.id === payment.test_slug)?.title || payment.test_slug : payment.plan_name || payment.plan_slug || 'Plan'}</p>
                         <p className="text-[11px] text-slate-400">{payment.user_email || payment.user_id}</p>
                       </div>
                       <span className={`text-[10px] uppercase font-mono px-2 py-1 rounded ${payment.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : payment.status === 'REJECTED' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}`}>
@@ -5462,10 +5536,50 @@ export default function App() {
         [questionId]: value,
       },
     }));
+    setInterviewEvaluations((previous) => {
+      if (!previous[questionId]) return previous;
+      const updated = { ...previous };
+      delete updated[questionId];
+      return updated;
+    });
+  };
+
+  const handleInterviewAnswerSubmission = (question, categoryKey) => {
+    const answer = (interviewActivity.answersByQuestion[question.id] || '').trim();
+    if (!answer) {
+      addToast('Write your answer before submitting it for review.', 'error');
+      return;
+    }
+    setInterviewEvaluations((previous) => ({
+      ...previous,
+      [question.id]: {
+        stage: 'counter',
+        counterQuestion: getInterviewCounterQuestion(categoryKey, question.id),
+        counterAnswer: '',
+      },
+    }));
+  };
+
+  const handleInterviewCounterSubmission = (question) => {
+    const evaluation = interviewEvaluations[question.id];
+    if (!evaluation?.counterAnswer.trim()) {
+      addToast('Answer the interviewer’s follow-up question before viewing your marks.', 'error');
+      return;
+    }
+    const result = evaluateInterviewAnswers({
+      question: question.question,
+      answer: interviewActivity.answersByQuestion[question.id] || '',
+      counterAnswer: evaluation.counterAnswer,
+    });
+    setInterviewEvaluations((previous) => ({
+      ...previous,
+      [question.id]: { ...evaluation, stage: 'review', result },
+    }));
   };
 
   const renderInterviewHubPage = () => {
     const summary = getInterviewProgressSummary();
+    const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
     const categoryCards = interviewCategoryOrder.map((key) => ({
       key,
       ...INTERVIEW_CATEGORY_DETAILS[key],
@@ -5484,7 +5598,10 @@ export default function App() {
               <div className="space-y-5">
                 <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-100">INTERVIEW PREPARATION</h1>
                 <p className="max-w-2xl text-sm sm:text-base text-slate-300 leading-relaxed">
-                  Practice structured responses, improve your delivery, and build confidence for the armed forces and ISSB interview process.
+                  Train for the interview, not just the question. Answer, face an interviewer-style follow-up, earn a practice score, and compare your response with a strong sample answer.
+                </p>
+                <p className="max-w-2xl text-xs leading-5 text-slate-400">
+                  Curated practice tools can help you prepare, but they are not AI and cannot guarantee selection or a passing result.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <button onClick={() => navigateTo('interview-personal')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Start Personal Practice</button>
@@ -5573,30 +5690,54 @@ export default function App() {
             <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-slate-400">Practice track</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {categoryCards.map((category) => (
-              <button
-                key={category.key}
-                type="button"
-                onClick={() => navigateTo(getInterviewPageKeyForCategory(category.key))}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-left transition hover:border-emerald-500/40 hover:bg-slate-900/90"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-400">{category.badge}</p>
-                      <h3 className="mt-2 text-lg font-bold text-slate-100">{category.title}</h3>
+            {categoryCards.map((category) => {
+              const isPaidCategory = Boolean(INTERVIEW_COUNTER_QUESTIONS[category.key]);
+              const categoryPurchase = purchaseStateMatchesUser
+                ? mockTestPurchaseState.requests.find((request) => request.test_slug === `interview-practice-${category.key}`)
+                : null;
+              const accessLabel = categoryPurchase?.status === 'APPROVED'
+                ? 'Access approved'
+                : categoryPurchase?.status === 'PENDING' ? 'Pending admin approval'
+                  : isPaidCategory ? 'PKR 50 · one-time' : 'Free';
+              return (
+                <button
+                  key={category.key}
+                  type="button"
+                  onClick={() => navigateTo(getInterviewPageKeyForCategory(category.key))}
+                  className={`group rounded-2xl border p-5 text-left transition hover:bg-slate-900/90 ${isPaidCategory
+                    ? 'motion-reduce:animate-none animate-pulse border-amber-400/50 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 shadow-[0_0_22px_rgba(251,191,36,0.16)] hover:border-amber-300 hover:shadow-[0_0_30px_rgba(251,191,36,0.3)]'
+                    : 'border-slate-800 bg-slate-900 hover:border-emerald-500/40'}`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-emerald-400">{category.badge}</p>
+                        <h3 className="mt-2 text-lg font-bold text-slate-100">{category.title}</h3>
+                      </div>
+                      {isPaidCategory
+                        ? <Sparkles className="h-5 w-5 text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
+                        : <ChevronRight className="w-5 h-5 text-slate-500" />}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                    <p className="text-sm text-slate-300 leading-relaxed">{category.description}</p>
+                    {isPaidCategory && (
+                      <div className="rounded-xl border border-amber-400/20 bg-slate-950/70 p-3">
+                        <p className="text-xs font-bold text-amber-200">Interviewer-style counter questions</p>
+                        <p className="mt-1 text-[11px] leading-5 text-slate-400">Get a practice score, actionable feedback, and a strong sample answer for every question.</p>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {category.focus.slice(0, 3).map((item) => (
+                        <span key={item} className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] text-slate-300">{item}</span>
+                      ))}
+                    </div>
+                    <p className="text-xs font-semibold text-amber-300">{accessLabel}</p>
+                    {isPaidCategory && categoryPurchase?.status !== 'APPROVED' && categoryPurchase?.status !== 'PENDING' && (
+                      <p className="text-sm font-extrabold text-amber-200 group-hover:text-amber-100">Unlock this interview track · PKR 50 →</p>
+                    )}
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{category.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {category.focus.slice(0, 3).map((item) => (
-                      <span key={item} className="rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] text-slate-300">{item}</span>
-                    ))}
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </section>
       </div>
@@ -5726,6 +5867,13 @@ export default function App() {
     const category = INTERVIEW_CATEGORY_DETAILS[categoryKey] || INTERVIEW_CATEGORY_DETAILS.personal;
     const isProgress = categoryKey === 'progress';
     const isTips = categoryKey === 'tips';
+    const isPaidCategory = Boolean(INTERVIEW_COUNTER_QUESTIONS[categoryKey]);
+    const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+    const categoryPurchase = purchaseStateMatchesUser
+      ? mockTestPurchaseState.requests.find((request) => request.test_slug === `interview-practice-${categoryKey}`)
+      : null;
+    const isApproved = categoryPurchase?.status === 'APPROVED';
+    const accessLoading = backendConfigured && (mockTestPurchaseState.loading || !purchaseStateMatchesUser);
     const questions = INTERVIEW_QUESTION_SETS[categoryKey] || [];
 
     return (
@@ -5748,7 +5896,41 @@ export default function App() {
           </div>
         </section>
 
-        {isProgress ? (
+        {isPaidCategory && !isApproved ? (
+          <section className="rounded-3xl border border-amber-500/30 bg-amber-950/20 p-6 sm:p-8 space-y-4">
+            <h2 className="text-xl font-bold text-amber-200">Unlock {category.title}</h2>
+            {accessLoading ? (
+              <p role="status" className="text-sm text-slate-300">Checking your access…</p>
+            ) : mockTestPurchaseState.error ? (
+              <div className="space-y-3">
+                <p role="alert" className="text-sm text-rose-200">Unable to verify approval: {mockTestPurchaseState.error}</p>
+                <button type="button" onClick={refreshMockTestPurchases} className="rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100">Check access again</button>
+              </div>
+            ) : categoryPurchase?.status === 'PENDING' ? (
+              <div className="space-y-3">
+                <p role="status" className="text-sm leading-6 text-amber-100/80">Your PKR 50 payment proof is pending administrator approval. This page checks for approval automatically; questions will appear here once approved.</p>
+                <button type="button" onClick={refreshMockTestPurchases} className="rounded-xl border border-amber-400/40 px-4 py-2 text-sm font-semibold text-amber-100">Check approval now</button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm leading-6 text-slate-300">Unlock interviewer-style follow-ups, practice scoring, and model answers for PKR 50 one time. Submit payment proof for administrator review; questions become available after approval.</p>
+                <p className="text-xs text-slate-400">This is a preparation aid, not an AI interviewer or a guarantee of selection. PMA Long Course 159 and all selection outcomes depend on the official process.</p>
+                {categoryPurchase?.status === 'REJECTED' && categoryPurchase.admin_notes && (
+                  <p className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3 text-sm text-rose-200">Previous payment rejected: {categoryPurchase.admin_notes}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={!backendConfigured}
+                  onClick={() => navigateTo('mock-payment', `interview-practice-${categoryKey}`)}
+                  className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Pay PKR 50 and submit proof
+                </button>
+                {!backendConfigured && <p role="alert" className="text-sm text-rose-300">Payments are unavailable because Supabase is not configured.</p>}
+              </>
+            )}
+          </section>
+        ) : isProgress ? (
           <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { label: 'Practiced questions', value: `${getInterviewProgressSummary().practicedCount}/${getInterviewProgressSummary().totalQuestions}` },
@@ -5772,11 +5954,12 @@ export default function App() {
               </article>
             ))}
           </section>
-        ) : !isProgress && questions.length > 0 ? (
+        ) : !isProgress && (!isPaidCategory || isApproved) && questions.length > 0 ? (
           <div className="space-y-5">
             {questions.map((question) => {
               const answer = interviewActivity.answersByQuestion[question.id] || '';
               const practiced = interviewActivity.practicedIds.includes(question.id);
+              const evaluation = interviewEvaluations[question.id];
               return (
                 <article key={question.id} className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-7 space-y-5">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -5824,6 +6007,61 @@ export default function App() {
                       className="min-h-[160px] w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
+
+                  {!evaluation || evaluation.stage === 'counter' ? (
+                    evaluation?.stage === 'counter' ? (
+                      <div className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5">
+                        <div>
+                          <p className="text-xs font-mono uppercase tracking-wide text-amber-300">Interviewer follow-up</p>
+                          <h3 className="mt-2 text-lg font-bold text-slate-100">{evaluation.counterQuestion}</h3>
+                        </div>
+                        <textarea
+                          value={evaluation.counterAnswer}
+                          onChange={(event) => setInterviewEvaluations((previous) => ({
+                            ...previous,
+                            [question.id]: { ...previous[question.id], counterAnswer: event.target.value },
+                          }))}
+                          aria-label={`Counter-question answer: ${evaluation.counterQuestion}`}
+                          placeholder="Respond to the interviewer’s follow-up..."
+                          className="min-h-[110px] w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                        />
+                        <button type="button" onClick={() => handleInterviewCounterSubmission(question)} className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950">
+                          Submit follow-up and see marks
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => handleInterviewAnswerSubmission(question, categoryKey)} className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950">
+                        Submit answer for feedback
+                      </button>
+                    )
+                  ) : (
+                    <section className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="text-lg font-bold text-emerald-200">Your marks</h3>
+                        <p className="text-2xl font-extrabold text-emerald-300">{evaluation.result.score}<span className="text-base text-slate-400"> / {evaluation.result.maxScore}</span></p>
+                      </div>
+                      <p className="text-xs leading-5 text-slate-400">Automated coaching rubric for relevance, structure, detail, concision, and follow-up response. It does not independently verify factual claims.</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {evaluation.result.criteria.map((criterion) => (
+                          <div key={criterion.label} className="flex justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs">
+                            <span className="text-slate-300">{criterion.label}</span>
+                            <span className="shrink-0 font-bold text-emerald-300">{criterion.score}/{criterion.max}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-slate-200">Feedback</h4>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
+                          {evaluation.result.feedback.map((item) => <li key={item}>{item}</li>)}
+                        </ul>
+                      </div>
+                      <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+                        <h4 className="font-semibold text-slate-200">Example of a strong interview answer</h4>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{INTERVIEW_MODEL_ANSWERS[question.id] || 'Build a direct answer with a truthful example, explain what you learned, and connect it to the question asked.'}</p>
+                        <p className="mt-3 text-xs text-slate-500">Use this as a sample, not a script. Replace bracketed guidance with your own truthful details, and verify current-affairs facts before your interview.</p>
+                      </div>
+                    </section>
+                  )}
                 </article>
               );
             })}
