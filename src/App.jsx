@@ -698,7 +698,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '25 mins',
     durationMinutes: 25,
     questionsCount: 50,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -711,7 +711,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '25 mins',
     durationMinutes: 25,
     questionsCount: 50,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -724,7 +724,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '25 mins',
     durationMinutes: 25,
     questionsCount: 50,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -737,7 +737,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '25 mins',
     durationMinutes: 25,
     questionsCount: 50,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -750,7 +750,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '25 mins',
     durationMinutes: 25,
     questionsCount: 50,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -763,7 +763,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '25 mins',
     durationMinutes: 25,
     questionsCount: 50,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -776,7 +776,7 @@ const PAID_PRACTICE_TEST_PRODUCTS = [
     duration: '30 mins',
     durationMinutes: 30,
     questionsCount: 10,
-    pricePkr: 14,
+    pricePkr: 20,
     practiceOnly: true,
     timed: true,
   },
@@ -4525,10 +4525,10 @@ export default function App() {
           <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
-              <span className="text-xs font-mono text-slate-400">PMA Long Course · Free</span>
+              <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR 80</span>
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-slate-100">{fullMockTest.title}</h2>
+              <h2 className="text-2xl font-bold text-slate-100">PMA Long Course 159 Mock Test 1</h2>
               <p className="text-sm leading-6 text-slate-400">{fullMockTest.description}</p>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
@@ -4549,7 +4549,7 @@ export default function App() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-extrabold text-slate-100">Notes</h1>
-        <p className="text-sm text-slate-400">Online PMA study notes · PKR 14 each</p>
+        <p className="text-sm text-slate-400">Online PMA study notes · PKR 30 each</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource).map((product) => {

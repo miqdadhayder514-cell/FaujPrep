@@ -6,7 +6,7 @@ export const PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK = {
   difficulty: 'Medium',
   duration: '120 mins',
   questionsCount: 220,
-  pricePkr: 99,
+  pricePkr: 100,
 };
 
 export default PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK;

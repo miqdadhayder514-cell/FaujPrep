@@ -9,9 +9,9 @@ insert into public.subjects (name, slug, description, display_order) values
 on conflict (slug) do nothing;
 
 insert into public.mock_tests (title, slug, description, branch_id, exam_id, duration_minutes, total_questions, difficulty, is_premium, is_active, category)
-select '1st Full Mock Test', 'first-full-mock-test',
+select 'PMA Long Course 159 Mock Test 1', 'first-full-mock-test',
        'PMA Long Course 159 full-length paper: 200 questions across verbal and non-verbal intelligence, physics, English, and general knowledge.',
-       branch.id, exam.id, 105, 200, 'MEDIUM', false, true, 'Full Mock Test'
+       branch.id, exam.id, 105, 200, 'MEDIUM', true, true, 'Full Mock Test'
 from public.military_branches branch
 join public.exams exam on exam.slug = 'pma-long-course-initial-test'
 where branch.slug = 'pak-army'

@@ -7,7 +7,7 @@ export const PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS = {
   duration: '55 mins',
   durationMinutes: 55,
   questionsCount: 120,
-  pricePkr: 49,
+  pricePkr: 60,
   timed: true,
 };
 

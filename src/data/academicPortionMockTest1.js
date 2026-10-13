@@ -6,5 +6,5 @@ export const ACADEMIC_PORTION_MOCK_TEST_1 = {
   difficulty: 'Medium',
   duration: '60 mins',
   questionsCount: 100,
-  pricePkr: 30,
+  pricePkr: 50,
 };

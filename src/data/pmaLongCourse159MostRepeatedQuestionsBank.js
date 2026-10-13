@@ -6,7 +6,7 @@ export const PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK = {
   difficulty: 'Medium',
   duration: '150 mins',
   questionsCount: 220,
-  pricePkr: 79,
+  pricePkr: 100,
 };
 
 export default PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK;

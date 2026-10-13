@@ -4,7 +4,7 @@ export const PAID_NOTE_PRODUCTS = [
     title: 'PMA Academic Notes',
     sourceFile: 'PMA_Academic_Notes.pdf',
     downloadPath: 'pma-academic-notes.pdf',
-    pricePkr: 14,
+    pricePkr: 30,
     isNote: true,
   },
   {
@@ -12,7 +12,7 @@ export const PAID_NOTE_PRODUCTS = [
     title: 'PMA Academic Tests Notes',
     sourceFile: 'PMA_Academic_Tests_Notes.pdf',
     downloadPath: 'pma-academic-tests-notes.pdf',
-    pricePkr: 14,
+    pricePkr: 30,
     isNote: true,
   },
   {
@@ -20,7 +20,7 @@ export const PAID_NOTE_PRODUCTS = [
     title: 'PMA Non-Verbal Intelligence Notes',
     sourceFile: 'PMA_Non_Verbal_Intelligence_Notes.pdf',
     downloadPath: 'pma-non-verbal-intelligence-notes.pdf',
-    pricePkr: 14,
+    pricePkr: 30,
     isNote: true,
   },
   {
@@ -28,7 +28,7 @@ export const PAID_NOTE_PRODUCTS = [
     title: 'PMA Verbal Intelligence Notes',
     sourceFile: 'PMA_Verbal_Intelligence_Notes.pdf',
     downloadPath: 'pma-verbal-intelligence-notes.pdf',
-    pricePkr: 14,
+    pricePkr: 30,
     isNote: true,
   },
   {

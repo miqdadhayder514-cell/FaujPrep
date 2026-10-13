@@ -6,7 +6,7 @@ export const PMA_LONG_COURSE_159_MOCK_TEST_2 = {
   difficulty: 'Medium',
   duration: '160 mins',
   questionsCount: 220,
-  pricePkr: 49,
+  pricePkr: 100,
 };
 
 export default PMA_LONG_COURSE_159_MOCK_TEST_2;
