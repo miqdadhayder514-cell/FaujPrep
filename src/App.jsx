@@ -1057,7 +1057,7 @@ export default function App() {
       setSubscriptionState({ loading: false, error: error.message || 'Unable to load plan details.', summary: defaultSummary });
       setBillingState({ loading: false, error: error.message || 'Unable to load billing details.', summary: defaultSummary });
     }
-  }, [backendConfigured]);
+  }, [backendConfigured, session?.user?.id]);
 
   useEffect(() => {
     refreshSubscriptionSummary();

@@ -75,7 +75,7 @@ export async function getCurrentUserSubscription() {
 
 export async function getCurrentUserAccessLevel() {
   if (!isSupabaseConfigured) return 'free';
-  const { data, error } = await supabase.rpc('get_access_level_for_user');
+  const { data, error } = await supabase.rpc('get_current_user_access_level');
   if (error) throw error;
   return ['pro', 'premium'].includes(data) ? data : 'free';
 }
