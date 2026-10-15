@@ -14,6 +14,7 @@ import { PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS } from './data
 import { PAID_NOTE_PRODUCTS } from './data/paidNotes';
 import { INTERVIEW_MODEL_ANSWERS } from './data/interviewModelAnswers';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
+import { PMA_LONG_COURSE_159_MOCK_TEST_1 } from './data/pmaLongCourse159MockTest1';
 import { PMA_LONG_COURSE_159_MOCK_TEST_5 } from './data/pmaLongCourse159MockTest5';
 import { PMA_LONG_COURSE_159_MOCK_TEST_6 } from './data/pmaLongCourse159MockTest6';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
@@ -801,6 +802,7 @@ const PAID_MOCK_TEST_PRODUCTS = [
   PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3,
   PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS,
   PMA_LONG_COURSE_159_MOCK_TEST_2,
+  PMA_LONG_COURSE_159_MOCK_TEST_1,
   PMA_LONG_COURSE_159_MOCK_TEST_5,
   PMA_LONG_COURSE_159_MOCK_TEST_6,
   PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK,
@@ -4385,6 +4387,7 @@ export default function App() {
     const pmaAcademicMockTest3 = PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3;
     const pmaMostRepeatedAcademicQuestions = PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS;
     const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
+    const pmaMockTest1 = PMA_LONG_COURSE_159_MOCK_TEST_1;
     const pmaMockTest5 = PMA_LONG_COURSE_159_MOCK_TEST_5;
     const pmaMockTest6 = PMA_LONG_COURSE_159_MOCK_TEST_6;
     const pmaMostRepeatedQuestionsBank = PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK;
@@ -4564,18 +4567,19 @@ export default function App() {
           <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
-              <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR 80</span>
+              <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {pmaMockTest1.pricePkr}</span>
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-slate-100">PMA Long Course 159 Mock Test 1</h2>
+              <h2 className="text-2xl font-bold text-slate-100">{pmaMockTest1.title}</h2>
               <p className="text-sm leading-6 text-slate-400">{fullMockTest.description}</p>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-center text-xs font-mono text-slate-300">
+            <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{fullMockTest.total_questions}</strong>Questions</div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{fullMockTest.duration_minutes}</strong>Minutes</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{pmaMockTest1.duration}</strong>Duration</div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">5</strong>Sections</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(pmaMockTest1.pricePkr)}</strong>One-time</div>
             </div>
-            <button onClick={() => navigateTo('mock-detail', fullMockTest.slug)} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-400">View Test Details</button>
+            {renderPaidTestAction(pmaMockTest1)}
           </article>
         )}
         </div>
