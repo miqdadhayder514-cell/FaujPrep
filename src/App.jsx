@@ -14,6 +14,8 @@ import { PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS } from './data
 import { PAID_NOTE_PRODUCTS } from './data/paidNotes';
 import { INTERVIEW_MODEL_ANSWERS } from './data/interviewModelAnswers';
 import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest2';
+import { PMA_LONG_COURSE_159_MOCK_TEST_5 } from './data/pmaLongCourse159MockTest5';
+import { PMA_LONG_COURSE_159_MOCK_TEST_6 } from './data/pmaLongCourse159MockTest6';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
 import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
 import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest1';
@@ -799,6 +801,8 @@ const PAID_MOCK_TEST_PRODUCTS = [
   PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3,
   PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS,
   PMA_LONG_COURSE_159_MOCK_TEST_2,
+  PMA_LONG_COURSE_159_MOCK_TEST_5,
+  PMA_LONG_COURSE_159_MOCK_TEST_6,
   PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK,
   PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK,
   NON_VERBAL_INTELLIGENCE_TEST_1,
@@ -4368,6 +4372,8 @@ export default function App() {
     const pmaAcademicMockTest3 = PMA_LONG_COURSE_159_ACADEMIC_PORTION_MOCK_TEST_3;
     const pmaMostRepeatedAcademicQuestions = PMA_LONG_COURSE_ACADEMIC_PORTION_MOST_REPEATED_QUESTIONS;
     const pmaMockTest2 = PMA_LONG_COURSE_159_MOCK_TEST_2;
+    const pmaMockTest5 = PMA_LONG_COURSE_159_MOCK_TEST_5;
+    const pmaMockTest6 = PMA_LONG_COURSE_159_MOCK_TEST_6;
     const pmaMostRepeatedQuestionsBank = PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK;
     const pmaMustComeQuestionsBank = PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK;
     const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
@@ -4484,6 +4490,26 @@ export default function App() {
           </div>
           {renderPaidTestAction(pmaMockTest2)}
         </article>
+
+        {[pmaMockTest5, pmaMockTest6].map((product) => (
+          <article key={product.id} className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
+              <span className="text-xs font-mono text-slate-400">PMA Long Course · PKR {product.pricePkr}</span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-slate-100">{product.title}</h2>
+              <p className="text-sm leading-6 text-slate-400">A complete 220-question PMA Long Course 159 paper covering verbal and non-verbal intelligence, Mathematics, Pakistan Studies, Physics, English, General Knowledge, and Islamic Studies. Includes rendered figure questions and worked answer explanations.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{product.questionsCount}</strong>Questions</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{product.duration}</strong>Duration</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">8</strong>Sections</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{formatPKR(product.pricePkr)}</strong>One-time</div>
+            </div>
+            {renderPaidTestAction(product)}
+          </article>
+        ))}
 
         <article className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
