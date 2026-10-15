@@ -22,7 +22,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest
 import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
-import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
+import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
 import { evaluateInterviewAnswers } from './lib/interviewEvaluation';
@@ -1045,15 +1045,23 @@ export default function App() {
     }
 
     try {
-      const summary = await getCurrentUserSubscription();
-      setSubscriptionState({ loading: false, error: null, summary: summary || { subscription: { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 }, transactions: [] } });
-      setBillingState({ loading: false, error: null, summary: summary || { subscription: { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 }, transactions: [] } });
+      const [summary, accessLevel] = await Promise.all([getCurrentUserSubscription(), getCurrentUserAccessLevel()]);
+      const normalizedSummary = summary || { subscription: { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 }, transactions: [] };
+      const effectiveSummary = ['pro', 'premium'].includes(accessLevel) && !['pro', 'premium'].includes(normalizedSummary.subscription?.plan_slug)
+        ? { ...normalizedSummary, subscription: { ...normalizedSummary.subscription, plan_slug: accessLevel, plan_name: accessLevel === 'pro' ? 'Pro' : 'Premium', status: 'ACTIVE' } }
+        : normalizedSummary;
+      setSubscriptionState({ loading: false, error: null, summary: effectiveSummary });
+      setBillingState({ loading: false, error: null, summary: effectiveSummary });
     } catch (error) {
       const defaultSummary = { subscription: { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 }, transactions: [] };
       setSubscriptionState({ loading: false, error: error.message || 'Unable to load plan details.', summary: defaultSummary });
       setBillingState({ loading: false, error: error.message || 'Unable to load billing details.', summary: defaultSummary });
     }
   }, [backendConfigured]);
+
+  useEffect(() => {
+    refreshSubscriptionSummary();
+  }, [refreshSubscriptionSummary, session?.user?.id]);
 
   const refreshMockTestPurchases = useCallback(async () => {
     if (!backendConfigured) {
@@ -1109,7 +1117,7 @@ export default function App() {
       try {
         const currentSession = await ensureAnonymousSession();
         const requests = await getMyMockTestPurchases();
-        if (!requests.some((request) => (
+        if (!canAccessPremiumResources && !requests.some((request) => (
           (request.test_slug === product.id || (product.id === 'pma-academic-notes' && request.test_slug === 'pa-academic-notes'))
           && request.status === 'APPROVED'
         ))) {
@@ -1639,7 +1647,12 @@ export default function App() {
   }, [practiceCatalog, practiceSearch, practiceForceFilter, practiceCategoryFilter, practiceDifficultyFilter]);
 
   const activeSubscription = subscriptionState.summary?.subscription || { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 };
-  const activePlanSlug = activeSubscription.plan_slug || 'free';
+  const approvedPaidPlan = (subscriptionState.summary?.transactions || []).find((transaction) => (
+    ['APPROVED', 'SUCCESS'].includes(transaction.status) && ['pro', 'premium'].includes(transaction.plan_slug)
+  ));
+  const activePlanSlug = ['pro', 'premium'].includes(activeSubscription.plan_slug)
+    ? activeSubscription.plan_slug
+    : approvedPaidPlan?.plan_slug || 'free';
   const accessLevel = ['pro', 'premium'].includes(activePlanSlug) ? activePlanSlug : 'free';
   const canAccessPremiumResources = ['pro', 'premium'].includes(activePlanSlug);
   const selectedPlan = useMemo(() => {
@@ -1828,7 +1841,7 @@ export default function App() {
       const currentSession = await ensureAnonymousSession();
       const requests = await getMyMockTestPurchases();
       setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
-      if (!requests.some((request) => request.test_slug === 'live-interview-assessment' && request.status === 'APPROVED')) {
+      if (!canAccessPremiumResources && !requests.some((request) => request.test_slug === 'live-interview-assessment' && request.status === 'APPROVED')) {
         throw new Error('Your PKR 250 live interview payment must be approved before you can upload a video.');
       }
       await submitLiveInterviewVideo({ userId: currentSession.user.id, videoFile: liveInterviewVideoFile });
@@ -1864,7 +1877,7 @@ export default function App() {
       const currentSession = await ensureAnonymousSession();
       const requests = await getMyMockTestPurchases();
       setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
-      const hasApprovedPurchase = requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
+      const hasApprovedPurchase = canAccessPremiumResources || requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
       if (!hasApprovedPurchase) {
         if (product.practiceOnly) navigateTo('practice-payment', product.id);
         else navigateTo('mock-payment', product.id);
@@ -4118,7 +4131,7 @@ export default function App() {
             const purchaseRequest = purchaseStateMatchesUser
               ? mockTestPurchaseState.requests.find((request) => request.test_slug === item.paidProduct.id)
               : null;
-            const hasPaidTestAccess = purchaseRequest?.status === 'APPROVED';
+            const hasPaidTestAccess = canAccessPremiumResources || purchaseRequest?.status === 'APPROVED';
             const paymentPending = purchaseRequest?.status === 'PENDING';
 
             return (
@@ -4276,7 +4289,7 @@ export default function App() {
     if (!product) return render404Page();
     const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
     const latestRequest = purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((request) => request.test_slug === product.id) : null;
-    const hasAccess = latestRequest?.status === 'APPROVED';
+    const hasAccess = canAccessPremiumResources || latestRequest?.status === 'APPROVED';
     const paymentBlocked = !backendConfigured || mockTestPaymentState.loading || latestRequest?.status === 'PENDING';
 
     return (
@@ -4380,7 +4393,7 @@ export default function App() {
     const getPurchaseRequest = (product) => purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((request) => request.test_slug === product.id) : null;
     const renderPaidTestAction = (product) => {
       const request = getPurchaseRequest(product);
-      if (request?.status === 'APPROVED') {
+      if (canAccessPremiumResources || request?.status === 'APPROVED') {
         return <button onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{paidMockTestLoading ? product.isNote ? 'Opening notes...' : 'Loading test...' : product.isNote ? 'View Notes' : 'Start Test'}</button>;
       }
       if (request?.status === 'PENDING') {
@@ -4593,7 +4606,7 @@ export default function App() {
                 <h2 className="text-lg font-bold leading-snug text-slate-100">{product.title}</h2>
                 <p className="text-sm font-semibold text-emerald-300">{formatPKR(product.pricePkr)}</p>
               </div>
-              {request?.status === 'APPROVED' ? (
+              {canAccessPremiumResources || request?.status === 'APPROVED' ? (
                 <button type="button" onClick={() => navigateTo('paid-note-viewer', product.id)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950">
                   <BookOpen className="h-4 w-4" />View Notes
                 </button>
@@ -5775,7 +5788,7 @@ export default function App() {
     const purchase = purchaseStateMatchesUser
       ? mockTestPurchaseState.requests.find((request) => request.test_slug === 'live-interview-assessment')
       : null;
-    const isApproved = purchase?.status === 'APPROVED';
+    const isApproved = canAccessPremiumResources || purchase?.status === 'APPROVED';
     const questions = [
       'Gentleman, introduce yourself.',
       'Why do you want to join the military forces?',
@@ -5898,7 +5911,7 @@ export default function App() {
     const categoryPurchase = purchaseStateMatchesUser
       ? mockTestPurchaseState.requests.find((request) => request.test_slug === `interview-practice-${categoryKey}`)
       : null;
-    const isApproved = categoryPurchase?.status === 'APPROVED';
+    const isApproved = canAccessPremiumResources || categoryPurchase?.status === 'APPROVED';
     const accessLoading = backendConfigured && (mockTestPurchaseState.loading || !purchaseStateMatchesUser);
     const questions = INTERVIEW_QUESTION_SETS[categoryKey] || [];
 

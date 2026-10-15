@@ -73,6 +73,13 @@ export async function getCurrentUserSubscription() {
   return data || { subscription: { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 }, transactions: [] };
 }
 
+export async function getCurrentUserAccessLevel() {
+  if (!isSupabaseConfigured) return 'free';
+  const { data, error } = await supabase.rpc('get_access_level_for_user');
+  if (error) throw error;
+  return ['pro', 'premium'].includes(data) ? data : 'free';
+}
+
 export async function createPlanCheckout(planSlug) {
   if (!isSupabaseConfigured) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
