@@ -2,7 +2,7 @@ import { isSupabaseConfigured, supabase } from './supabase';
 
 export const PLAN_VALUES = {
   free: { id: 'free', slug: 'free', name: 'Free', price_pkr: 0 },
-  pro: { id: 'pro', slug: 'pro', name: 'Pro', price_pkr: 1999 },
+  pro: { id: 'pro', slug: 'pro', name: 'Pro', price_pkr: 1200 },
   premium: { id: 'premium', slug: 'premium', name: 'Premium', price_pkr: 4999 },
 };
 
@@ -31,7 +31,7 @@ export const DEFAULT_PLAN_CATALOG = [
     slug: 'pro',
     name: 'Pro',
     description: 'Expanded question practice and premium preparation access.',
-    price_pkr: 1999,
+    price_pkr: 1200,
     billing_interval: 'ONE_TIME',
     is_active: true,
     display_order: 2,

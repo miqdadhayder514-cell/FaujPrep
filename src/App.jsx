@@ -4658,7 +4658,7 @@ export default function App() {
   const renderPricingPage = () => {
     const plans = planCatalog.length ? planCatalog : [
       { slug: 'free', name: 'Free', description: 'Basic preparation access with premium resources protected.', price_pkr: 0, billing_interval: 'ONE_TIME' },
-      { slug: 'pro', name: 'Pro', description: 'Expanded access for serious preparation and premium resources.', price_pkr: 1999, billing_interval: 'ONE_TIME' },
+      { slug: 'pro', name: 'Pro', description: 'Expanded access for serious preparation and premium resources.', price_pkr: 1200, billing_interval: 'ONE_TIME' },
       { slug: 'premium', name: 'Premium', description: 'Full premium access including all protected study and practice content.', price_pkr: 4999, billing_interval: 'ONE_TIME' },
     ];
 
@@ -4714,9 +4714,11 @@ export default function App() {
                     {isPremium && <span className="text-[10px] font-bold bg-amber-500 text-slate-950 px-2 py-1 rounded-full">Best Value</span>}
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <h2 className="text-3xl font-extrabold text-slate-100">{plan.slug === 'free' ? 'PKR 0' : formatPKR(plan.price_pkr)}</h2>
+                  <div className="space-y-2">
+                    {plan.slug === 'pro' && <div className="inline-flex rounded-full bg-gradient-to-r from-fuchsia-500 via-rose-500 to-orange-400 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white shadow-lg shadow-rose-950/40">Flat 40% Discount</div>}
+                    <div className="flex flex-wrap items-baseline gap-3">
+                      {plan.slug === 'pro' && <span className="text-lg font-bold text-slate-500 line-through decoration-rose-400 decoration-2">Rs 1,999</span>}
+                      <h2 className={`font-extrabold ${plan.slug === 'pro' ? 'text-4xl text-emerald-300' : 'text-3xl text-slate-100'}`}>{plan.slug === 'free' ? 'PKR 0' : formatPKR(plan.price_pkr)}</h2>
                     </div>
                     <p className="text-xs text-slate-400">{plan.description}</p>
                   </div>
