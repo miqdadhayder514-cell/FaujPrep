@@ -109,7 +109,7 @@ alter table public.mock_test_purchase_requests
       'interview-practice-rapid-fire',
       'interview-practice-mock'
     ) and amount_pkr in (50, 70))
-  );
+  ) not valid;
 
 create or replace function public.submit_mock_test_payment_proof(
   p_test_slug text,
