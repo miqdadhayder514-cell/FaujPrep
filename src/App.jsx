@@ -22,6 +22,7 @@ import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCour
 import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest1';
 import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
+import { WAT_TESTS } from './data/watTests';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
@@ -225,6 +226,16 @@ const ISSB_MODULES = [
   { id: 'issb-discussion', title: 'Group Discussion', desc: 'Topic analysis frameworks and communication guidelines for indoors indoor group discussions.', category: 'GTO Tasks' },
   { id: 'issb-gto', title: 'GTO Preparation', desc: 'Understanding group planning exercises, progressive group tasks, half group tasks, and command tasks.', category: 'GTO Tasks' },
   { id: 'issb-interview', title: 'Interview Preparation', desc: 'Structured guidance on deputy president interview questions, personal dossier defense, and general knowledge.', category: 'Interview' },
+];
+
+const ISSB_PSYCHOLOGICAL_TESTS = [
+  { id: 'wat', title: 'Word Association Test (WAT)', description: 'Practice forming clear, constructive responses to stimulus words under time pressure.' },
+  { id: 'sct', title: 'Sentence Completion Test (SCT)', description: 'Complete sentence stems naturally and consistently while reflecting your own thinking.' },
+  { id: 'picture-story', title: 'Picture Story Writing Test', description: 'Build concise, realistic stories from pictures with a clear beginning, action, and outcome.' },
+  { id: 'srt', title: 'Situation Reaction Test (SRT)', description: 'Work through everyday situations with practical, responsible, and decisive reactions.' },
+  { id: 'self-description', title: 'Self-Description Test', description: 'Reflect on how you see yourself and how people close to you may describe you.' },
+  { id: 'psychological-interview', title: 'Psychological Interview', description: 'Prepare for honest, consistent conversations about your experiences, goals, and personality.' },
+  { id: 'mechanical-aptitude', title: 'Mechanical Aptitude Test', description: 'Strengthen practical reasoning around tools, machines, motion, and mechanical principles.' },
 ];
 
 const PRACTICE_BANK = [
@@ -942,6 +953,7 @@ export default function App() {
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
   const [practiceSession, setPracticeSession] = useState({ mode: 'practice', questions: [], index: 0, selectedOption: '', result: null, score: 0, attemptId: null, expiresAt: null });
   const [practiceSessionLoading, setPracticeSessionLoading] = useState(false);
+  const [watSession, setWatSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
   const [mockSecondsLeft, setMockSecondsLeft] = useState(null);
   const [mockAnswers, setMockAnswers] = useState({});
   const mockAnswersRef = useRef({});
@@ -1213,6 +1225,9 @@ export default function App() {
       'mock-payment': value ? `/mock-tests/${encodeURIComponent(value)}/payment` : '/mock-tests',
       'practice-payment': value ? `/practice-tests/${encodeURIComponent(value)}/payment` : '/practice',
       issb: '/issb',
+      'issb-psychological-tests': '/issb/psychological-tests',
+      'wat-tests': '/issb/wat',
+      'wat-test': value !== null ? `/issb/wat/${encodeURIComponent(value)}` : '/issb/wat',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
       'paid-note-viewer': value ? `/notes/${encodeURIComponent(value)}` : '/resources',
@@ -1246,6 +1261,18 @@ export default function App() {
     const route = routeFromPage(page, forceId);
     if (route) window.history.pushState({}, '', route);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const startWATTest = (testIndex) => {
+    setWatSession({ testIndex, index: 0, answers: {}, started: true, completed: false, startedAt: Date.now(), now: Date.now() });
+    navigateTo('wat-test', testIndex);
+  };
+
+  const updateWATAnswer = (answer) => {
+    setWatSession((previous) => ({
+      ...previous,
+      answers: { ...previous.answers, [previous.index]: answer },
+    }));
   };
 
   const navigateToNotificationAction = (actionUrl) => {
@@ -1353,6 +1380,9 @@ export default function App() {
       if (normalizedPath === '/paf') { setCurrentPage('paf'); setSelectedForceId(null); return; }
       if (normalizedPath === '/navy') { setCurrentPage('navy'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb') { setCurrentPage('issb'); setSelectedForceId(null); return; }
+      if (normalizedPath === '/issb/psychological-tests') { setCurrentPage('issb-psychological-tests'); setSelectedForceId(null); return; }
+      if (normalizedPath === '/issb/wat') { setCurrentPage('wat-tests'); setSelectedForceId(null); return; }
+      if (normalizedPath.startsWith('/issb/wat/')) { setCurrentPage('wat-test'); setSelectedForceId(decodeSlug(path.slice('/issb/wat/'.length))); return; }
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
@@ -2290,6 +2320,21 @@ export default function App() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [practiceSession.mode, practiceSession.expiresAt, currentPage]);
+
+  useEffect(() => {
+    if (currentPage !== 'wat-test' || !watSession.started || watSession.completed || watSession.startedAt === null) return undefined;
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - watSession.startedAt) / 1000);
+      const nextIndex = Math.floor(elapsedSeconds / 15);
+      setWatSession((previous) => ({
+        ...previous,
+        now: Date.now(),
+        index: Math.min(nextIndex, 50),
+        completed: nextIndex >= 50,
+      }));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [currentPage, watSession.started, watSession.completed, watSession.startedAt]);
 
   useEffect(() => {
     if (!['dashboard', 'admin', 'admin-analytics'].includes(currentPage) || !session?.user || !backendConfigured) return undefined;
@@ -3844,7 +3889,7 @@ export default function App() {
                     <h3 className="text-xl font-bold text-slate-100">{module.title}</h3>
                     <p className="text-sm text-slate-400 leading-relaxed">{module.description || 'No description is available for this module yet.'}</p>
                   </div>
-                  <button onClick={() => navigateTo('issb-detail', module.slug)} className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-200 font-semibold text-xs">Open Module</button>
+                  <button onClick={() => module.slug === 'psychological-preparation' ? navigateTo('issb-psychological-tests') : navigateTo('issb-detail', module.slug)} className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-200 font-semibold text-xs">Open Module</button>
                 </article>
               ))}
             </div>
@@ -3952,6 +3997,103 @@ export default function App() {
           </div>
         </section>
         </div>
+      </div>
+    );
+  };
+
+  const renderISSBPsychologicalTestsPage = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'Psychological Tests' }]} />
+
+      <section className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-950/50 via-slate-900 to-slate-950 p-8 sm:p-12 space-y-4">
+        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em] text-amber-300">
+          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+          ISSB Psychological Preparation
+        </div>
+        <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-100">Choose a psychological test</h1>
+        <p className="max-w-3xl text-sm sm:text-base leading-relaxed text-slate-300">
+          Select an area to study and practice. Use these exercises to build self-awareness and response discipline, not to memorize artificial answers.
+        </p>
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {ISSB_PSYCHOLOGICAL_TESTS.map((test, index) => (
+          <article key={test.id} className="flex flex-col justify-between gap-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-amber-500/50">
+            <div className="space-y-3">
+              <span className="text-xs font-mono text-amber-400">TEST 0{index + 1}</span>
+              <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
+              <p className="text-sm leading-relaxed text-slate-400">{test.description}</p>
+            </div>
+            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
+              {test.id === 'wat' ? 'Choose WAT test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
+            </button>
+          </article>
+        ))}
+      </section>
+
+      <div className="flex flex-wrap gap-3">
+        <button onClick={() => navigateTo('issb')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to ISSB Preparation</button>
+        <button onClick={() => navigateTo('practice')} className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-5 py-3 text-sm font-semibold text-emerald-300">Open Practice Bank</button>
+      </div>
+    </div>
+  );
+
+  const renderWATTestsPage = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'Psychological Tests', href: '/issb/psychological-tests' }, { label: 'WAT Tests' }]} />
+      <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
+        <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Word Association Test</span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Choose a WAT practice test</h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each test contains 50 words. After starting, one word appears for 15 seconds, matching the real ISSB-style pace.</p>
+        <p className="text-sm font-semibold text-amber-300">Answers will appear after the test ends. Practice yourself first, then see the answers.</p>
+      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {WAT_TESTS.map((test, index) => (
+          <article key={test.title} className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-5">
+            <div className="space-y-2">
+              <span className="text-xs font-mono text-amber-400">TEST 0{index + 1}</span>
+              <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
+              <p className="text-sm text-slate-400">50 words · 15 seconds per word · 12 minutes 30 seconds</p>
+            </div>
+            <button onClick={() => startWATTest(index)} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Start test</button>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderWATTestPage = () => {
+    const test = WAT_TESTS[watSession.testIndex];
+    if (!test || !watSession.started) return renderWATTestsPage();
+    const currentEntry = test.entries[watSession.index];
+    const elapsedInWord = watSession.startedAt === null ? 0 : Math.floor((watSession.now - watSession.startedAt) / 1000) % 15;
+    const secondsRemaining = Math.max(1, 15 - elapsedInWord);
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'WAT Tests', href: '/issb/wat' }, { label: test.title }]} />
+        {!watSession.completed ? (
+          <>
+            <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-6 sm:p-10 space-y-6 text-center">
+              <div className="flex items-center justify-between text-xs font-mono text-slate-400"><span>{test.title}</span><span>Word {watSession.index + 1} of 50</span></div>
+              <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 px-5 py-12 sm:py-20">
+                <p className="text-4xl sm:text-6xl font-extrabold text-amber-300">{currentEntry?.word}</p>
+              </div>
+              <div className="space-y-2">
+                <div className="mx-auto h-2 max-w-md overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-amber-500 transition-all" style={{ width: `${(secondsRemaining / 15) * 100}%` }} /></div>
+                <p className="text-sm font-semibold text-amber-300">Next word in {secondsRemaining}s</p>
+              </div>
+              <label className="block text-left"><span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Your sentence</span><textarea value={watSession.answers[watSession.index] || ''} onChange={(event) => updateWATAnswer(event.target.value)} placeholder="Write your first natural response..." className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500" /></label>
+              <p className="text-xs text-slate-500">Answers will appear after the test ends. Practice yourself first, then see the answers.</p>
+            </section>
+          </>
+        ) : (
+          <section className="space-y-6">
+            <div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-10 space-y-3"><span className="text-xs font-mono uppercase text-emerald-400">Test complete</span><h1 className="text-3xl font-extrabold text-slate-100">Review your WAT responses</h1><p className="text-sm text-slate-300">Your responses were kept private during the test. Compare them with the model answers only after completing all 50 words.</p></div>
+            <div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.word}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.word}</span><span className="text-[10px] uppercase text-slate-500">Answer revealed</span></div><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your response:</span> {watSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Model answer:</span> {entry.answer}</p></article>)}</div>
+            <div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('wat-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div>
+          </section>
+        )}
       </div>
     );
   };
@@ -6128,6 +6270,12 @@ export default function App() {
         return renderForcePage('navy');
       case 'issb':
         return renderISSBHubPage();
+      case 'issb-psychological-tests':
+        return renderISSBPsychologicalTestsPage();
+      case 'wat-tests':
+        return renderWATTestsPage();
+      case 'wat-test':
+        return renderWATTestPage();
       case 'issb-detail':
         return renderISSBModulePage();
       case 'exam':
