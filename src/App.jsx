@@ -24,6 +24,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { WAT_TESTS } from './data/watTests';
 import { SCT_TESTS } from './data/sctTests';
+import { SRT_TESTS } from './data/srtTests';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
@@ -1231,6 +1232,8 @@ export default function App() {
       'wat-test': value !== null ? `/issb/wat/${encodeURIComponent(value)}` : '/issb/wat',
       'sct-tests': '/issb/sct',
       'sct-test': value !== null ? `/issb/sct/${encodeURIComponent(value)}` : '/issb/sct',
+      'srt-tests': '/issb/srt',
+      'srt-test': value !== null ? `/issb/srt/${encodeURIComponent(value)}` : '/issb/srt',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
       'paid-note-viewer': value ? `/notes/${encodeURIComponent(value)}` : '/resources',
@@ -1288,6 +1291,25 @@ export default function App() {
       ...previous,
       answers: { ...previous.answers, [previous.index]: answer },
     }));
+  };
+
+  const startSRTTest = (testIndex) => {
+    setSrtSession({ testIndex, index: 0, answers: {}, started: true, completed: false, startedAt: Date.now(), now: Date.now() });
+    navigateTo('srt-test', testIndex);
+  };
+
+  const updateSRTAnswer = (answer) => {
+    setSrtSession((previous) => ({
+      ...previous,
+      answers: { ...previous.answers, [previous.index]: answer },
+    }));
+  };
+
+  const nextSRTQuestion = () => {
+    setSrtSession((previous) => {
+      const nextIndex = previous.index + 1;
+      return { ...previous, index: nextIndex, completed: nextIndex >= 10, startedAt: Date.now(), now: Date.now() };
+    });
   };
 
   const navigateToNotificationAction = (actionUrl) => {
@@ -1400,7 +1422,10 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/wat/')) { setCurrentPage('wat-test'); setSelectedForceId(decodeSlug(path.slice('/issb/wat/'.length))); return; }
       if (normalizedPath === '/issb/sct') { setCurrentPage('sct-tests'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/issb/sct/')) { setCurrentPage('sct-test'); setSelectedForceId(decodeSlug(path.slice('/issb/sct/'.length))); return; }
+      if (normalizedPath === '/issb/srt') { setCurrentPage('srt-tests'); setSelectedForceId(null); return; }
+      if (normalizedPath.startsWith('/issb/srt/')) { setCurrentPage('srt-test'); setSelectedForceId(decodeSlug(path.slice('/issb/srt/'.length))); return; }
         const [sctSession, setSctSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
+        const [srtSession, setSrtSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
@@ -2368,6 +2393,23 @@ export default function App() {
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, sctSession.started, sctSession.completed, sctSession.startedAt]);
+
+  useEffect(() => {
+    if (currentPage !== 'srt-test' || !srtSession.started || srtSession.completed || srtSession.startedAt === null) return undefined;
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - srtSession.startedAt) / 1000);
+      setSrtSession((previous) => ({
+        ...previous,
+        now: Date.now(),
+        ...(elapsedSeconds >= 50 ? {
+          index: Math.min(previous.index + Math.floor(elapsedSeconds / 50), 10),
+          completed: previous.index + Math.floor(elapsedSeconds / 50) >= 10,
+          startedAt: Date.now(),
+        } : {}),
+      }));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [currentPage, srtSession.started, srtSession.completed, srtSession.startedAt]);
 
   useEffect(() => {
     if (!['dashboard', 'admin', 'admin-analytics'].includes(currentPage) || !session?.user || !backendConfigured) return undefined;
@@ -4057,8 +4099,8 @@ export default function App() {
               <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
               <p className="text-sm leading-relaxed text-slate-400">{test.description}</p>
             </div>
-            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
-              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
+            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
+              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
             </button>
           </article>
         ))}
@@ -4171,6 +4213,48 @@ export default function App() {
           </section>
         ) : (
           <section className="space-y-6"><div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-10 space-y-3"><span className="text-xs font-mono uppercase text-emerald-400">Test complete</span><h1 className="text-3xl font-extrabold text-slate-100">Review your SCT responses</h1><p className="text-sm text-slate-300">Your completions were kept private during the test. Compare them with the model answers only after completing all 20 stems.</p></div><div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.stem}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.stem}</span><span className="text-[10px] uppercase text-slate-500">Answer revealed</span></div><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your completion:</span> {sctSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Model answer:</span> {entry.answer}</p></article>)}</div><div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('sct-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div></section>
+        )}
+      </div>
+    );
+  };
+
+  const renderSRTTestsPage = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'Psychological Tests', href: '/issb/psychological-tests' }, { label: 'SRT Tests' }]} />
+      <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
+        <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Situation Reaction Test</span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Choose an SRT practice test</h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each test contains 10 generated ISSB-style situations across social conflict, family responsibility, emergencies, discipline, ethics, leadership, practical problems, and stressful situations.</p>
+        <p className="text-sm font-semibold text-amber-300">Each question has 50 seconds. You may move to the next question early. Answers will appear after the test ends.</p>
+      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {SRT_TESTS.map((test, index) => (
+          <article key={test.title} className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-5"><div className="space-y-2"><span className="text-xs font-mono text-amber-400">TEST 0{index + 1}</span><h2 className="text-xl font-bold text-slate-100">{test.title}</h2><p className="text-sm text-slate-400">10 situations · 50 seconds each · 8 minutes 20 seconds maximum</p></div><button onClick={() => startSRTTest(index)} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Start test</button></article>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderSRTTestPage = () => {
+    const test = SRT_TESTS[srtSession.testIndex];
+    if (!test || !srtSession.started) return renderSRTTestsPage();
+    const currentEntry = test.entries[srtSession.index];
+    const elapsedInQuestion = srtSession.startedAt === null ? 0 : Math.floor((srtSession.now - srtSession.startedAt) / 1000) % 50;
+    const secondsRemaining = Math.max(1, 50 - elapsedInQuestion);
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'SRT Tests', href: '/issb/srt' }, { label: test.title }]} />
+        {!srtSession.completed ? (
+          <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-6 sm:p-10 space-y-6">
+            <div className="flex items-center justify-between text-xs font-mono text-slate-400"><span>{test.title}</span><span>Question {srtSession.index + 1} of 10</span></div>
+            <div className="flex items-center justify-between gap-3"><span className="rounded-full border border-amber-500/30 bg-amber-950/30 px-3 py-1 text-[10px] uppercase tracking-widest text-amber-300">{currentEntry?.category}</span><span className="text-sm font-bold text-amber-300">{secondsRemaining}s</span></div>
+            <article className="rounded-2xl border border-slate-700 bg-slate-950 p-6 sm:p-8"><h1 className="text-xl sm:text-2xl font-bold leading-relaxed text-slate-100">{currentEntry?.question}</h1></article>
+            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Your reaction</span><textarea value={srtSession.answers[srtSession.index] || ''} onChange={(event) => updateSRTAnswer(event.target.value)} placeholder="Write the action you would take..." className="min-h-32 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500" /></label>
+            <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">The question changes automatically after 50 seconds.</p><button onClick={nextSRTQuestion} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Next question <ArrowRight className="ml-1 inline h-4 w-4" /></button></div>
+          </section>
+        ) : (
+          <section className="space-y-6"><div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-10 space-y-3"><span className="text-xs font-mono uppercase text-emerald-400">Test complete</span><h1 className="text-3xl font-extrabold text-slate-100">Review your SRT responses</h1><p className="text-sm text-slate-300">Your reactions were kept private during the test. Compare them with the suitable model responses after completing all 10 situations.</p></div><div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.question}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.category}</span><span className="text-[10px] uppercase text-slate-500">Answer revealed</span></div><p className="font-semibold text-slate-200">{entry.question}</p><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your reaction:</span> {srtSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Suitable response:</span> {entry.answer}</p></article>)}</div><div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('srt-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div></section>
         )}
       </div>
     );
@@ -6358,6 +6442,10 @@ export default function App() {
         return renderSCTTestsPage();
       case 'sct-test':
         return renderSCTTestPage();
+      case 'srt-tests':
+        return renderSRTTestsPage();
+      case 'srt-test':
+        return renderSRTTestPage();
       case 'issb-detail':
         return renderISSBModulePage();
       case 'exam':
