@@ -956,6 +956,8 @@ export default function App() {
   const [practiceSession, setPracticeSession] = useState({ mode: 'practice', questions: [], index: 0, selectedOption: '', result: null, score: 0, attemptId: null, expiresAt: null });
   const [practiceSessionLoading, setPracticeSessionLoading] = useState(false);
   const [watSession, setWatSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
+  const [sctSession, setSctSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
+  const [srtSession, setSrtSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
   const [mockSecondsLeft, setMockSecondsLeft] = useState(null);
   const [mockAnswers, setMockAnswers] = useState({});
   const mockAnswersRef = useRef({});
@@ -1424,8 +1426,6 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/sct/')) { setCurrentPage('sct-test'); setSelectedForceId(decodeSlug(path.slice('/issb/sct/'.length))); return; }
       if (normalizedPath === '/issb/srt') { setCurrentPage('srt-tests'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/issb/srt/')) { setCurrentPage('srt-test'); setSelectedForceId(decodeSlug(path.slice('/issb/srt/'.length))); return; }
-        const [sctSession, setSctSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
-        const [srtSession, setSrtSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
