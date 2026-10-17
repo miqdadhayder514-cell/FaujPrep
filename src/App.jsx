@@ -23,6 +23,7 @@ import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest
 import { NON_VERBAL_INTELLIGENCE_TEST_2 } from './data/nonVerbalIntelligenceTest2';
 import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { WAT_TESTS } from './data/watTests';
+import { SCT_TESTS } from './data/sctTests';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
@@ -1228,6 +1229,8 @@ export default function App() {
       'issb-psychological-tests': '/issb/psychological-tests',
       'wat-tests': '/issb/wat',
       'wat-test': value !== null ? `/issb/wat/${encodeURIComponent(value)}` : '/issb/wat',
+      'sct-tests': '/issb/sct',
+      'sct-test': value !== null ? `/issb/sct/${encodeURIComponent(value)}` : '/issb/sct',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
       'paid-note-viewer': value ? `/notes/${encodeURIComponent(value)}` : '/resources',
@@ -1270,6 +1273,18 @@ export default function App() {
 
   const updateWATAnswer = (answer) => {
     setWatSession((previous) => ({
+      ...previous,
+      answers: { ...previous.answers, [previous.index]: answer },
+    }));
+  };
+
+  const startSCTTest = (testIndex) => {
+    setSctSession({ testIndex, index: 0, answers: {}, started: true, completed: false, startedAt: Date.now(), now: Date.now() });
+    navigateTo('sct-test', testIndex);
+  };
+
+  const updateSCTAnswer = (answer) => {
+    setSctSession((previous) => ({
       ...previous,
       answers: { ...previous.answers, [previous.index]: answer },
     }));
@@ -1383,6 +1398,9 @@ export default function App() {
       if (normalizedPath === '/issb/psychological-tests') { setCurrentPage('issb-psychological-tests'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb/wat') { setCurrentPage('wat-tests'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/issb/wat/')) { setCurrentPage('wat-test'); setSelectedForceId(decodeSlug(path.slice('/issb/wat/'.length))); return; }
+      if (normalizedPath === '/issb/sct') { setCurrentPage('sct-tests'); setSelectedForceId(null); return; }
+      if (normalizedPath.startsWith('/issb/sct/')) { setCurrentPage('sct-test'); setSelectedForceId(decodeSlug(path.slice('/issb/sct/'.length))); return; }
+        const [sctSession, setSctSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
@@ -2335,6 +2353,21 @@ export default function App() {
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, watSession.started, watSession.completed, watSession.startedAt]);
+
+  useEffect(() => {
+    if (currentPage !== 'sct-test' || !sctSession.started || sctSession.completed || sctSession.startedAt === null) return undefined;
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - sctSession.startedAt) / 1000);
+      const nextIndex = Math.floor(elapsedSeconds / 12);
+      setSctSession((previous) => ({
+        ...previous,
+        now: Date.now(),
+        index: Math.min(nextIndex, 20),
+        completed: nextIndex >= 20,
+      }));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [currentPage, sctSession.started, sctSession.completed, sctSession.startedAt]);
 
   useEffect(() => {
     if (!['dashboard', 'admin', 'admin-analytics'].includes(currentPage) || !session?.user || !backendConfigured) return undefined;
@@ -4024,8 +4057,8 @@ export default function App() {
               <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
               <p className="text-sm leading-relaxed text-slate-400">{test.description}</p>
             </div>
-            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
-              {test.id === 'wat' ? 'Choose WAT test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
+            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
+              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
             </button>
           </article>
         ))}
@@ -4093,6 +4126,51 @@ export default function App() {
             <div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.word}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.word}</span><span className="text-[10px] uppercase text-slate-500">Answer revealed</span></div><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your response:</span> {watSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Model answer:</span> {entry.answer}</p></article>)}</div>
             <div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('wat-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div>
           </section>
+        )}
+      </div>
+    );
+  };
+
+  const renderSCTTestsPage = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'Psychological Tests', href: '/issb/psychological-tests' }, { label: 'SCT Tests' }]} />
+      <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
+        <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Sentence Completion Test</span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Choose an SCT practice test</h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each test contains 20 sentence stems. The visible sentence stem changes every 12 seconds, matching the timed practice rhythm.</p>
+        <p className="text-sm font-semibold text-amber-300">Answers will appear after the test ends. Practice yourself first, then see the answers.</p>
+      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {SCT_TESTS.map((test, index) => (
+          <article key={test.title} className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-5">
+            <div className="space-y-2"><span className="text-xs font-mono text-amber-400">TEST 0{index + 1}</span><h2 className="text-xl font-bold text-slate-100">{test.title}</h2><p className="text-sm text-slate-400">20 sentence stems · 12 seconds per stem · 4 minutes</p></div>
+            <button onClick={() => startSCTTest(index)} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Start test</button>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderSCTTestPage = () => {
+    const test = SCT_TESTS[sctSession.testIndex];
+    if (!test || !sctSession.started) return renderSCTTestsPage();
+    const currentEntry = test.entries[sctSession.index];
+    const elapsedInStem = sctSession.startedAt === null ? 0 : Math.floor((sctSession.now - sctSession.startedAt) / 1000) % 12;
+    const secondsRemaining = Math.max(1, 12 - elapsedInStem);
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'ISSB', href: '/issb' }, { label: 'SCT Tests', href: '/issb/sct' }, { label: test.title }]} />
+        {!sctSession.completed ? (
+          <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-6 sm:p-10 space-y-6 text-center">
+            <div className="flex items-center justify-between text-xs font-mono text-slate-400"><span>{test.title}</span><span>Stem {sctSession.index + 1} of 20</span></div>
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 px-5 py-12 sm:py-20"><p className="text-2xl sm:text-4xl font-extrabold text-amber-300">{currentEntry?.stem} ...</p></div>
+            <div className="space-y-2"><div className="mx-auto h-2 max-w-md overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-amber-500 transition-all" style={{ width: `${(secondsRemaining / 12) * 100}%` }} /></div><p className="text-sm font-semibold text-amber-300">Next sentence in {secondsRemaining}s</p></div>
+            <label className="block text-left"><span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Your completion</span><textarea value={sctSession.answers[sctSession.index] || ''} onChange={(event) => updateSCTAnswer(event.target.value)} placeholder="Complete the sentence naturally..." className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500" /></label>
+            <p className="text-xs text-slate-500">Answers will appear after the test ends. Practice yourself first, then see the answers.</p>
+          </section>
+        ) : (
+          <section className="space-y-6"><div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-10 space-y-3"><span className="text-xs font-mono uppercase text-emerald-400">Test complete</span><h1 className="text-3xl font-extrabold text-slate-100">Review your SCT responses</h1><p className="text-sm text-slate-300">Your completions were kept private during the test. Compare them with the model answers only after completing all 20 stems.</p></div><div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.stem}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.stem}</span><span className="text-[10px] uppercase text-slate-500">Answer revealed</span></div><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your completion:</span> {sctSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Model answer:</span> {entry.answer}</p></article>)}</div><div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('sct-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div></section>
         )}
       </div>
     );
@@ -6276,6 +6354,10 @@ export default function App() {
         return renderWATTestsPage();
       case 'wat-test':
         return renderWATTestPage();
+      case 'sct-tests':
+        return renderSCTTestsPage();
+      case 'sct-test':
+        return renderSCTTestPage();
       case 'issb-detail':
         return renderISSBModulePage();
       case 'exam':
