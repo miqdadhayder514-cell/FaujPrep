@@ -4,7 +4,7 @@
     {
       "source": "/:path*",
       "destination": "https://faujprep.issb.workers.dev/:path*",
-      "permanent": true
+      "permanent": false
     }
   ],
   "rewrites": [
