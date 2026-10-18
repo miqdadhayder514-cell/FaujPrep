@@ -1,4 +1,12 @@
+
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://faujprep.issb.workers.dev/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/search", "destination": "/index.html" },
     { "source": "/interview", "destination": "/index.html" },
