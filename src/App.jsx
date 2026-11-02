@@ -29,6 +29,7 @@ import { MOST_REPEATED_PHYSICS_PRACTICE } from './data/mostRepeatedPhysicsMcqs';
 import { WAT_TESTS } from './data/watTests';
 import { SCT_TESTS } from './data/sctTests';
 import { SRT_TESTS } from './data/srtTests';
+import { PICTURE_STORIES } from './data/pictureStories';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteContent, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
@@ -290,7 +291,7 @@ const ISSB_MODULES = [
 const ISSB_PSYCHOLOGICAL_TESTS = [
   { id: 'wat', title: 'Word Association Test (WAT)', description: 'Practice forming clear, constructive responses to stimulus words under time pressure.' },
   { id: 'sct', title: 'Sentence Completion Test (SCT)', description: 'Complete sentence stems naturally and consistently while reflecting your own thinking.' },
-  { id: 'picture-story', title: 'Picture Story Writing Test', description: 'Build concise, realistic stories from pictures with a clear beginning, action, and outcome.' },
+  { id: 'picture-stories', title: 'Picture Story Writing Test', description: 'Build concise, realistic stories from pictures with a clear beginning, action, and outcome.' },
   { id: 'srt', title: 'Situation Reaction Test (SRT)', description: 'Work through everyday situations with practical, responsible, and decisive reactions.' },
   { id: 'self-description', title: 'Self-Description Test', description: 'Reflect on how you see yourself and how people close to you may describe you.' },
   { id: 'psychological-interview', title: 'Psychological Interview', description: 'Prepare for honest, consistent conversations about your experiences, goals, and personality.' },
@@ -1028,6 +1029,7 @@ export default function App() {
   const [watSession, setWatSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
   const [sctSession, setSctSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
   const [srtSession, setSrtSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
+  const [pictureStorySession, setPictureStorySession] = useState({ testId: null, response: '', startedAt: null, now: Date.now(), completed: false, sampleAnswerVisible: false });
   const [mockSecondsLeft, setMockSecondsLeft] = useState(null);
   const [mockAnswers, setMockAnswers] = useState({});
   const mockAnswersRef = useRef({});
@@ -1309,6 +1311,8 @@ export default function App() {
       'practice-payment': value ? `/practice-tests/${encodeURIComponent(value)}/payment` : '/practice',
       issb: '/issb',
       'issb-psychological-tests': '/issb/psychological-tests',
+      'issb-picture-stories': '/issb/psychological-tests/picturestories',
+      'issb-picture-story': value !== null ? `/issb/psychological-tests/picturestories/${encodeURIComponent(value)}` : '/issb/psychological-tests/picturestories',
       'wat-tests': '/issb/wat',
       'wat-test': value !== null ? `/issb/wat/${encodeURIComponent(value)}` : '/issb/wat',
       'sct-tests': '/issb/sct',
@@ -1384,6 +1388,20 @@ export default function App() {
       ...previous,
       answers: { ...previous.answers, [previous.index]: answer },
     }));
+  };
+
+  const startPictureStoryTest = (testId) => {
+    const now = Date.now();
+    setPictureStorySession({ testId, response: '', startedAt: now, now, completed: false, sampleAnswerVisible: false });
+    navigateTo('issb-picture-story', testId);
+  };
+
+  const updatePictureStoryResponse = (response) => {
+    setPictureStorySession((previous) => previous.completed ? previous : { ...previous, response });
+  };
+
+  const togglePictureStorySampleAnswer = () => {
+    setPictureStorySession((previous) => ({ ...previous, sampleAnswerVisible: !previous.sampleAnswerVisible }));
   };
 
   const nextSRTQuestion = () => {
@@ -1499,6 +1517,16 @@ export default function App() {
       if (normalizedPath === '/navy') { setCurrentPage('navy'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb') { setCurrentPage('issb'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb/psychological-tests') { setCurrentPage('issb-psychological-tests'); setSelectedForceId(null); return; }
+      if (normalizedPath === '/issb/psychological-tests/picturestories') { setCurrentPage('issb-picture-stories'); setSelectedForceId(null); return; }
+      const pictureStoryPath = path.match(/^\/issb\/psychological-tests\/picturestories\/([^/]+)$/i);
+      if (pictureStoryPath) {
+        const testId = decodeSlug(pictureStoryPath[1]);
+        const now = Date.now();
+        setCurrentPage('issb-picture-story');
+        setSelectedForceId(testId);
+        setPictureStorySession({ testId, response: '', startedAt: now, now, completed: false, sampleAnswerVisible: false });
+        return;
+      }
       if (normalizedPath === '/issb/wat') { setCurrentPage('wat-tests'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/issb/wat/')) { setCurrentPage('wat-test'); setSelectedForceId(decodeSlug(path.slice('/issb/wat/'.length))); return; }
       if (normalizedPath === '/issb/sct') { setCurrentPage('sct-tests'); setSelectedForceId(null); return; }
@@ -2480,6 +2508,22 @@ export default function App() {
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, srtSession.started, srtSession.completed, srtSession.startedAt]);
+
+  useEffect(() => {
+    if (currentPage !== 'issb-picture-story' || !selectedForceId || pictureStorySession.testId !== selectedForceId || pictureStorySession.startedAt === null || pictureStorySession.completed) return undefined;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setPictureStorySession((previous) => {
+        if (previous.testId !== selectedForceId || previous.startedAt === null || previous.completed) return previous;
+        return {
+          ...previous,
+          now,
+          completed: now - previous.startedAt >= 150_000,
+        };
+      });
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [currentPage, selectedForceId, pictureStorySession.testId, pictureStorySession.startedAt, pictureStorySession.completed]);
 
   useEffect(() => {
     if (!['dashboard', 'admin', 'admin-analytics'].includes(currentPage) || !session?.user || !backendConfigured) return undefined;
@@ -4169,8 +4213,8 @@ export default function App() {
               <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
               <p className="text-sm leading-relaxed text-slate-400">{test.description}</p>
             </div>
-            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
-              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
+            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : test.id === 'picture-stories' ? navigateTo('issb-picture-stories') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
+              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : test.id === 'picture-stories' ? 'Choose picture test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
             </button>
           </article>
         ))}
@@ -4182,6 +4226,109 @@ export default function App() {
       </div>
     </div>
   );
+
+  const renderPictureStoriesPage = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <Breadcrumbs items={[
+        { label: 'Home', href: '/' },
+        { label: 'ISSB', href: '/issb' },
+        { label: 'Psychological Tests', href: '/issb/psychological-tests' },
+        { label: 'Picture Stories' },
+      ]} />
+      <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
+        <span className="text-xs font-mono uppercase tracking-widest text-amber-400">ISSB · Free practice</span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Picture Story Tests</h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Choose one of eight picture prompts. Each test gives you 2 minutes 30 seconds to study the picture and write your story. The sample answer stays hidden until the timer ends and you choose to view it.</p>
+      </section>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {PICTURE_STORIES.map((story) => (
+          <article key={story.id} className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <div className="space-y-2">
+              <span className="text-xs font-mono text-amber-400">FREE · 2:30</span>
+              <h2 className="text-xl font-bold text-slate-100">{story.title}</h2>
+              <p className="text-sm text-slate-400">One picture · One timed story · Sample answer after completion</p>
+            </div>
+            <button type="button" onClick={() => startPictureStoryTest(story.id)} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">Open test</button>
+          </article>
+        ))}
+      </div>
+      <button type="button" onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button>
+    </div>
+  );
+
+  const renderPictureStoryTestPage = () => {
+    const story = PICTURE_STORIES.find((item) => item.id === selectedForceId);
+    if (!story) {
+      return (
+        <div className="mx-auto max-w-4xl space-y-5 px-4 py-10 sm:px-6 lg:px-8">
+          <div role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-6 text-rose-200">This picture story test is not available.</div>
+          <button type="button" onClick={() => navigateTo('issb-picture-stories')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Choose another test</button>
+        </div>
+      );
+    }
+
+    if (pictureStorySession.testId !== story.id || pictureStorySession.startedAt === null) {
+      return <div role="status" className="mx-auto max-w-4xl px-4 py-10 text-sm text-slate-300">Starting your timed test...</div>;
+    }
+
+    const secondsRemaining = Math.max(0, 150 - Math.floor((pictureStorySession.now - pictureStorySession.startedAt) / 1000));
+    const timeLabel = `${String(Math.floor(secondsRemaining / 60)).padStart(2, '0')}:${String(secondsRemaining % 60).padStart(2, '0')}`;
+
+    return (
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+        <Breadcrumbs items={[
+          { label: 'Home', href: '/' },
+          { label: 'ISSB', href: '/issb' },
+          { label: 'Psychological Tests', href: '/issb/psychological-tests' },
+          { label: 'Picture Stories', href: '/issb/psychological-tests/picturestories' },
+          { label: story.title },
+        ]} />
+        <section className="space-y-5 rounded-3xl border border-amber-500/30 bg-slate-900 p-5 sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Free picture story test</span>
+              <h1 className="mt-2 text-2xl font-extrabold text-slate-100 sm:text-3xl">{story.title}</h1>
+            </div>
+            <div role="timer" aria-live="off" className={`rounded-xl border px-4 py-2 text-lg font-bold tabular-nums ${pictureStorySession.completed ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-amber-500/40 bg-amber-950/30 text-amber-300'}`}>
+              {pictureStorySession.completed ? 'Time complete' : `Time left ${timeLabel}`}
+            </div>
+          </div>
+          <img
+            src={story.image}
+            alt={`Picture prompt for ${story.title}`}
+            className="max-h-[55vh] w-full rounded-2xl border border-slate-700 bg-slate-950 object-contain"
+          />
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-200">{pictureStorySession.completed ? 'Your story' : 'Write your story before the timer ends'}</span>
+            <textarea
+              value={pictureStorySession.response}
+              onChange={(event) => updatePictureStoryResponse(event.target.value)}
+              disabled={pictureStorySession.completed}
+              placeholder="Write a brief, realistic story inspired by the picture..."
+              className="min-h-48 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-slate-100 outline-none focus:border-amber-500 disabled:text-slate-300"
+            />
+          </label>
+          {!pictureStorySession.completed ? (
+            <p className="text-sm text-slate-400">The test will finish automatically when the 2 minutes 30 seconds are up. Your writing stays on this page and is not submitted to a server.</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-emerald-300">Test complete. Review your story first, then choose whether to view the sample answer.</p>
+              <button type="button" onClick={togglePictureStorySampleAnswer} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">
+                {pictureStorySession.sampleAnswerVisible ? 'Hide sample answer' : 'View sample answer'}
+              </button>
+              {pictureStorySession.sampleAnswerVisible && (
+                <article className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5 sm:p-6">
+                  <h2 className="mb-3 text-lg font-bold text-emerald-300">Sample answer</h2>
+                  <p className="text-sm leading-7 text-slate-200">{story.sampleAnswer}</p>
+                </article>
+              )}
+            </div>
+          )}
+        </section>
+        <button type="button" onClick={() => navigateTo('issb-picture-stories')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Choose another picture test</button>
+      </div>
+    );
+  };
 
   const renderWATTestsPage = () => (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -6516,6 +6663,10 @@ export default function App() {
         return renderISSBHubPage();
       case 'issb-psychological-tests':
         return renderISSBPsychologicalTestsPage();
+      case 'issb-picture-stories':
+        return renderPictureStoriesPage();
+      case 'issb-picture-story':
+        return renderPictureStoryTestPage();
       case 'wat-tests':
         return renderWATTestsPage();
       case 'wat-test':
