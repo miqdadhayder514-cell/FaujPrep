@@ -248,6 +248,21 @@ export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
   return URL.createObjectURL(data);
 }
 
+export async function getPaidNoteContent(noteSlug) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Viewing paid notes requires a configured account.');
+  }
+
+  const { data, error } = await supabase.rpc('get_paid_note_content', {
+    p_note_slug: noteSlug,
+  });
+  if (error) throw error;
+  if (!data?.content_markdown || !data?.title) {
+    throw new Error('This note is not available yet. Apply the PMA LC 160 notes database migration.');
+  }
+  return data;
+}
+
 export async function getMyMockTestPurchases() {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase.rpc('get_my_mock_test_purchases');

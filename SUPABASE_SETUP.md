@@ -35,14 +35,15 @@ Never put the service-role key in `.env.local`, commit it, or share it in chat. 
 
 ### Publishing the PMA Long Course 160 preparation notes
 
-Apply `supabase/migrations/057_paid_pma_lc160_preparation_notes.sql` in the Supabase SQL Editor after the earlier migrations. From `my-app`, generate the ten PDFs from their editable Markdown sources and upload the new collection to the private bucket:
+Apply migrations `057_paid_pma_lc160_preparation_notes.sql` and `058_pma_lc160_notes_in_database.sql` in numeric order after the earlier migrations. Migration 058 seeds all ten note texts directly into a private database table; no PDF upload or service-role key is needed to publish or view this collection.
+
+To regenerate the printable PDFs and refresh migration 058 from the editable Markdown sources, run this from `my-app`:
 
 ```powershell
-npm run generate:lc160-notes
-npm run upload:paid-notes -- --collection=pma-lc160
+npm.cmd run generate:lc160-notes
 ```
 
-Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the local process environment for the upload command only. Do not make the bucket public. The ten notes are individually priced at PKR 30 and remain locked until payment approval or eligible Pro/Premium access.
+The ten notes are individually priced at PKR 30 and remain locked until payment approval or eligible Pro/Premium access. The older PDF upload flow remains available for other paid notes.
 
 When variables are absent, FaujPrep shows an explicit database setup notice. It does not pretend that authentication, live content, or progress tracking are connected.
 

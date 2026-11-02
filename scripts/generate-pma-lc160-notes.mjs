@@ -2,6 +2,7 @@ import { readdir, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+import { PAID_NOTE_PRODUCTS } from '../src/data/paidNotes.js';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const notesDirectory = resolve(scriptDirectory, '../notes/pma-lc160');
@@ -149,3 +150,95 @@ for (const [index, fileName] of markdownFiles.entries()) {
   await writeFile(outputPath, Buffer.concat(chunks));
   console.log(`Created ${outputPath}`);
 }
+
+const collectionProducts = PAID_NOTE_PRODUCTS.filter((product) => product.collection === 'pma-lc160');
+if (collectionProducts.length !== markdownFiles.length) {
+  throw new Error(`Expected ${markdownFiles.length} LC 160 note products; found ${collectionProducts.length}.`);
+}
+
+const sqlRows = await Promise.all(collectionProducts.map(async (product) => {
+  const markdown = await readFile(join(notesDirectory, product.sourceFile.replace(/\.pdf$/i, '.md')), 'utf8');
+  if (!markdown.match(/^#\s+(.+)$/m)) throw new Error(`Missing title for paid note ${product.id}.`);
+  const encodedContent = Buffer.from(markdown, 'utf8').toString('base64');
+  return `  ('${product.id}', '${product.title.replace(/'/g, "''")}', convert_from(decode('${encodedContent}', 'base64'), 'UTF8'))`;
+}));
+
+const noteSlugs = collectionProducts.map((product) => `'${product.id}'`).join(',\n    ');
+const noteRows = sqlRows.join(',\n');
+const migration = `-- Seed PMA Long Course 160 note content in Supabase so no Storage upload is required.
+begin;
+
+create table if not exists public.paid_note_contents (
+  note_slug text primary key,
+  title text not null,
+  content_markdown text not null,
+  updated_at timestamptz not null default now(),
+  constraint paid_note_contents_slug_check check (note_slug in (
+    ${noteSlugs}
+  ))
+);
+
+alter table public.paid_note_contents enable row level security;
+revoke all on table public.paid_note_contents from public, anon, authenticated;
+
+insert into public.paid_note_contents (note_slug, title, content_markdown)
+values
+${noteRows}
+on conflict (note_slug) do update
+set title = excluded.title,
+    content_markdown = excluded.content_markdown,
+    updated_at = now();
+
+create or replace function public.get_paid_note_content(p_note_slug text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_content public.paid_note_contents%rowtype;
+begin
+  if v_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+  if p_note_slug is null or p_note_slug not in (
+    ${noteSlugs}
+  ) then
+    raise exception 'This paid note is not available';
+  end if;
+  if public.get_access_level_for_user(v_user_id) not in ('pro', 'premium')
+    and not exists (
+      select 1
+      from public.mock_test_purchase_requests purchase
+      where purchase.user_id = v_user_id
+        and purchase.test_slug = p_note_slug
+        and purchase.status = 'APPROVED'
+    ) then
+    raise exception 'An approved purchase or active Pro plan is required to view this note';
+  end if;
+
+  select * into v_content
+  from public.paid_note_contents
+  where note_slug = p_note_slug;
+  if not found then
+    raise exception 'Paid note content is not available';
+  end if;
+
+  return jsonb_build_object(
+    'note_slug', v_content.note_slug,
+    'title', v_content.title,
+    'content_markdown', v_content.content_markdown
+  );
+end;
+$$;
+
+revoke all on function public.get_paid_note_content(text) from public, anon;
+grant execute on function public.get_paid_note_content(text) to authenticated;
+
+commit;
+`;
+
+const migrationPath = resolve(scriptDirectory, '../supabase/migrations/058_pma_lc160_notes_in_database.sql');
+await writeFile(migrationPath, migration, 'utf8');
+console.log(`Created ${migrationPath}`);

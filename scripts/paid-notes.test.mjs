@@ -5,6 +5,7 @@ import { PAID_NOTE_PRODUCTS } from '../src/data/paidNotes.js';
 
 const migration = await readFile(new URL('../supabase/migrations/039_paid_note_downloads.sql', import.meta.url), 'utf8');
 const lc160Migration = await readFile(new URL('../supabase/migrations/057_paid_pma_lc160_preparation_notes.sql', import.meta.url), 'utf8');
+const lc160ContentMigration = await readFile(new URL('../supabase/migrations/058_pma_lc160_notes_in_database.sql', import.meta.url), 'utf8');
 const interviewMigration = await readFile(new URL('../supabase/migrations/042_paid_interview_preparation_pdf.sql', import.meta.url), 'utf8');
 const doubleExtensionMigration = await readFile(new URL('../supabase/migrations/043_paid_interview_pdf_double_extension.sql', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
@@ -101,4 +102,25 @@ test('LC 160 notes use PKR 30 purchase validation and approved-purchase storage 
   assert.match(lc160Migration, /when p_note_slug like 'pma-lc160-%' then 30/);
   assert.match(lc160Migration, /and amount_pkr = 30/);
   assert.match(lc160Migration, /purchase\.status = 'APPROVED'/);
+});
+
+test('LC 160 note text is seeded by migration and retrieved through purchase-gated RPC', async () => {
+  assert.match(lc160ContentMigration, /create table if not exists public\.paid_note_contents/);
+  assert.match(lc160ContentMigration, /alter table public\.paid_note_contents enable row level security/);
+  assert.match(lc160ContentMigration, /revoke all on table public\.paid_note_contents from public, anon, authenticated/);
+  assert.match(lc160ContentMigration, /create or replace function public\.get_paid_note_content/);
+  assert.match(lc160ContentMigration, /purchase\.status = 'APPROVED'/);
+  assert.match(lc160ContentMigration, /active Pro plan/);
+  assert.match(lc160ContentMigration, /p_note_slug is null or p_note_slug not in/);
+  assert.match(lc160ContentMigration, /grant execute on function public\.get_paid_note_content\(text\) to authenticated/);
+  assert.doesNotMatch(lc160ContentMigration, /storage\.objects|create policy/i);
+  assert.match(subscriptionsSource, /rpc\('get_paid_note_content'/);
+  assert.match(appSource, /getPaidNoteContent\(product\.id\)/);
+  assert.match(appSource, /renderPaidNoteMarkdown\(paidNoteViewerState\.content\)/);
+
+  for (const product of PAID_NOTE_PRODUCTS.filter((item) => item.collection === 'pma-lc160')) {
+    const markdownPath = new URL(`../notes/pma-lc160/${product.sourceFile.replace(/\.pdf$/i, '.md')}`, import.meta.url);
+    const markdown = await readFile(markdownPath, 'utf8');
+    assert.ok(lc160ContentMigration.includes(Buffer.from(markdown, 'utf8').toString('base64')));
+  }
 });

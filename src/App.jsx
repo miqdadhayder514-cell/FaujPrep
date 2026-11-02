@@ -30,7 +30,7 @@ import { WAT_TESTS } from './data/watTests';
 import { SCT_TESTS } from './data/sctTests';
 import { SRT_TESTS } from './data/srtTests';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
-import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
+import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteContent, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from './lib/adminAccess';
 import { evaluateInterviewAnswers } from './lib/interviewEvaluation';
@@ -129,6 +129,59 @@ const renderGuideInlineText = (text) => String(text).split(/(\*\*[^*]+\*\*)/g).m
     ? <strong key={index} className="font-bold text-slate-100">{part.slice(2, -2)}</strong>
     : part
 ));
+
+const renderPaidNoteInlineText = (text) => String(text).split(/(\[[^\]]+\]\(https:\/\/[^)\s]+\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g).map((part, index) => {
+  const link = part.match(/^\[([^\]]+)\]\((https:\/\/[^)\s]+)\)$/);
+  if (link) {
+    return <a key={index} href={link[2]} target="_blank" rel="noreferrer" className="text-emerald-300 underline underline-offset-4">{link[1]}</a>;
+  }
+  if (part.startsWith('**') && part.endsWith('**')) {
+    return <strong key={index} className="font-bold text-slate-100">{part.slice(2, -2)}</strong>;
+  }
+  if (part.startsWith('`') && part.endsWith('`')) {
+    return <code key={index} className="rounded bg-slate-800 px-1.5 py-0.5 text-emerald-200">{part.slice(1, -1)}</code>;
+  }
+  if (part.startsWith('*') && part.endsWith('*')) {
+    return <em key={index}>{part.slice(1, -1)}</em>;
+  }
+  return part;
+});
+
+const renderPaidNoteMarkdown = (content) => String(content || '').split(/\r?\n\s*\r?\n/).map((rawBlock, index) => {
+  const lines = rawBlock.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return null;
+
+  const heading = lines.length === 1 && lines[0].match(/^(#{1,3})\s+(.+)$/);
+  if (heading) {
+    const [, hashes, title] = heading;
+    const Heading = hashes.length === 1 ? 'h2' : hashes.length === 2 ? 'h3' : 'h4';
+    const headingClass = hashes.length === 1
+      ? 'pt-4 text-2xl font-bold leading-tight text-slate-100'
+      : hashes.length === 2
+        ? 'pt-3 text-xl font-bold leading-tight text-slate-100'
+        : 'pt-2 text-lg font-bold leading-tight text-slate-100';
+    if (hashes.length === 1) return null;
+    return <Heading key={index} className={headingClass}>{renderPaidNoteInlineText(title)}</Heading>;
+  }
+
+  if (lines.every((line) => /^-\s+/.test(line))) {
+    return (
+      <ul key={index} className="list-disc space-y-1 pl-6 text-slate-200">
+        {lines.map((line, lineIndex) => <li key={lineIndex} className="pl-1 leading-7">{renderPaidNoteInlineText(line.replace(/^-\s+/, ''))}</li>)}
+      </ul>
+    );
+  }
+
+  if (lines.every((line) => /^\d+\.\s+/.test(line))) {
+    return (
+      <ol key={index} className="list-decimal space-y-1 pl-6 text-slate-200">
+        {lines.map((line, lineIndex) => <li key={lineIndex} className="pl-1 leading-7">{renderPaidNoteInlineText(line.replace(/^\d+\.\s+/, ''))}</li>)}
+      </ol>
+    );
+  }
+
+  return <p key={index} className="text-base leading-7 text-slate-200">{renderPaidNoteInlineText(lines.join(' '))}</p>;
+});
 
 const renderStudyGuideContent = (content) => String(content || '').split(/\r?\n/).map((rawLine, index) => {
   const line = rawLine.trim();
@@ -859,6 +912,15 @@ export default function App() {
       transactions: [],
     },
   });
+  const activeSubscription = subscriptionState.summary?.subscription || { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 };
+  const approvedPaidPlan = (subscriptionState.summary?.transactions || []).find((transaction) => (
+    ['APPROVED', 'SUCCESS'].includes(transaction.status) && ['pro', 'premium'].includes(transaction.plan_slug)
+  ));
+  const activePlanSlug = ['pro', 'premium'].includes(activeSubscription.plan_slug)
+    ? activeSubscription.plan_slug
+    : approvedPaidPlan?.plan_slug || 'free';
+  const accessLevel = ['pro', 'premium'].includes(activePlanSlug) ? activePlanSlug : 'free';
+  const canAccessPremiumResources = ['pro', 'premium'].includes(activePlanSlug);
   const [billingState, setBillingState] = useState({
     loading: false,
     error: null,
@@ -892,7 +954,7 @@ export default function App() {
   const [liveInterviewUpload, setLiveInterviewUpload] = useState({ loading: false, error: null, success: null });
   const [liveInterviewVideoFile, setLiveInterviewVideoFile] = useState(null);
   const [liveInterviewConsent, setLiveInterviewConsent] = useState(false);
-  const [paidNoteViewerState, setPaidNoteViewerState] = useState({ loading: false, error: null, url: null });
+  const [paidNoteViewerState, setPaidNoteViewerState] = useState({ loading: false, error: null, url: null, content: null });
   const [adminPaymentQueue, setAdminPaymentQueue] = useState([]);
   const [adminPaymentAction, setAdminPaymentAction] = useState({ loading: false, error: null });
   const [adminInterviewSubmissions, setAdminInterviewSubmissions] = useState({ loading: false, error: null, items: [] });
@@ -1126,19 +1188,19 @@ export default function App() {
 
   useEffect(() => {
     if (currentPage !== 'paid-note-viewer') {
-      setPaidNoteViewerState({ loading: false, error: null, url: null });
+      setPaidNoteViewerState({ loading: false, error: null, url: null, content: null });
       return undefined;
     }
 
     const product = PAID_NOTE_PRODUCTS.find((item) => item.id === selectedForceId);
     if (!product) {
-      setPaidNoteViewerState({ loading: false, error: 'This note is not available.', url: null });
+      setPaidNoteViewerState({ loading: false, error: 'This note is not available.', url: null, content: null });
       return undefined;
     }
 
     let active = true;
-  let objectUrl = null;
-    setPaidNoteViewerState({ loading: true, error: null, url: null });
+    let objectUrl = null;
+    setPaidNoteViewerState({ loading: true, error: null, url: null, content: null });
     const loadPaidNote = async () => {
       try {
         const currentSession = await ensureAnonymousSession();
@@ -1149,13 +1211,21 @@ export default function App() {
         ))) {
           throw new Error('An approved purchase is required to view this note.');
         }
+        if (product.collection === 'pma-lc160') {
+          const noteContent = await getPaidNoteContent(product.id);
+          if (!active) return;
+          setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
+          setPaidNoteViewerState({ loading: false, error: null, url: null, content: noteContent.content_markdown });
+          return;
+        }
+
         objectUrl = await getPaidNoteViewerUrl(product.id, product.downloadPath);
         if (!active) {
           URL.revokeObjectURL(objectUrl);
           return;
         }
         setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
-        setPaidNoteViewerState({ loading: false, error: null, url: objectUrl });
+        setPaidNoteViewerState({ loading: false, error: null, url: objectUrl, content: null });
       } catch (error) {
         if (active) {
           const missingFile = /object not found|not found/i.test(error.message || '');
@@ -1165,6 +1235,7 @@ export default function App() {
               ? 'The Crack Interview PDF has not been uploaded to the private paid-notes storage bucket yet. An administrator must upload it as pma-long-course-159-interview-fully-cracked.pdf.'
               : missingFile ? 'This PDF is not available yet. Please contact support.' : error.message || 'Unable to load this note.',
             url: null,
+            content: null,
           });
         }
       }
@@ -1175,7 +1246,7 @@ export default function App() {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [currentPage, selectedForceId, session?.user?.id]);
+  }, [canAccessPremiumResources, currentPage, selectedForceId, session?.user?.id]);
 
   useEffect(() => {
     if (currentPage !== 'interview-live') {
@@ -1729,15 +1800,6 @@ export default function App() {
     });
   }, [practiceCatalog, practiceSearch, practiceForceFilter, practiceCategoryFilter, practiceDifficultyFilter]);
 
-  const activeSubscription = subscriptionState.summary?.subscription || { plan_slug: 'free', plan_name: 'Free', status: 'ACTIVE', price_pkr: 0 };
-  const approvedPaidPlan = (subscriptionState.summary?.transactions || []).find((transaction) => (
-    ['APPROVED', 'SUCCESS'].includes(transaction.status) && ['pro', 'premium'].includes(transaction.plan_slug)
-  ));
-  const activePlanSlug = ['pro', 'premium'].includes(activeSubscription.plan_slug)
-    ? activeSubscription.plan_slug
-    : approvedPaidPlan?.plan_slug || 'free';
-  const accessLevel = ['pro', 'premium'].includes(activePlanSlug) ? activePlanSlug : 'free';
-  const canAccessPremiumResources = ['pro', 'premium'].includes(activePlanSlug);
   const selectedPlan = useMemo(() => {
     if (!planCatalog.length) {
       return { slug: 'free', name: 'Free', price_pkr: 0 };
@@ -4953,8 +5015,9 @@ export default function App() {
         <button type="button" onClick={() => navigateTo(product?.interviewResource ? 'interview' : 'resources')} className="text-sm font-semibold text-emerald-400 hover:text-emerald-300">Back to {product?.interviewResource ? 'Interview Preparation' : 'Notes'}</button>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold text-slate-100">{product?.title || 'View Notes'}</h1>
-          <span className="text-xs font-mono text-slate-400">Purchased note</span>
+          <span className="text-xs font-mono text-slate-400">{product?.collection === 'pma-lc160' ? 'PMA Long Course 160 Preparation' : 'Purchased note'}</span>
         </div>
+        {product?.collection === 'pma-lc160' && <p className="text-sm leading-6 text-slate-400">Use these examples as practice, not memorized answers. Follow your latest official instructions; preparation cannot guarantee selection.</p>}
         {paidNoteViewerState.loading && <div role="status" className="flex h-[70dvh] min-h-[420px] items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-sm text-slate-400">Preparing your note...</div>}
         {paidNoteViewerState.error && (
           <div role="alert" className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-xl border border-rose-500/30 bg-rose-950/20 p-6 text-center">
@@ -4968,6 +5031,11 @@ export default function App() {
             src={paidNoteViewerState.url}
             className="h-[75dvh] min-h-[480px] w-full rounded-xl border border-slate-800 bg-white"
           />
+        )}
+        {paidNoteViewerState.content && (
+          <article className="mx-auto max-w-4xl space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6 sm:p-9">
+            {renderPaidNoteMarkdown(paidNoteViewerState.content)}
+          </article>
         )}
       </div>
     );
