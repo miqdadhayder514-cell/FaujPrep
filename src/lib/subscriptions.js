@@ -228,6 +228,16 @@ export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
     'pma-non-verbal-intelligence-notes': 'pma-non-verbal-intelligence-notes.pdf',
     'pma-verbal-intelligence-notes': 'pma-verbal-intelligence-notes.pdf',
     'pma-long-course-159-interview-fully-cracked': 'pma-long-course-159-interview-fully-cracked.pdf.pdf',
+    'pma-lc160-initial-test-foundations': 'pma-lc160-initial-test-foundations.pdf',
+    'pma-lc160-initial-test-practice-plan': 'pma-lc160-initial-test-practice-plan.pdf',
+    'pma-lc160-interview-introduction': 'pma-lc160-interview-introduction.pdf',
+    'pma-lc160-interview-personal-questions': 'pma-lc160-interview-personal-questions.pdf',
+    'pma-lc160-interview-current-affairs': 'pma-lc160-interview-current-affairs.pdf',
+    'pma-lc160-issb-group-discussion': 'pma-lc160-issb-group-discussion.pdf',
+    'pma-lc160-issb-psychological-preparation': 'pma-lc160-issb-psychological-preparation.pdf',
+    'pma-lc160-issb-leadership': 'pma-lc160-issb-leadership.pdf',
+    'pma-lc160-physical-progressive-training': 'pma-lc160-physical-progressive-training.pdf',
+    'pma-lc160-physical-test-day': 'pma-lc160-physical-test-day.pdf',
   };
   if (allowedPaths[noteSlug] !== downloadPath) {
     throw new Error('This paid note download is not available.');

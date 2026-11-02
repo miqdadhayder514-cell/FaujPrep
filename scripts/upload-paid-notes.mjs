@@ -5,11 +5,17 @@ import { createClient } from '@supabase/supabase-js';
 import { PAID_NOTE_PRODUCTS } from '../src/data/paidNotes.js';
 
 const requestedProductId = process.argv.find((argument) => argument.startsWith('--product='))?.slice('--product='.length);
+const requestedCollection = process.argv.find((argument) => argument.startsWith('--collection='))?.slice('--collection='.length);
+if (requestedProductId && requestedCollection) {
+  throw new Error('Choose either --product= or --collection=, not both.');
+}
 const products = requestedProductId
   ? PAID_NOTE_PRODUCTS.filter((product) => product.id === requestedProductId)
-  : PAID_NOTE_PRODUCTS;
+  : requestedCollection
+    ? PAID_NOTE_PRODUCTS.filter((product) => product.collection === requestedCollection)
+    : PAID_NOTE_PRODUCTS;
 if (!products.length) {
-  throw new Error(`Unknown paid-note product: ${requestedProductId}`);
+  throw new Error(`No paid-note products found for ${requestedProductId ? `product ${requestedProductId}` : `collection ${requestedCollection}`}.`);
 }
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;

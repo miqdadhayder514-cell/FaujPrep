@@ -4908,7 +4908,8 @@ export default function App() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-extrabold text-slate-100">Notes</h1>
-        <p className="text-sm text-slate-400">Online PMA study notes · PKR 30 each</p>
+        <p className="text-sm text-slate-400">PMA study notes and Long Course 160 preparation guides · PKR 30 each</p>
+        <p className="max-w-3xl text-xs leading-5 text-slate-500">Preparation resources can help you study, but no notes can guarantee selection. Always follow the latest official instructions for your course.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource).map((product) => {
@@ -4922,8 +4923,9 @@ export default function App() {
           return (
             <article key={product.id} className="flex min-h-52 flex-col justify-between gap-5 rounded-xl border border-slate-800 bg-slate-900 p-5">
               <div className="space-y-3">
-                <span className="inline-flex rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">PDF Notes</span>
+                <span className="inline-flex rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">{product.category || 'PDF Notes'}</span>
                 <h2 className="text-lg font-bold leading-snug text-slate-100">{product.title}</h2>
+                {product.description && <p className="text-sm leading-5 text-slate-400">{product.description}</p>}
                 <p className="text-sm font-semibold text-emerald-300">{formatPKR(product.pricePkr)}</p>
               </div>
               {canAccessPremiumResources || request?.status === 'APPROVED' ? (

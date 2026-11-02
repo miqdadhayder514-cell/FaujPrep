@@ -33,6 +33,17 @@ npm run upload:paid-notes -- --product=pma-long-course-159-interview-fully-crack
 
 Never put the service-role key in `.env.local`, commit it, or share it in chat. The uploader reads the source PDF from the repository's `interview` folder for this product; other paid notes continue to use the `Notes` folder.
 
+### Publishing the PMA Long Course 160 preparation notes
+
+Apply `supabase/migrations/057_paid_pma_lc160_preparation_notes.sql` in the Supabase SQL Editor after the earlier migrations. From `my-app`, generate the ten PDFs from their editable Markdown sources and upload the new collection to the private bucket:
+
+```powershell
+npm run generate:lc160-notes
+npm run upload:paid-notes -- --collection=pma-lc160
+```
+
+Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the local process environment for the upload command only. Do not make the bucket public. The ten notes are individually priced at PKR 30 and remain locked until payment approval or eligible Pro/Premium access.
+
 When variables are absent, FaujPrep shows an explicit database setup notice. It does not pretend that authentication, live content, or progress tracking are connected.
 
 ## Analytics
