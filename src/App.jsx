@@ -17,6 +17,10 @@ import { PMA_LONG_COURSE_159_MOCK_TEST_2 } from './data/pmaLongCourse159MockTest
 import { PMA_LONG_COURSE_159_MOCK_TEST_1 } from './data/pmaLongCourse159MockTest1';
 import { PMA_LONG_COURSE_159_MOCK_TEST_5 } from './data/pmaLongCourse159MockTest5';
 import { PMA_LONG_COURSE_159_MOCK_TEST_6 } from './data/pmaLongCourse159MockTest6';
+import { PMA_LONG_COURSE_159_MOCK_TEST_7 } from './data/pmaLongCourse159MockTest7';
+import { PMA_LONG_COURSE_159_MOCK_TEST_8 } from './data/pmaLongCourse159MockTest8';
+import { PMA_LONG_COURSE_159_MOCK_TEST_9 } from './data/pmaLongCourse159MockTest9';
+import { PMA_LONG_COURSE_159_MOCK_TEST_10 } from './data/pmaLongCourse159MockTest10';
 import { PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK } from './data/pmaLongCourse159MostRepeatedQuestionsBank';
 import { PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK } from './data/pmaLongCourse159MustComeQuestionsBank';
 import { NON_VERBAL_INTELLIGENCE_TEST_1 } from './data/nonVerbalIntelligenceTest1';
@@ -818,6 +822,10 @@ const PAID_MOCK_TEST_PRODUCTS = [
   PMA_LONG_COURSE_159_MOCK_TEST_1,
   PMA_LONG_COURSE_159_MOCK_TEST_5,
   PMA_LONG_COURSE_159_MOCK_TEST_6,
+  PMA_LONG_COURSE_159_MOCK_TEST_7,
+  PMA_LONG_COURSE_159_MOCK_TEST_8,
+  PMA_LONG_COURSE_159_MOCK_TEST_9,
+  PMA_LONG_COURSE_159_MOCK_TEST_10,
   PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK,
   PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK,
   NON_VERBAL_INTELLIGENCE_TEST_1,
@@ -4481,7 +4489,7 @@ export default function App() {
                 >
                   {item.paidProduct
                     ? hasPaidTestAccess
-                      ? (paidMockTestLoading ? 'Loading Test...' : 'Start 40-Minute Test')
+                      ? (paidMockTestLoading ? 'Loading Test...' : `Start ${item.paidProduct.durationMinutes || 40}-Minute Test`)
                       : paymentPending
                         ? 'Payment Pending Admin Approval'
                         : `Unlock for ${formatPKR(item.paidProduct.pricePkr)}`
@@ -4694,6 +4702,10 @@ export default function App() {
     const pmaMockTest1 = PMA_LONG_COURSE_159_MOCK_TEST_1;
     const pmaMockTest5 = PMA_LONG_COURSE_159_MOCK_TEST_5;
     const pmaMockTest6 = PMA_LONG_COURSE_159_MOCK_TEST_6;
+    const pmaMockTest7 = PMA_LONG_COURSE_159_MOCK_TEST_7;
+    const pmaMockTest8 = PMA_LONG_COURSE_159_MOCK_TEST_8;
+    const pmaMockTest9 = PMA_LONG_COURSE_159_MOCK_TEST_9;
+    const pmaMockTest10 = PMA_LONG_COURSE_159_MOCK_TEST_10;
     const pmaMostRepeatedQuestionsBank = PMA_LONG_COURSE_159_MOST_REPEATED_QUESTIONS_BANK;
     const pmaMustComeQuestionsBank = PMA_LONG_COURSE_159_MUST_COME_QUESTIONS_BANK;
     const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
@@ -4811,7 +4823,7 @@ export default function App() {
           {renderPaidTestAction(pmaMockTest2)}
         </article>
 
-        {[pmaMockTest5, pmaMockTest6].map((product) => (
+        {[pmaMockTest5, pmaMockTest6, pmaMockTest7, pmaMockTest8, pmaMockTest9, pmaMockTest10].map((product) => (
           <article key={product.id} className="max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-400">Pakistan Army</span>
@@ -4819,7 +4831,7 @@ export default function App() {
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-slate-100">{product.title}</h2>
-              <p className="text-sm leading-6 text-slate-400">A complete 220-question PMA Long Course 159 paper covering verbal and non-verbal intelligence, Mathematics, Pakistan Studies, Physics, English, General Knowledge, and Islamic Studies. Includes rendered figure questions and worked answer explanations.</p>
+              <p className="text-sm leading-6 text-slate-400">A complete {product.questionsCount}-question PMA Long Course 159 paper with figure-based intelligence questions and detailed answer explanations.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono text-slate-300 sm:grid-cols-4">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3"><strong className="block text-base text-slate-100">{product.questionsCount}</strong>Questions</div>
