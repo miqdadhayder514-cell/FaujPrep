@@ -1,2 +1,5 @@
 [functions.self-description-feedback]
 verify_jwt = true
+
+[functions.psychological-interview]
+verify_jwt = true

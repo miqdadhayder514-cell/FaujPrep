@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "node --test scripts/*.test.mjs",
     "generate:lc160-notes": "node scripts/generate-pma-lc160-notes.mjs",
+    "generate:psychological-interview-migration": "node scripts/generate-psychological-interview-migration.mjs",
     "upload:paid-notes": "node scripts/upload-paid-notes.mjs",
     "test:seo": "node --test scripts/generate-seo-assets.test.mjs scripts/analytics-events.test.mjs scripts/analytics-migration.test.mjs",
     "preview": "vite preview"

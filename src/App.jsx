@@ -6,6 +6,7 @@ import AdminContentManager from './components/AdminContentManager';
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
 import AdminNotificationsPanel from './components/AdminNotificationsPanel';
 import SelfDescriptionModule from './components/SelfDescriptionModule';
+import PsychologicalInterviewModule from './components/PsychologicalInterviewModule';
 import NotificationCenter from './components/NotificationCenter';
 import QuestionCard from './components/QuestionCard';
 import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
@@ -1315,6 +1316,7 @@ export default function App() {
       issb: '/issb',
       'issb-psychological-tests': '/issb/psychological-tests',
       'issb-self-description': value ? `/issb/psychological-tests/selfdescriptiontest/${value}` : '/issb/psychological-tests/selfdescriptiontest',
+      'issb-psychological-interview': value ? `/issb/psychological-tests/psychologicalinterview/${value}` : '/issb/psychological-tests/psychologicalinterview',
       'issb-picture-stories': '/issb/psychological-tests/picturestories',
       'issb-picture-story': value !== null ? `/issb/psychological-tests/picturestories/${encodeURIComponent(value)}` : '/issb/psychological-tests/picturestories',
       'issb-mechanical-aptitude-tests': '/issb/psychological-tests/mechanicalapptitudetests',
@@ -1555,6 +1557,12 @@ export default function App() {
       if (normalizedPath === '/navy') { setCurrentPage('navy'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb') { setCurrentPage('issb'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb/psychological-tests') { setCurrentPage('issb-psychological-tests'); setSelectedForceId(null); return; }
+      const psychologicalInterviewPath = '/issb/psychological-tests/psychologicalinterview';
+      if (normalizedPath === psychologicalInterviewPath || normalizedPath.startsWith(`${psychologicalInterviewPath}/`)) {
+        setCurrentPage('issb-psychological-interview');
+        setSelectedForceId(path.slice(psychologicalInterviewPath.length).replace(/^\/+/, ''));
+        return;
+      }
       const selfDescriptionPath = '/issb/psychological-tests/selfdescriptiontest';
       if (normalizedPath === selfDescriptionPath || normalizedPath.startsWith(`${selfDescriptionPath}/`)) {
         setCurrentPage('issb-self-description');
@@ -4279,8 +4287,8 @@ export default function App() {
               <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
               <p className="text-sm leading-relaxed text-slate-400">{test.description}</p>
             </div>
-            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : test.id === 'picture-stories' ? navigateTo('issb-picture-stories') : test.id === 'mechanical-aptitude' ? navigateTo('issb-mechanical-aptitude-tests') : test.id === 'self-description' ? navigateTo('issb-self-description') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
-              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : test.id === 'picture-stories' ? 'Choose picture test' : test.id === 'mechanical-aptitude' ? 'Choose mechanical test' : test.id === 'self-description' ? 'Start self-reflection' : 'Start practice'} <ArrowRight className="w-4 h-4" />
+            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : test.id === 'picture-stories' ? navigateTo('issb-picture-stories') : test.id === 'mechanical-aptitude' ? navigateTo('issb-mechanical-aptitude-tests') : test.id === 'self-description' ? navigateTo('issb-self-description') : test.id === 'psychological-interview' ? navigateTo('issb-psychological-interview') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
+              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : test.id === 'picture-stories' ? 'Choose picture test' : test.id === 'mechanical-aptitude' ? 'Choose mechanical test' : test.id === 'self-description' ? 'Start self-reflection' : test.id === 'psychological-interview' ? 'Start interview practice' : 'Start practice'} <ArrowRight className="w-4 h-4" />
             </button>
           </article>
         ))}
@@ -6895,6 +6903,15 @@ export default function App() {
           onNavigate={(suffix) => {
             setSelectedForceId(suffix || null);
             navigateTo('issb-self-description', suffix || null);
+          }}
+          onBack={() => navigateTo('issb-psychological-tests')}
+        />;
+      case 'issb-psychological-interview':
+        return <PsychologicalInterviewModule
+          routeSuffix={selectedForceId || ''}
+          onNavigate={(suffix) => {
+            setSelectedForceId(suffix || null);
+            navigateTo('issb-psychological-interview', suffix || null);
           }}
           onBack={() => navigateTo('issb-psychological-tests')}
         />;

@@ -84,6 +84,15 @@ export function getPageSeo({
       { name: 'ISSB', path: '/issb' },
       { name: 'Self-Description Test' },
     ];
+  } else if (currentPage === 'issb-psychological-interview') {
+    title = 'ISSB Psychological Interview Practice | FaujPrep';
+    description = 'Practise ISSB psychological interview questions, personal reflection, rapid-fire answers, and optional AI mock interviews.';
+    indexable = false;
+    breadcrumbItems = [
+      { name: 'Home', path: '/' },
+      { name: 'ISSB', path: '/issb' },
+      { name: 'Psychological Interview' },
+    ];
   } else if (currentPage === 'study-materials') {
     title = 'Study Materials | FaujPrep';
     description = 'Browse published preparation notes, guides and study materials for Pakistan Army, PAF, Navy and ISSB tests.';

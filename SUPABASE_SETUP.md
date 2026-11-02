@@ -79,3 +79,16 @@ supabase functions deploy self-description-feedback
 ```
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are read only inside the Edge Function environment; never copy the service-role or AI key into a `VITE_` variable or the frontend. The function verifies the user session and attempt ownership, requires explicit consent, and saves feedback under that user's account. Candidates can practise without AI feedback if the function or provider secret is not configured. The AI response is educational writing guidance, not a diagnosis, official ISSB score, or selection prediction.
+
+### ISSB Psychological Interview
+
+Apply `supabase/migrations/060_issb_psychological_interview.sql` after migration 059. It seeds the 150 practice questions in 15 categories and creates private, user-owned interview sessions, answers, conversation messages, feedback, and optional candidate profiles. RLS restricts each candidate's records to their own visitor account. The migration generator is available as `npm.cmd run generate:psychological-interview-migration`; generated SQL is a regular migration and should be reviewed before applying.
+
+AI mock, random, challenging, personalized, and voice-interview turns plus optional rapid-fire reports require the authenticated `psychological-interview` Supabase Edge Function. The function calls OpenAI using the server-side `OPENAI_API_KEY` and `OPENAI_MODEL` secrets; the default is `gpt-4o-mini`. OpenAI is an external, usage-billed provider: the project owner must review current provider pricing and usage policies, set spending limits, and monitor their account. No AI call is made unless the candidate explicitly consents. If the function or secret is missing, the UI reports that AI is unavailable; the 150-question learning bank remains usable.
+
+```powershell
+supabase secrets set OPENAI_API_KEY=your-provider-key OPENAI_MODEL=gpt-4o-mini
+supabase functions deploy psychological-interview
+```
+
+The function verifies the visitor token and attempt ownership, limits request size and rate, sends only a bounded recent conversation to the model, treats candidate messages as untrusted content, validates structured responses, and stores messages/reports server-side. Do not put AI or service-role credentials in frontend environment variables. Voice practice uses browser speech recognition when available; the candidate can review the transcript or use text instead. Speech recognition availability and processing are controlled by the browser and its provider.
