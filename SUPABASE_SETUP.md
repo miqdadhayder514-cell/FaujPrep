@@ -66,3 +66,16 @@ select cron.schedule(
 ```
 
 Until that deployment step is configured, preferences are saved and the function is ready, but study reminders and scheduled subscription notices will not be generated automatically. Payment and published-content notifications are trigger-driven and do not depend on Cron.
+
+### ISSB Self-Description Test
+
+Apply `supabase/migrations/059_issb_self_description.sql` after the previous migrations. It creates private, user-owned attempts/responses and the editable question bank, then safely seeds the 88 built-in prompts without overwriting later administrator edits.
+
+Practice and account history use the existing anonymous Supabase session. Unfinished work is also autosaved in this browser for recovery. To enable optional AI feedback, link the Supabase CLI to this project, set the provider key as a server-side secret, and deploy the authenticated Edge Function:
+
+```powershell
+supabase secrets set OPENAI_API_KEY=your-provider-key OPENAI_MODEL=gpt-4o-mini
+supabase functions deploy self-description-feedback
+```
+
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are read only inside the Edge Function environment; never copy the service-role or AI key into a `VITE_` variable or the frontend. The function verifies the user session and attempt ownership, requires explicit consent, and saves feedback under that user's account. Candidates can practise without AI feedback if the function or provider secret is not configured. The AI response is educational writing guidance, not a diagnosis, official ISSB score, or selection prediction.

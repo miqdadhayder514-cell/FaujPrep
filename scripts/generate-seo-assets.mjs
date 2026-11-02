@@ -11,6 +11,7 @@ const staticPages = [
   { path: '/paf', title: 'Pakistan Air Force Test Preparation | FaujPrep', description: 'Independent Pakistan Air Force entry-test preparation resources, practice questions and study materials from FaujPrep.', breadcrumb: ['Home', 'Pakistan Air Force'] },
   { path: '/navy', title: 'Pakistan Navy Test Preparation | FaujPrep', description: 'Independent Pakistan Navy entry-test preparation resources, practice questions and study materials from FaujPrep.', breadcrumb: ['Home', 'Pakistan Navy'] },
   { path: '/issb', title: 'ISSB Preparation | FaujPrep', description: 'Explore independent ISSB preparation resources, public modules, practice and guidance on FaujPrep.', breadcrumb: ['Home', 'ISSB'] },
+  { path: '/issb/psychological-tests/selfdescriptiontest', title: 'Self-Description Test Practice | FaujPrep', description: 'Practise honest self-reflection, written responses and ISSB self-description preparation with FaujPrep.', indexable: false, sitemap: false, breadcrumb: ['Home', 'ISSB', 'Self-Description Test'] },
   { path: '/study-materials', title: 'Study Materials | FaujPrep', description: 'Browse published preparation notes, guides and study materials for Pakistan Army, PAF, Navy and ISSB tests.' },
   { path: '/current-affairs', title: 'Current Affairs | FaujPrep', description: 'Read published current-affairs summaries and coverage for general awareness and military test preparation.' },
   { path: '/mock-tests', title: 'Mock Tests | FaujPrep', description: 'Explore available mock tests for independent Pakistan Army, PAF, Navy and ISSB preparation.' },
@@ -249,7 +250,7 @@ async function main() {
   const pages = [...staticPages, ...dynamicPages];
   for (const page of pages) await writePageShell(baseHtml, page, siteUrl);
 
-  const sitemapEntries = pages.map(({ path, lastmod }) => ({ path, lastmod }));
+  const sitemapEntries = pages.filter((page) => page.sitemap !== false).map(({ path, lastmod }) => ({ path, lastmod }));
   await writeFile(join(outputRoot, 'sitemap.xml'), buildSitemap(sitemapEntries, siteUrl));
   const disallowedPaths = ['/admin', '/account', '/billing', '/checkout', '/dashboard', '/login', '/profile', '/register'];
   const robots = [

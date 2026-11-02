@@ -8,6 +8,7 @@ const PRIVATE_PAGES = new Set([
   'admin-analytics',
   'admin-notifications',
   'notifications',
+  'issb-self-description',
   'billing',
   'checkout',
   'mock-payment',
@@ -74,6 +75,15 @@ export function getPageSeo({
     title = 'ISSB Preparation | FaujPrep';
     description = 'Explore independent ISSB preparation resources, public modules, practice and guidance on FaujPrep.';
     breadcrumbItems = [{ name: 'Home', path: '/' }, { name: 'ISSB', path: '/issb' }];
+  } else if (currentPage === 'issb-self-description') {
+    title = 'Self-Description Test Practice | FaujPrep';
+    description = 'Practise honest self-reflection, written responses and ISSB self-description preparation with FaujPrep.';
+    indexable = false;
+    breadcrumbItems = [
+      { name: 'Home', path: '/' },
+      { name: 'ISSB', path: '/issb' },
+      { name: 'Self-Description Test' },
+    ];
   } else if (currentPage === 'study-materials') {
     title = 'Study Materials | FaujPrep';
     description = 'Browse published preparation notes, guides and study materials for Pakistan Army, PAF, Navy and ISSB tests.';

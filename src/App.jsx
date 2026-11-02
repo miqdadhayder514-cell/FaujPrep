@@ -5,6 +5,7 @@ import { useFaujPrepData } from './hooks/useFaujPrepData';
 import AdminContentManager from './components/AdminContentManager';
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
 import AdminNotificationsPanel from './components/AdminNotificationsPanel';
+import SelfDescriptionModule from './components/SelfDescriptionModule';
 import NotificationCenter from './components/NotificationCenter';
 import QuestionCard from './components/QuestionCard';
 import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
@@ -30,6 +31,7 @@ import { WAT_TESTS } from './data/watTests';
 import { SCT_TESTS } from './data/sctTests';
 import { SRT_TESTS } from './data/srtTests';
 import { PICTURE_STORIES } from './data/pictureStories';
+import { MECHANICAL_APTITUDE_TESTS } from './data/mechanicalAptitudeTests';
 import { evaluateQuestionAnswer, getCurrentAffairBySlug, getCurrentAffairsPage, getDashboardSummary, getISSBModuleBySlug, getMockTestQuestions, getMockTestReview, getPracticeQuestions, getStudyMaterialBySlug, getStudyMaterialsPage, getSubjectsForBranch, getTopics, saveMockTestAnswer, searchContent, signIn, signOut, startMockTest, submitMockTest, updateProfile } from './lib/queries';
 import { approveMockTestPurchase, approvePaymentTransaction, assessLiveInterviewSubmission, createPlanCheckout, formatPKR, getAdminLiveInterviewSubmissions, getAdminPaymentQueue, getCurrentUserAccessLevel, getCurrentUserSubscription, getMyLiveInterviewSubmission, getMyMockTestPurchases, getMyPaymentTransactions, getPaidMockTestQuestions, getPaidNoteContent, getPaidNoteViewerUrl, getPaymentSettings, getPlanCatalog, rejectMockTestPurchase, rejectPaymentTransaction, submitLiveInterviewVideo, submitManualPaymentProof, submitMockTestPaymentProof, submitPaidNotePaymentProof, upsertPaymentSettings } from './lib/subscriptions';
 import { applySeoMetadata, getPageSeo } from './lib/seo';
@@ -1030,6 +1032,7 @@ export default function App() {
   const [sctSession, setSctSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
   const [srtSession, setSrtSession] = useState({ testIndex: null, index: 0, answers: {}, started: false, completed: false, startedAt: null, now: Date.now() });
   const [pictureStorySession, setPictureStorySession] = useState({ testId: null, response: '', startedAt: null, now: Date.now(), completed: false, sampleAnswerVisible: false });
+  const [mechanicalAptitudeSession, setMechanicalAptitudeSession] = useState({ testId: null, questionIndex: 0, selectedOption: '', startedAt: null, now: Date.now(), completed: false, score: 0 });
   const [mockSecondsLeft, setMockSecondsLeft] = useState(null);
   const [mockAnswers, setMockAnswers] = useState({});
   const mockAnswersRef = useRef({});
@@ -1311,8 +1314,11 @@ export default function App() {
       'practice-payment': value ? `/practice-tests/${encodeURIComponent(value)}/payment` : '/practice',
       issb: '/issb',
       'issb-psychological-tests': '/issb/psychological-tests',
+      'issb-self-description': value ? `/issb/psychological-tests/selfdescriptiontest/${value}` : '/issb/psychological-tests/selfdescriptiontest',
       'issb-picture-stories': '/issb/psychological-tests/picturestories',
       'issb-picture-story': value !== null ? `/issb/psychological-tests/picturestories/${encodeURIComponent(value)}` : '/issb/psychological-tests/picturestories',
+      'issb-mechanical-aptitude-tests': '/issb/psychological-tests/mechanicalapptitudetests',
+      'issb-mechanical-aptitude-test': value !== null ? `/issb/psychological-tests/mechanicalapptitudetests/${encodeURIComponent(value)}` : '/issb/psychological-tests/mechanicalapptitudetests',
       'wat-tests': '/issb/wat',
       'wat-test': value !== null ? `/issb/wat/${encodeURIComponent(value)}` : '/issb/wat',
       'sct-tests': '/issb/sct',
@@ -1402,6 +1408,38 @@ export default function App() {
 
   const togglePictureStorySampleAnswer = () => {
     setPictureStorySession((previous) => ({ ...previous, sampleAnswerVisible: !previous.sampleAnswerVisible }));
+  };
+
+  const startMechanicalAptitudeTest = (testId) => {
+    const now = Date.now();
+    setMechanicalAptitudeSession({ testId, questionIndex: 0, selectedOption: '', startedAt: now, now, completed: false, score: 0 });
+    navigateTo('issb-mechanical-aptitude-test', testId);
+  };
+
+  const selectMechanicalAptitudeAnswer = (option) => {
+    setMechanicalAptitudeSession((previous) => {
+      if (previous.completed || previous.selectedOption) return previous;
+      const test = MECHANICAL_APTITUDE_TESTS.find((item) => item.id === previous.testId);
+      const question = test?.questions[previous.questionIndex];
+      if (!question) return previous;
+      return {
+        ...previous,
+        selectedOption: option,
+        score: previous.score + Number(option === question.correctOption),
+      };
+    });
+  };
+
+  const nextMechanicalAptitudeQuestion = () => {
+    setMechanicalAptitudeSession((previous) => {
+      const nextIndex = previous.questionIndex + 1;
+      return {
+        ...previous,
+        questionIndex: nextIndex,
+        selectedOption: '',
+        completed: nextIndex >= 50,
+      };
+    });
   };
 
   const nextSRTQuestion = () => {
@@ -1517,6 +1555,12 @@ export default function App() {
       if (normalizedPath === '/navy') { setCurrentPage('navy'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb') { setCurrentPage('issb'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb/psychological-tests') { setCurrentPage('issb-psychological-tests'); setSelectedForceId(null); return; }
+      const selfDescriptionPath = '/issb/psychological-tests/selfdescriptiontest';
+      if (normalizedPath === selfDescriptionPath || normalizedPath.startsWith(`${selfDescriptionPath}/`)) {
+        setCurrentPage('issb-self-description');
+        setSelectedForceId(path.slice(selfDescriptionPath.length).replace(/^\/+/, ''));
+        return;
+      }
       if (normalizedPath === '/issb/psychological-tests/picturestories') { setCurrentPage('issb-picture-stories'); setSelectedForceId(null); return; }
       const pictureStoryPath = path.match(/^\/issb\/psychological-tests\/picturestories\/([^/]+)$/i);
       if (pictureStoryPath) {
@@ -1525,6 +1569,16 @@ export default function App() {
         setCurrentPage('issb-picture-story');
         setSelectedForceId(testId);
         setPictureStorySession({ testId, response: '', startedAt: now, now, completed: false, sampleAnswerVisible: false });
+        return;
+      }
+      if (normalizedPath === '/issb/psychological-tests/mechanicalapptitudetests') { setCurrentPage('issb-mechanical-aptitude-tests'); setSelectedForceId(null); return; }
+      const mechanicalAptitudePath = path.match(/^\/issb\/psychological-tests\/mechanicalapptitudetests\/([^/]+)$/i);
+      if (mechanicalAptitudePath) {
+        const testId = decodeSlug(mechanicalAptitudePath[1]);
+        const now = Date.now();
+        setCurrentPage('issb-mechanical-aptitude-test');
+        setSelectedForceId(testId);
+        setMechanicalAptitudeSession({ testId, questionIndex: 0, selectedOption: '', startedAt: now, now, completed: false, score: 0 });
         return;
       }
       if (normalizedPath === '/issb/wat') { setCurrentPage('wat-tests'); setSelectedForceId(null); return; }
@@ -2524,6 +2578,18 @@ export default function App() {
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, selectedForceId, pictureStorySession.testId, pictureStorySession.startedAt, pictureStorySession.completed]);
+
+  useEffect(() => {
+    if (currentPage !== 'issb-mechanical-aptitude-test' || !selectedForceId || mechanicalAptitudeSession.testId !== selectedForceId || mechanicalAptitudeSession.startedAt === null || mechanicalAptitudeSession.completed) return undefined;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setMechanicalAptitudeSession((previous) => {
+        if (previous.testId !== selectedForceId || previous.startedAt === null || previous.completed) return previous;
+        return { ...previous, now, completed: now - previous.startedAt >= 23 * 60 * 1000 };
+      });
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [currentPage, selectedForceId, mechanicalAptitudeSession.testId, mechanicalAptitudeSession.startedAt, mechanicalAptitudeSession.completed]);
 
   useEffect(() => {
     if (!['dashboard', 'admin', 'admin-analytics'].includes(currentPage) || !session?.user || !backendConfigured) return undefined;
@@ -4213,8 +4279,8 @@ export default function App() {
               <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
               <p className="text-sm leading-relaxed text-slate-400">{test.description}</p>
             </div>
-            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : test.id === 'picture-stories' ? navigateTo('issb-picture-stories') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
-              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : test.id === 'picture-stories' ? 'Choose picture test' : 'Start practice'} <ArrowRight className="w-4 h-4" />
+            <button onClick={() => test.id === 'wat' ? navigateTo('wat-tests') : test.id === 'sct' ? navigateTo('sct-tests') : test.id === 'srt' ? navigateTo('srt-tests') : test.id === 'picture-stories' ? navigateTo('issb-picture-stories') : test.id === 'mechanical-aptitude' ? navigateTo('issb-mechanical-aptitude-tests') : test.id === 'self-description' ? navigateTo('issb-self-description') : navigateTo('practice')} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">
+              {test.id === 'wat' ? 'Choose WAT test' : test.id === 'sct' ? 'Choose SCT test' : test.id === 'srt' ? 'Choose SRT test' : test.id === 'picture-stories' ? 'Choose picture test' : test.id === 'mechanical-aptitude' ? 'Choose mechanical test' : test.id === 'self-description' ? 'Start self-reflection' : 'Start practice'} <ArrowRight className="w-4 h-4" />
             </button>
           </article>
         ))}
@@ -4326,6 +4392,165 @@ export default function App() {
           )}
         </section>
         <button type="button" onClick={() => navigateTo('issb-picture-stories')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Choose another picture test</button>
+      </div>
+    );
+  };
+
+  const renderMechanicalAptitudeTestsPage = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <Breadcrumbs items={[
+        { label: 'Home', href: '/' },
+        { label: 'ISSB', href: '/issb' },
+        { label: 'Psychological Tests', href: '/issb/psychological-tests' },
+        { label: 'Mechanical Aptitude Tests' },
+      ]} />
+      <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
+        <span className="text-xs font-mono uppercase tracking-widest text-amber-400">ISSB · Free practice</span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Mechanical Aptitude Tests</h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Choose a 50-question picture-based test. You have 23 minutes to complete each test. After selecting A, B, or C, you will immediately see the correct answer and its explanation.</p>
+      </section>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {MECHANICAL_APTITUDE_TESTS.map((test) => (
+          <article key={test.id} className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <div className="space-y-2">
+              <span className="text-xs font-mono text-amber-400">FREE · 23 MINUTES</span>
+              <h2 className="text-xl font-bold text-slate-100">{test.title}</h2>
+              <p className="text-sm text-slate-400">50 picture-based MCQs · Immediate answer explanations</p>
+              <p className="text-sm leading-6 text-slate-300">{test.instructions}</p>
+            </div>
+            <button type="button" onClick={() => startMechanicalAptitudeTest(test.id)} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">Start test</button>
+          </article>
+        ))}
+      </div>
+      <button type="button" onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button>
+    </div>
+  );
+
+  const renderMechanicalAptitudeTestPage = () => {
+    const test = MECHANICAL_APTITUDE_TESTS.find((item) => item.id === selectedForceId);
+    if (!test) {
+      return (
+        <div className="mx-auto max-w-4xl space-y-5 px-4 py-10 sm:px-6 lg:px-8">
+          <div role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-6 text-rose-200">This mechanical aptitude test is not available.</div>
+          <button type="button" onClick={() => navigateTo('issb-mechanical-aptitude-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Choose another test</button>
+        </div>
+      );
+    }
+
+    if (mechanicalAptitudeSession.testId !== test.id || mechanicalAptitudeSession.startedAt === null) {
+      return <div role="status" className="mx-auto max-w-4xl px-4 py-10 text-sm text-slate-300">Starting your timed test...</div>;
+    }
+
+    const secondsRemaining = Math.max(0, 23 * 60 - Math.floor((mechanicalAptitudeSession.now - mechanicalAptitudeSession.startedAt) / 1000));
+    const timeLabel = `${String(Math.floor(secondsRemaining / 60)).padStart(2, '0')}:${String(secondsRemaining % 60).padStart(2, '0')}`;
+    const question = test.questions[mechanicalAptitudeSession.questionIndex];
+    const answered = Boolean(mechanicalAptitudeSession.selectedOption);
+    const isCorrect = answered && mechanicalAptitudeSession.selectedOption === question?.correctOption;
+
+    if (mechanicalAptitudeSession.completed || !question) {
+      return (
+        <div className="mx-auto max-w-4xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+          <Breadcrumbs items={[
+            { label: 'Home', href: '/' },
+            { label: 'ISSB', href: '/issb' },
+            { label: 'Psychological Tests', href: '/issb/psychological-tests' },
+            { label: 'Mechanical Aptitude Tests', href: '/issb/psychological-tests/mechanicalapptitudetests' },
+            { label: test.title },
+          ]} />
+          <section className="space-y-4 rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 text-center sm:p-10">
+            <span className="text-xs font-mono uppercase tracking-widest text-emerald-400">Test complete</span>
+            <h1 className="text-3xl font-extrabold text-slate-100">{test.title}</h1>
+            <p className="text-slate-300">Your score: <strong className="text-emerald-300">{mechanicalAptitudeSession.score} / 50</strong></p>
+            <p className="text-sm text-slate-400">You saw the correct answer and explanation after each response.</p>
+          </section>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => startMechanicalAptitudeTest(test.id)} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Retake this test</button>
+            <button type="button" onClick={() => navigateTo('issb-mechanical-aptitude-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Choose another test</button>
+            <button type="button" onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+        <Breadcrumbs items={[
+          { label: 'Home', href: '/' },
+          { label: 'ISSB', href: '/issb' },
+          { label: 'Psychological Tests', href: '/issb/psychological-tests' },
+          { label: 'Mechanical Aptitude Tests', href: '/issb/psychological-tests/mechanicalapptitudetests' },
+          { label: test.title },
+        ]} />
+        <section className="space-y-5 rounded-3xl border border-amber-500/30 bg-slate-900 p-5 sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Free · mechanical aptitude</span>
+              <h1 className="mt-2 text-2xl font-extrabold text-slate-100 sm:text-3xl">{test.title}</h1>
+            </div>
+            <div role="timer" aria-live="off" className={`rounded-xl border px-4 py-2 text-lg font-bold tabular-nums ${secondsRemaining <= 60 ? 'border-rose-500/40 bg-rose-950/30 text-rose-300' : 'border-amber-500/40 bg-amber-950/30 text-amber-300'}`}>
+              Time left {timeLabel}
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>Question {mechanicalAptitudeSession.questionIndex + 1} of 50</span>
+            <span>Score {mechanicalAptitudeSession.score}</span>
+          </div>
+          <p role="note" className="rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm leading-6 text-slate-300">{test.instructions}</p>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-full bg-amber-500 transition-all" style={{ width: `${((mechanicalAptitudeSession.questionIndex + 1) / 50) * 100}%` }} />
+          </div>
+          <h2 className="text-lg font-semibold leading-relaxed text-slate-100">{question.prompt}</h2>
+          <img
+            src={question.image}
+            alt={`Mechanical aptitude question ${question.number} diagrams`}
+            className="max-h-[55vh] w-full rounded-xl border border-slate-700 bg-white object-contain"
+          />
+          <div className="grid grid-cols-3 gap-3">
+            {question.options.map((option) => {
+              const isSelected = mechanicalAptitudeSession.selectedOption === option;
+              const isRightOption = answered && question.correctOption === option;
+              const colorClass = isRightOption
+                ? 'border-emerald-400 bg-emerald-950/50 text-emerald-200'
+                : isSelected
+                  ? 'border-rose-400 bg-rose-950/50 text-rose-200'
+                  : 'border-slate-700 bg-slate-950 text-slate-200 hover:border-amber-400';
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={answered || mechanicalAptitudeSession.completed}
+                  aria-pressed={isSelected}
+                  onClick={() => selectMechanicalAptitudeAnswer(option)}
+                  className={`rounded-xl border px-4 py-4 text-base font-bold transition disabled:cursor-not-allowed ${colorClass}`}
+                >
+                  {question.optionLabels?.[option] ? (
+                    <span className="flex flex-col gap-1">
+                      <span>{option}</span>
+                      <span className="text-xs font-medium">{question.optionLabels[option]}</span>
+                    </span>
+                  ) : option}
+                </button>
+              );
+            })}
+          </div>
+          {answered && (
+            <div role="status" className={`space-y-2 rounded-xl border p-4 ${isCorrect ? 'border-emerald-500/30 bg-emerald-950/20' : 'border-rose-500/30 bg-rose-950/20'}`}>
+              <p className={`font-bold ${isCorrect ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {isCorrect
+                  ? 'Correct!'
+                  : `Not quite. The correct answer is ${question.correctOption}${question.optionLabels?.[question.correctOption] ? ` — ${question.optionLabels[question.correctOption]}` : ''}.`}
+              </p>
+              <p className="text-sm leading-6 text-slate-200">{question.explanation}</p>
+            </div>
+          )}
+          {answered && (
+            <div className="flex justify-end">
+              <button type="button" onClick={nextMechanicalAptitudeQuestion} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">
+                {mechanicalAptitudeSession.questionIndex === 49 ? 'Finish test' : 'Next question'}
+              </button>
+            </div>
+          )}
+        </section>
       </div>
     );
   };
@@ -6663,10 +6888,24 @@ export default function App() {
         return renderISSBHubPage();
       case 'issb-psychological-tests':
         return renderISSBPsychologicalTestsPage();
+      case 'issb-self-description':
+        return <SelfDescriptionModule
+          user={session?.user || null}
+          routeSuffix={selectedForceId || ''}
+          onNavigate={(suffix) => {
+            setSelectedForceId(suffix || null);
+            navigateTo('issb-self-description', suffix || null);
+          }}
+          onBack={() => navigateTo('issb-psychological-tests')}
+        />;
       case 'issb-picture-stories':
         return renderPictureStoriesPage();
       case 'issb-picture-story':
         return renderPictureStoryTestPage();
+      case 'issb-mechanical-aptitude-tests':
+        return renderMechanicalAptitudeTestsPage();
+      case 'issb-mechanical-aptitude-test':
+        return renderMechanicalAptitudeTestPage();
       case 'wat-tests':
         return renderWATTestsPage();
       case 'wat-test':
