@@ -132,28 +132,36 @@ drop policy if exists self_description_responses_read_own on public.self_descrip
 create policy self_description_responses_read_own
 on public.self_description_responses for select to authenticated
 using (user_id = auth.uid() and exists (
-  select 1 from public.self_description_attempts attempt
-  where attempt.id = attempt_id and attempt.user_id = auth.uid()
+  select 1
+  from public.self_description_attempts
+  where public.self_description_attempts.id = self_description_responses.attempt_id
+    and public.self_description_attempts.user_id = auth.uid()
 ));
 
 drop policy if exists self_description_responses_insert_own on public.self_description_responses;
 create policy self_description_responses_insert_own
 on public.self_description_responses for insert to authenticated
 with check (user_id = auth.uid() and exists (
-  select 1 from public.self_description_attempts attempt
-  where attempt.id = attempt_id and attempt.user_id = auth.uid()
+  select 1
+  from public.self_description_attempts
+  where public.self_description_attempts.id = self_description_responses.attempt_id
+    and public.self_description_attempts.user_id = auth.uid()
 ));
 
 drop policy if exists self_description_responses_update_own on public.self_description_responses;
 create policy self_description_responses_update_own
 on public.self_description_responses for update to authenticated
 using (user_id = auth.uid() and exists (
-  select 1 from public.self_description_attempts attempt
-  where attempt.id = attempt_id and attempt.user_id = auth.uid()
+  select 1
+  from public.self_description_attempts
+  where public.self_description_attempts.id = self_description_responses.attempt_id
+    and public.self_description_attempts.user_id = auth.uid()
 ))
 with check (user_id = auth.uid() and exists (
-  select 1 from public.self_description_attempts attempt
-  where attempt.id = attempt_id and attempt.user_id = auth.uid()
+  select 1
+  from public.self_description_attempts
+  where public.self_description_attempts.id = self_description_responses.attempt_id
+    and public.self_description_attempts.user_id = auth.uid()
 ));
 
 drop policy if exists self_description_feedback_read_own on public.self_description_feedback;
