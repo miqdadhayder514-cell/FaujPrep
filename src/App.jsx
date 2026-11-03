@@ -2903,6 +2903,13 @@ export default function App() {
           </div>
 
           <button
+            onClick={() => navigateTo('issb')}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'issb' ? 'text-amber-300 bg-amber-950/45 border border-amber-500/25' : 'hover:text-white hover:bg-slate-900'}`}
+          >
+            ISSB
+          </button>
+
+          <button
             onClick={() => navigateTo('practice')}
             className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'practice' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
@@ -2987,7 +2994,7 @@ export default function App() {
                 {renderMobileNavLink('army', 'Pakistan Army')}
                 {renderMobileNavLink('paf', 'Pakistan Air Force')}
                 {renderMobileNavLink('navy', 'Pakistan Navy')}
-                {renderMobileNavLink('issb', 'ISSB Preparation')}
+                {renderMobileNavLink('issb', 'ISSB')}
               </section>
 
               <section className="mobile-nav-section">
@@ -4172,7 +4179,11 @@ export default function App() {
 
   const renderISSBHubPage = () => {
     const issbBranch = backendConfigured ? backendData.branches.find((branch) => branch.slug === 'issb') : null;
-    const issbModules = backendConfigured ? [...backendData.issbModules].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)) : [];
+    const issbModules = backendConfigured
+      ? [...backendData.issbModules]
+        .filter((module) => module.slug !== 'interview-preparation' && module.title !== 'Interview Preparation')
+        .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+      : [];
     const issbMaterials = backendConfigured ? backendData.studyMaterials.filter((material) => {
       if (material.branch_id === issbBranch?.id) return true;
       const subject = backendData.subjects.find((entry) => entry.id === material.subject_id);
