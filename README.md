@@ -16,6 +16,21 @@ Personal, academic, general-knowledge, current-affairs, defense, rapid-fire, and
 
 Each practice answer leads to a category-specific interviewer follow-up and a 10-point coaching rubric. After submission, candidates see a curated, question-specific sample answer to learn from and personalize honestly. Scores are generated locally; they are not AI-generated and do not verify factual accuracy.
 
+## ISSB Deputy President Interview Preparation
+
+The separate `/issb/deputy-president-interview` module includes the supplied 180-question learning bank, candidate-owned learning progress/profile/roadmap, current-affairs preparation sourced from administrator-maintained entries, and timed practice simulations. Practice sessions can use local coaching without AI; optional per-answer AI coaching and AI interviewing both require explicit consent. The AI is a practice facilitator, not an ISSB official, and its coaching is not an official assessment.
+
+To enable account sync and AI practice:
+
+1. Apply `supabase/migrations/061_deputy_president_interview.sql` after the existing migrations, including migration 060 (the AI request limiter). This migration adds private, RLS-protected candidate data and verification/interview-guidance columns to `current_affairs`.
+2. Deploy the Edge Function with `supabase functions deploy deputy-president-interview`.
+3. Configure the function secrets in Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`. Optionally set `OPENAI_MODEL` and comma-separated `DEPUTY_INTERVIEW_ALLOWED_ORIGINS`. Never put the service-role or provider key in a `VITE_` variable or browser code.
+4. Populate current-affairs source and verification details in the existing admin editor. These entries are not automatically fact-checked; editors should maintain the source and as-of date.
+
+Without the migration and function deployment, the page still works in device-local mode and AI practice reports its configuration error explicitly.
+
+Run the focused content/integration assertions with `node --test scripts/deputy-president-interview.test.mjs` from `my-app`; `npm run lint` and `npm run build` validate the app.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

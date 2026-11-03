@@ -476,7 +476,7 @@ export async function toggleAdminStudyMaterialStatus(materialId, isPublished) {
 
 export async function getAdminCurrentAffairs({ search = '', category = 'All', status = 'All', page = 1, pageSize = 20 } = {}) {
   if (!isSupabaseConfigured) throw new Error(SUPABASE_SETUP_MESSAGE);
-  let query = supabase.from('current_affairs').select('id,title,slug,summary,content,category,published_at,source_name,source_url,image_url,is_published,created_at,updated_at', { count: 'exact' });
+  let query = supabase.from('current_affairs').select('id,title,slug,summary,content,category,published_at,source_name,source_url,image_url,last_verified_at,why_it_matters,interview_questions,verified_answer_guidance,is_published,created_at,updated_at', { count: 'exact' });
 
   if (category !== 'All') query = query.eq('category', category);
   if (status !== 'All') query = query.eq('is_published', status === 'PUBLISHED');

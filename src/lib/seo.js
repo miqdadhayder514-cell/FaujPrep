@@ -75,6 +75,15 @@ export function getPageSeo({
     title = 'ISSB Preparation | FaujPrep';
     description = 'Explore independent ISSB preparation resources, public modules, practice and guidance on FaujPrep.';
     breadcrumbItems = [{ name: 'Home', path: '/' }, { name: 'ISSB', path: '/issb' }];
+  } else if (currentPage === 'issb-deputy-president-interview') {
+    title = 'Deputy President Interview Practice | FaujPrep';
+    description = 'Practise ISSB Deputy President interview questions, timed mock interviews, personal answer-building, and sourced preparation guidance.';
+    indexable = false;
+    breadcrumbItems = [
+      { name: 'Home', path: '/' },
+      { name: 'ISSB', path: '/issb' },
+      { name: 'Deputy President Interview Practice' },
+    ];
   } else if (currentPage === 'issb-self-description') {
     title = 'Self-Description Test Practice | FaujPrep';
     description = 'Practise honest self-reflection, written responses and ISSB self-description preparation with FaujPrep.';

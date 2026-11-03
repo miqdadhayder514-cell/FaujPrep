@@ -7,6 +7,7 @@ import AdminAnalyticsPanel from './components/AdminAnalyticsPanel';
 import AdminNotificationsPanel from './components/AdminNotificationsPanel';
 import SelfDescriptionModule from './components/SelfDescriptionModule';
 import PsychologicalInterviewModule from './components/PsychologicalInterviewModule';
+import DeputyPresidentInterviewModule from './components/DeputyPresidentInterviewModule';
 import NotificationCenter from './components/NotificationCenter';
 import QuestionCard from './components/QuestionCard';
 import { ACADEMIC_PORTION_MOCK_TEST_1 } from './data/academicPortionMockTest1';
@@ -1314,6 +1315,7 @@ export default function App() {
       'mock-payment': value ? `/mock-tests/${encodeURIComponent(value)}/payment` : '/mock-tests',
       'practice-payment': value ? `/practice-tests/${encodeURIComponent(value)}/payment` : '/practice',
       issb: '/issb',
+      'issb-deputy-president-interview': value ? `/issb/deputy-president-interview/${encodeURIComponent(value)}` : '/issb/deputy-president-interview',
       'issb-psychological-tests': '/issb/psychological-tests',
       'issb-self-description': value ? `/issb/psychological-tests/selfdescriptiontest/${value}` : '/issb/psychological-tests/selfdescriptiontest',
       'issb-psychological-interview': value ? `/issb/psychological-tests/psychologicalinterview/${value}` : '/issb/psychological-tests/psychologicalinterview',
@@ -1562,6 +1564,12 @@ export default function App() {
       if (normalizedPath === '/paf') { setCurrentPage('paf'); setSelectedForceId(null); return; }
       if (normalizedPath === '/navy') { setCurrentPage('navy'); setSelectedForceId(null); return; }
       if (normalizedPath === '/issb') { setCurrentPage('issb'); setSelectedForceId(null); return; }
+      const deputyPresidentPath = '/issb/deputy-president-interview';
+      if (normalizedPath === deputyPresidentPath || normalizedPath.startsWith(`${deputyPresidentPath}/`)) {
+        setCurrentPage('issb-deputy-president-interview');
+        setSelectedForceId(decodeSlug(path.slice(deputyPresidentPath.length).replace(/^\/+/, '')));
+        return;
+      }
       if (normalizedPath === '/issb/psychological-tests') { setCurrentPage('issb-psychological-tests'); setSelectedForceId(null); return; }
       const psychologicalInterviewPath = '/issb/psychological-tests/psychologicalinterview';
       if (normalizedPath === psychologicalInterviewPath || normalizedPath.startsWith(`${psychologicalInterviewPath}/`)) {
@@ -4130,6 +4138,17 @@ export default function App() {
           <div className="flex flex-wrap gap-3">
             <button onClick={() => navigateTo('practice')} className="px-5 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm">Start ISSB Practice</button>
             <button onClick={openISSBPractice} className="px-5 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 font-semibold text-sm">Target ISSB Subjects</button>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-emerald-500/25 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 p-6 sm:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-3xl space-y-2">
+              <span className="text-xs font-mono uppercase tracking-widest text-emerald-300">Dedicated interview preparation</span>
+              <h2 className="text-2xl font-extrabold text-slate-100">Deputy President Interview Practice</h2>
+              <p className="text-sm leading-6 text-slate-300">Learn from the complete 180-question educational bank, prepare current affairs from dated sources, track a 14-day plan, and run a private timed practice simulation. Separate from psychological interview and self-description practice.</p>
+            </div>
+            <button type="button" onClick={() => navigateTo('issb-deputy-president-interview')} className="shrink-0 rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950">Open interview module</button>
           </div>
         </section>
 
@@ -6903,6 +6922,15 @@ export default function App() {
         return renderForcePage('navy');
       case 'issb':
         return renderISSBHubPage();
+      case 'issb-deputy-president-interview':
+        return <DeputyPresidentInterviewModule
+          routeSuffix={selectedForceId || ''}
+          onNavigate={(suffix) => {
+            setSelectedForceId(suffix || null);
+            navigateTo('issb-deputy-president-interview', suffix || null);
+          }}
+          onBack={() => navigateTo('issb')}
+        />;
       case 'issb-psychological-tests':
         return renderISSBPsychologicalTestsPage();
       case 'issb-self-description':

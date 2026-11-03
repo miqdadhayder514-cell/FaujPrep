@@ -106,6 +106,10 @@ const emptyCurrentAffair = {
   published_at: new Date().toISOString().slice(0, 10),
   source_name: '',
   source_url: '',
+  last_verified_at: new Date().toISOString().slice(0, 10),
+  why_it_matters: '',
+  interview_questions: [],
+  verified_answer_guidance: '',
   image_url: '',
   is_published: true,
 };
@@ -880,12 +884,16 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input type="date" value={affairForm.published_at || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, published_at: event.target.value }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" required />
+            <input type="date" value={affairForm.last_verified_at ? new Date(affairForm.last_verified_at).toISOString().slice(0, 10) : ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, last_verified_at: event.target.value || null }))} className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" aria-label="Last verified date" />
             <input value={affairForm.source_name || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, source_name: event.target.value }))} placeholder="Source name" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
             <input value={affairForm.category || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, category: event.target.value }))} placeholder="Category" className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           </div>
           <input value={affairForm.source_url || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, source_url: event.target.value }))} placeholder="Source URL" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           <textarea value={affairForm.summary || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, summary: event.target.value }))} rows="2" placeholder="Summary" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" required />
           <textarea value={affairForm.content || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, content: event.target.value }))} rows="5" placeholder="Full content" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+          <textarea value={affairForm.why_it_matters || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, why_it_matters: event.target.value }))} rows="2" placeholder="Why this matters to Pakistan" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+          <textarea value={affairForm.verified_answer_guidance || ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, verified_answer_guidance: event.target.value }))} rows="3" placeholder="Verified answer guidance (verify facts; cite an as-of date)" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
+          <textarea value={Array.isArray(affairForm.interview_questions) ? affairForm.interview_questions.join('\n') : ''} onChange={(event) => setAffairForm((previous) => ({ ...previous, interview_questions: event.target.value.split('\n').map((line) => line.trim()).filter(Boolean) }))} rows="3" placeholder="Potential interview questions (one per line)" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100" />
           <label className="inline-flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={affairForm.is_published} onChange={(event) => setAffairForm((previous) => ({ ...previous, is_published: event.target.checked }))} /> Published</label>
           <div className="flex gap-3">
             <button type="submit" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"><Plus className="w-4 h-4" />{editingAffairId ? 'Save current affair' : 'Create current affair'}</button>
@@ -920,7 +928,7 @@ export default function AdminContentManager({ branches, exams, subjects, addToas
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => { setEditingAffairId(item.id); setAffairForm({ ...emptyCurrentAffair, ...item, published_at: item.published_at ? new Date(item.published_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10) }); }} className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs">Edit</button>
+                    <button type="button" onClick={() => { setEditingAffairId(item.id); setAffairForm({ ...emptyCurrentAffair, ...item, published_at: item.published_at ? new Date(item.published_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10), last_verified_at: item.last_verified_at ? new Date(item.last_verified_at).toISOString().slice(0, 10) : '', interview_questions: Array.isArray(item.interview_questions) ? item.interview_questions : [] }); }} className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs">Edit</button>
                     <button type="button" onClick={async () => { try { await toggleAdminCurrentAffairStatus(item.id, !item.is_published); await loadAffairs(1); await loadStats(); addToast('Current affair status updated.', 'success'); } catch (error) { addToast(error.message || 'Unable to update current affair status.', 'error'); } }} className="px-3 py-2 rounded-lg bg-amber-950/70 text-amber-200 text-xs">{item.is_published ? 'Hide' : 'Publish'}</button>
                   </div>
                 </div>

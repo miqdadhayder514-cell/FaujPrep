@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.psychological-interview]
 verify_jwt = true
+
+[functions.deputy-president-interview]
+verify_jwt = true
