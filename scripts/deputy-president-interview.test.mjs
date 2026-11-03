@@ -91,6 +91,14 @@ test('module route, practice flows, privacy migration, and secure AI endpoint ar
   assert.match(edgeFunction, /OPENAI_API_KEY/);
   assert.match(edgeFunction, /action === 'review'/);
   assert.match(edgeFunction, /deputy-president-review/);
+  assert.match(edgeFunction, /cleanConversation/);
+  assert.match(component, /history: interview\.messages/);
+  assert.match(edgeFunction, /exactly ONE clear question/i);
+  assert.doesNotMatch(edgeFunction, /from\('deputy_interview_sessions'\)/);
+  assert.match(component, /Retry AI interviewer/);
+  assert.match(component, /Continue without AI/);
+  assert.match(component, /nextIndex = !isStart && !retrying \? interview\.index \+ 1/);
+  assert.match(component, /if \(interview\.aiEnabled\) \{/);
   assert.match(edgeFunction, /consentToAiProcessing !== true/);
   assert.match(edgeFunction, /getUser\(token\)/);
   assert.match(edgeFunction, /consume_psychological_interview_limit/);

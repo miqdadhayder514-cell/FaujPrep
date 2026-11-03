@@ -1038,6 +1038,8 @@ export default function App() {
   const [mockSecondsLeft, setMockSecondsLeft] = useState(null);
   const [mockAnswers, setMockAnswers] = useState({});
   const mockAnswersRef = useRef({});
+  const mockAnswerSaveFailuresRef = useRef(new Set());
+  const mockAnswerSavesRef = useRef(new Map());
   const [mockMarked, setMockMarked] = useState({});
   const [practiceBranchId, setPracticeBranchId] = useState('');
   const [practiceSubjectId, setPracticeSubjectId] = useState('');
@@ -1376,6 +1378,15 @@ export default function App() {
     }));
   };
 
+  const nextWATQuestion = () => {
+    const now = Date.now();
+    setWatSession((previous) => {
+      if (!previous.started || previous.completed) return previous;
+      const nextIndex = previous.index + 1;
+      return { ...previous, index: nextIndex, completed: nextIndex >= 50, startedAt: now, now };
+    });
+  };
+
   const startSCTTest = (testIndex) => {
     setSctSession({ testIndex, index: 0, answers: {}, started: true, completed: false, startedAt: Date.now(), now: Date.now() });
     navigateTo('sct-test', testIndex);
@@ -1386,6 +1397,15 @@ export default function App() {
       ...previous,
       answers: { ...previous.answers, [previous.index]: answer },
     }));
+  };
+
+  const nextSCTQuestion = () => {
+    const now = Date.now();
+    setSctSession((previous) => {
+      if (!previous.started || previous.completed) return previous;
+      const nextIndex = previous.index + 1;
+      return { ...previous, index: nextIndex, completed: nextIndex >= 20, startedAt: now, now };
+    });
   };
 
   const startSRTTest = (testIndex) => {
@@ -1442,20 +1462,23 @@ export default function App() {
 
   const nextMechanicalAptitudeQuestion = () => {
     setMechanicalAptitudeSession((previous) => {
+      if (previous.completed || !previous.selectedOption) return previous;
       const nextIndex = previous.questionIndex + 1;
       return {
         ...previous,
         questionIndex: nextIndex,
         selectedOption: '',
-        completed: nextIndex >= 50,
+        completed: nextIndex >= (MECHANICAL_APTITUDE_TESTS.find((item) => item.id === previous.testId)?.questions.length || 50),
       };
     });
   };
 
   const nextSRTQuestion = () => {
+    const now = Date.now();
     setSrtSession((previous) => {
+      if (!previous.started || previous.completed || previous.index >= (SRT_TESTS[previous.testIndex]?.entries.length || 10)) return previous;
       const nextIndex = previous.index + 1;
-      return { ...previous, index: nextIndex, completed: nextIndex >= 10, startedAt: Date.now(), now: Date.now() };
+      return { ...previous, index: nextIndex, completed: nextIndex >= (SRT_TESTS[previous.testIndex]?.entries.length || 10), startedAt: now, now };
     });
   };
 
@@ -2173,6 +2196,8 @@ export default function App() {
         });
         setMockAnswers({});
         mockAnswersRef.current = {};
+        mockAnswerSaveFailuresRef.current.clear();
+        mockAnswerSavesRef.current.clear();
         setMockMarked({});
         setMockSecondsLeft(product.durationMinutes * 60);
         navigateTo('question-practice');
@@ -2392,6 +2417,9 @@ export default function App() {
         questionStartedAt: Date.now(),
       });
       setMockAnswers({});
+      mockAnswersRef.current = {};
+      mockAnswerSaveFailuresRef.current.clear();
+      mockAnswerSavesRef.current.clear();
       setMockMarked({});
       setMockSecondsLeft(Math.max(0, Math.ceil(attempt.duration_minutes * 60)));
       navigateTo('question-practice');
@@ -2462,9 +2490,20 @@ export default function App() {
   const completeMockTest = async () => {
     if (practiceSession.mode !== 'mock' || !practiceSession.attemptId) return;
     try {
+      await Promise.allSettled([...mockAnswerSavesRef.current.values()]);
       const currentQuestion = practiceSession.questions[practiceSession.index];
-      if (currentQuestion && mockAnswers[currentQuestion.question_id || currentQuestion.id]) {
-        await saveMockTestAnswer(practiceSession.attemptId, currentQuestion.question_id || currentQuestion.id, mockAnswers[currentQuestion.question_id || currentQuestion.id], Math.round((Date.now() - (practiceSession.questionStartedAt || Date.now())) / 1000));
+      const currentQuestionId = currentQuestion?.question_id || currentQuestion?.id;
+      const pendingQuestionIds = new Set(mockAnswerSaveFailuresRef.current);
+      if (currentQuestionId && mockAnswersRef.current[currentQuestionId]) pendingQuestionIds.add(currentQuestionId);
+      for (const question of practiceSession.questions) {
+        const questionId = question.question_id || question.id;
+        const selectedOption = mockAnswersRef.current[questionId];
+        if (!selectedOption || !pendingQuestionIds.has(questionId)) continue;
+        const timeTakenSeconds = questionId === currentQuestionId
+          ? Math.round((Date.now() - (practiceSession.questionStartedAt || Date.now())) / 1000)
+          : null;
+        await persistMockTestAnswer(questionId, selectedOption, timeTakenSeconds);
+        mockAnswerSaveFailuresRef.current.delete(questionId);
       }
       const result = await submitMockTest(practiceSession.attemptId, null);
       const isPmaPaper = practiceSession.mockTestId && backendData.mockTests.find((test) => test.id === practiceSession.mockTestId)?.slug?.startsWith('pma-');
@@ -2516,13 +2555,34 @@ export default function App() {
 
   const saveAndMoveMockQuestion = async (nextIndex) => {
     const currentQuestion = practiceSession.questions[practiceSession.index];
-    const currentAnswer = mockAnswers[currentQuestion?.question_id || currentQuestion?.id];
-    try {
-      if (currentQuestion && currentAnswer) await saveMockTestAnswer(practiceSession.attemptId, currentQuestion.question_id || currentQuestion.id, currentAnswer, Math.round((Date.now() - (practiceSession.questionStartedAt || Date.now())) / 1000));
-      setPracticeSession((previous) => ({ ...previous, index: nextIndex, selectedOption: '', result: null, questionStartedAt: Date.now() }));
-    } catch (error) {
-      addToast(error.message || 'Unable to save this answer.', 'error');
+    const questionId = currentQuestion?.question_id || currentQuestion?.id;
+    const currentAnswer = questionId ? mockAnswersRef.current[questionId] : null;
+    const timeTakenSeconds = Math.round((Date.now() - (practiceSession.questionStartedAt || Date.now())) / 1000);
+    setPracticeSession((previous) => ({ ...previous, index: nextIndex, selectedOption: '', result: null, questionStartedAt: Date.now() }));
+    if (currentQuestion && currentAnswer) {
+      try {
+        await persistMockTestAnswer(questionId, currentAnswer, timeTakenSeconds);
+        mockAnswerSaveFailuresRef.current.delete(questionId);
+      } catch (error) {
+        mockAnswerSaveFailuresRef.current.add(questionId);
+        addToast(`${error.message || 'Unable to save this answer.'} You can continue; this answer will be retried before submission.`, 'error');
+      }
     }
+  };
+
+  const persistMockTestAnswer = (questionId, selectedOption, timeTakenSeconds) => {
+    const savePromise = saveMockTestAnswer(practiceSession.attemptId, questionId, selectedOption, timeTakenSeconds);
+    const trackedSave = savePromise
+      .then(() => mockAnswerSaveFailuresRef.current.delete(questionId))
+      .catch((error) => {
+        mockAnswerSaveFailuresRef.current.add(questionId);
+        throw error;
+      })
+      .finally(() => {
+        if (mockAnswerSavesRef.current.get(questionId) === trackedSave) mockAnswerSavesRef.current.delete(questionId);
+      });
+    mockAnswerSavesRef.current.set(questionId, trackedSave);
+    return trackedSave;
   };
 
   useEffect(() => {
@@ -2541,14 +2601,21 @@ export default function App() {
   useEffect(() => {
     if (currentPage !== 'wat-test' || !watSession.started || watSession.completed || watSession.startedAt === null) return undefined;
     const timer = window.setInterval(() => {
-      const elapsedSeconds = Math.floor((Date.now() - watSession.startedAt) / 1000);
-      const nextIndex = Math.floor(elapsedSeconds / 15);
-      setWatSession((previous) => ({
-        ...previous,
-        now: Date.now(),
-        index: Math.min(nextIndex, 50),
-        completed: nextIndex >= 50,
-      }));
+      const now = Date.now();
+      setWatSession((previous) => {
+        const elapsedSeconds = Math.floor((now - previous.startedAt) / 1000);
+        const elapsedQuestions = Math.floor(elapsedSeconds / 15);
+        if (elapsedQuestions === 0) return { ...previous, now };
+        const questionCount = WAT_TESTS[previous.testIndex]?.entries.length || 50;
+        const nextIndex = Math.min(previous.index + elapsedQuestions, questionCount);
+        return {
+          ...previous,
+          now,
+          index: nextIndex,
+          completed: nextIndex >= questionCount,
+          startedAt: previous.startedAt + elapsedQuestions * 15_000,
+        };
+      });
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, watSession.started, watSession.completed, watSession.startedAt]);
@@ -2556,14 +2623,21 @@ export default function App() {
   useEffect(() => {
     if (currentPage !== 'sct-test' || !sctSession.started || sctSession.completed || sctSession.startedAt === null) return undefined;
     const timer = window.setInterval(() => {
-      const elapsedSeconds = Math.floor((Date.now() - sctSession.startedAt) / 1000);
-      const nextIndex = Math.floor(elapsedSeconds / 12);
-      setSctSession((previous) => ({
-        ...previous,
-        now: Date.now(),
-        index: Math.min(nextIndex, 20),
-        completed: nextIndex >= 20,
-      }));
+      const now = Date.now();
+      setSctSession((previous) => {
+        const elapsedSeconds = Math.floor((now - previous.startedAt) / 1000);
+        const elapsedQuestions = Math.floor(elapsedSeconds / 12);
+        if (elapsedQuestions === 0) return { ...previous, now };
+        const questionCount = SCT_TESTS[previous.testIndex]?.entries.length || 20;
+        const nextIndex = Math.min(previous.index + elapsedQuestions, questionCount);
+        return {
+          ...previous,
+          now,
+          index: nextIndex,
+          completed: nextIndex >= questionCount,
+          startedAt: previous.startedAt + elapsedQuestions * 12_000,
+        };
+      });
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, sctSession.started, sctSession.completed, sctSession.startedAt]);
@@ -2571,16 +2645,21 @@ export default function App() {
   useEffect(() => {
     if (currentPage !== 'srt-test' || !srtSession.started || srtSession.completed || srtSession.startedAt === null) return undefined;
     const timer = window.setInterval(() => {
-      const elapsedSeconds = Math.floor((Date.now() - srtSession.startedAt) / 1000);
-      setSrtSession((previous) => ({
-        ...previous,
-        now: Date.now(),
-        ...(elapsedSeconds >= 50 ? {
-          index: Math.min(previous.index + Math.floor(elapsedSeconds / 50), 10),
-          completed: previous.index + Math.floor(elapsedSeconds / 50) >= 10,
-          startedAt: Date.now(),
-        } : {}),
-      }));
+      const now = Date.now();
+      setSrtSession((previous) => {
+        const elapsedSeconds = Math.floor((now - previous.startedAt) / 1000);
+        const elapsedQuestions = Math.floor(elapsedSeconds / 50);
+        if (elapsedQuestions === 0) return { ...previous, now };
+        const questionCount = SRT_TESTS[previous.testIndex]?.entries.length || 10;
+        const nextIndex = Math.min(previous.index + elapsedQuestions, questionCount);
+        return {
+          ...previous,
+          now,
+          index: nextIndex,
+          completed: nextIndex >= questionCount,
+          startedAt: previous.startedAt + elapsedQuestions * 50_000,
+        };
+      });
     }, 250);
     return () => window.clearInterval(timer);
   }, [currentPage, srtSession.started, srtSession.completed, srtSession.startedAt]);
@@ -4597,7 +4676,7 @@ export default function App() {
       <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
         <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Word Association Test</span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Choose a WAT practice test</h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each practice set contains 50 distinct stimulus words, shown one at a time for 15 seconds. Write the first constructive, relevant sentence that comes to mind; these original prompts are for preparation, not official ISSB questions or psychological assessment.</p>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each practice set contains 50 distinct stimulus words, shown one at a time for up to 15 seconds. You can move on early with Next. Write the first constructive, relevant sentence that comes to mind; these original prompts are for preparation, not official ISSB questions or psychological assessment.</p>
         <p className="text-sm font-semibold text-amber-300">Illustrative example responses appear only after the test ends. They are not official answer keys—your own honest, relevant sentence may differ.</p>
       </section>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -4638,6 +4717,11 @@ export default function App() {
               </div>
               <label className="block text-left"><span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Your sentence</span><textarea value={watSession.answers[watSession.index] || ''} onChange={(event) => updateWATAnswer(event.target.value)} placeholder="Write your first natural response..." className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500" /></label>
               <p className="text-xs text-slate-500">Answers will appear after the test ends. Practice yourself first, then see the answers.</p>
+              <div className="flex justify-end">
+                <button type="button" onClick={nextWATQuestion} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">
+                  {watSession.index === test.entries.length - 1 ? 'Finish test' : 'Next word'} <ArrowRight className="ml-1 inline h-4 w-4" />
+                </button>
+              </div>
             </section>
           </>
         ) : (
@@ -4657,7 +4741,7 @@ export default function App() {
       <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
         <span className="text-xs font-mono uppercase tracking-widest text-amber-400">Sentence Completion Test</span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Choose an SCT practice test</h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each test contains 20 sentence stems. The visible sentence stem changes every 12 seconds, matching the timed practice rhythm.</p>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Each test contains 20 sentence stems. Each stem has a 12-second timer, and you may move on early with Next.</p>
         <p className="text-sm font-semibold text-amber-300">Complete each stem in your own words. After the test, compare your responses with illustrative practice completions; these are not official ISSB answers or a scoring key.</p>
       </section>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -4688,6 +4772,11 @@ export default function App() {
             <div className="space-y-2"><div className="mx-auto h-2 max-w-md overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-amber-500 transition-all" style={{ width: `${(secondsRemaining / 12) * 100}%` }} /></div><p className="text-sm font-semibold text-amber-300">Next sentence in {secondsRemaining}s</p></div>
             <label className="block text-left"><span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Your completion</span><textarea value={sctSession.answers[sctSession.index] || ''} onChange={(event) => updateSCTAnswer(event.target.value)} placeholder="Complete the sentence naturally..." className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500" /></label>
             <p className="text-xs text-slate-500">Illustrative practice completions appear after the test. Respond naturally; there is no official answer key here.</p>
+            <div className="flex justify-end">
+              <button type="button" onClick={nextSCTQuestion} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">
+                {sctSession.index === test.entries.length - 1 ? 'Finish test' : 'Next sentence'} <ArrowRight className="ml-1 inline h-4 w-4" />
+              </button>
+            </div>
           </section>
         ) : (
           <section className="space-y-6"><div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-10 space-y-3"><span className="text-xs font-mono uppercase text-emerald-400">Test complete</span><h1 className="text-3xl font-extrabold text-slate-100">Review your SCT responses</h1><p className="text-sm text-slate-300">Your completions were kept private during the test. Compare them with these illustrative practice completions; they are examples, not official ISSB answers or a scoring key.</p></div><div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.stem}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.stem}</span><span className="text-[10px] uppercase text-slate-500">Answer revealed</span></div><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your completion:</span> {sctSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Illustrative completion:</span> {entry.answer}</p></article>)}</div><div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('sct-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div></section>
@@ -4729,7 +4818,7 @@ export default function App() {
             <div className="flex items-center justify-between gap-3"><span className="rounded-full border border-amber-500/30 bg-amber-950/30 px-3 py-1 text-[10px] uppercase tracking-widest text-amber-300">{currentEntry?.category}</span><span className="text-sm font-bold text-amber-300">{secondsRemaining}s</span></div>
             <article className="rounded-2xl border border-slate-700 bg-slate-950 p-6 sm:p-8"><h1 className="text-xl sm:text-2xl font-bold leading-relaxed text-slate-100">{currentEntry?.question}</h1></article>
             <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">Your reaction</span><textarea value={srtSession.answers[srtSession.index] || ''} onChange={(event) => updateSRTAnswer(event.target.value)} placeholder="Write the action you would take..." className="min-h-32 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500" /></label>
-            <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">The question changes automatically after 50 seconds.</p><button onClick={nextSRTQuestion} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">Next question <ArrowRight className="ml-1 inline h-4 w-4" /></button></div>
+            <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">The question changes automatically after 50 seconds.</p><button type="button" onClick={nextSRTQuestion} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400">{srtSession.index === test.entries.length - 1 ? 'Finish test' : 'Next question'} <ArrowRight className="ml-1 inline h-4 w-4" /></button></div>
           </section>
         ) : (
           <section className="space-y-6"><div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-6 sm:p-10 space-y-3"><span className="text-xs font-mono uppercase text-emerald-400">Test complete</span><h1 className="text-3xl font-extrabold text-slate-100">Review your SRT responses</h1><p className="text-sm text-slate-300">Your reactions were kept private during the test. Compare them with these illustrative practice responses; real situations can have more than one responsible response, and these are not official ISSB answer keys.</p></div><div className="space-y-3">{test.entries.map((entry, index) => <article key={`${entry.question}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-mono text-amber-400">{String(index + 1).padStart(2, '0')} · {entry.category}</span><span className="text-[10px] uppercase text-slate-500">Practice response</span></div><p className="font-semibold text-slate-200">{entry.question}</p><p className="text-sm text-slate-300"><span className="font-semibold text-slate-500">Your reaction:</span> {srtSession.answers[index] || 'No response entered.'}</p><p className="text-sm leading-relaxed text-emerald-300"><span className="font-semibold text-emerald-500">Illustrative practice response:</span> {entry.answer}</p></article>)}</div><div className="flex flex-wrap gap-3"><button onClick={() => navigateTo('srt-tests')} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950">Choose another test</button><button onClick={() => navigateTo('issb-psychological-tests')} className="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200">Back to psychological tests</button></div></section>

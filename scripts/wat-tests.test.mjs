@@ -25,8 +25,11 @@ test('seven new WAT sets contain 50 distinct words each with illustrative respon
 });
 
 test('WAT page keeps the 15-second pace and presents examples only after completion', () => {
-  assert.match(app, /Math\.floor\(elapsedSeconds \/ 15\)/);
+  assert.match(app, /const elapsedQuestions = Math\.floor\(elapsedSeconds \/ 15\);/);
   assert.match(app, /50 words · 15 seconds per word/);
+  assert.match(app, /const nextWATQuestion = \(\) =>/);
+  assert.match(app, /onClick=\{nextWATQuestion\}/);
+  assert.match(app, /\? 'Finish test' : 'Next word'/);
   assert.match(app, /Illustrative response/);
   assert.match(app, /not official answer keys/);
 });

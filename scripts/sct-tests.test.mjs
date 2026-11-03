@@ -25,8 +25,11 @@ test('SCT bank contains seven new complete tests with unique stems', () => {
 });
 
 test('SCT keeps the 12-second pace and identifies completions as illustrative', () => {
-  assert.match(app, /Math\.floor\(elapsedSeconds \/ 12\)/);
+  assert.match(app, /const elapsedQuestions = Math\.floor\(elapsedSeconds \/ 12\);/);
   assert.match(app, /20 sentence stems · 12 seconds per stem · 4 minutes/);
+  assert.match(app, /const nextSCTQuestion = \(\) =>/);
+  assert.match(app, /onClick=\{nextSCTQuestion\}/);
+  assert.match(app, /\? 'Finish test' : 'Next sentence'/);
   assert.match(app, /illustrative practice completions/);
   assert.match(app, /not official ISSB answers or a scoring key/);
 });

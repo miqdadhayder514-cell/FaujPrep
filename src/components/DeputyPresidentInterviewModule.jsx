@@ -134,6 +134,19 @@ function formatClock(seconds) {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
+async function getFunctionErrorMessage(error) {
+  const response = error?.context;
+  if (response instanceof Response) {
+    try {
+      const body = await response.clone().json();
+      if (typeof body?.error === 'string') return body.error;
+    } catch {
+      return error.message || 'The secure AI service returned an unreadable error.';
+    }
+  }
+  return error?.message || 'The secure AI service is unavailable.';
+}
+
 function getDailyPreparationStreak(progress, roadmap, sessions) {
   const dateKey = (value) => {
     const date = new Date(value);
@@ -532,7 +545,7 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
       setLearningAiFeedback(data.feedback);
       setLearningAiState({ status: 'ready', error: null });
     } catch (requestError) {
-      setLearningAiState({ status: 'unavailable', error: `AI coaching could not be completed: ${requestError.message}` });
+      setLearningAiState({ status: 'unavailable', error: `AI coaching could not be completed: ${await getFunctionErrorMessage(requestError)}` });
     }
   };
 
@@ -602,31 +615,38 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
     setCurrentFeedback(null);
     setRemainingSeconds(durationMinutes * 60);
     navigate('session', id);
-    if (interview.aiEnabled && interview.accountPersisted) {
+    if (interview.aiEnabled) {
       await requestAiTurn(interview, '', true);
     } else {
       setSessionNotice(sessionMode === 'rapid'
         ? 'Rapid-fire practice is running with locally selected questions; coaching feedback is heuristic.'
-        : interview.aiEnabled
-          ? 'AI is not available until the database migration and secure Edge Function are deployed. This session is running in non-AI practice mode.'
-          : 'This is a non-AI practice simulation. Enable AI consent in settings to use the conversational interviewer after deployment.');
+        : 'This is a non-AI practice simulation. Enable AI processing consent in settings to use the conversational interviewer.');
     }
   };
 
-  const requestAiTurn = async (interview, response, isStart = false) => {
-    if (!supabase || !interview.accountPersisted) {
-      setAiState({ status: 'unavailable', error: 'AI requires a synced interview session. Apply the migration and deploy the secure Edge Function.' });
+  const requestAiTurn = async (interview, response, isStart = false, retrying = false) => {
+    if (!supabase || !isSupabaseConfigured) {
+      const detail = 'AI practice needs the FaujPrep Supabase connection and deployed deputy-president-interview Edge Function.';
+      setAiState({ status: 'unavailable', error: detail });
+      setSessionNotice(detail);
       return null;
     }
     setAiState({ status: 'loading', error: null });
+    setSessionNotice(null);
     try {
+      let auth = await supabase.auth.getSession();
+      if (auth.error) throw auth.error;
+      if (!auth.data.session) {
+        const visitorSession = await ensureAnonymousSession();
+        auth = { data: { session: visitorSession }, error: null };
+      }
       const { data, error: invokeError } = await supabase.functions.invoke('deputy-president-interview', {
         body: {
           action: 'turn',
-          sessionId: interview.id,
           response,
+          history: interview.messages,
           service: interview.service,
-          category: interview.categoryId,
+          category: INTERVIEW_FOCI.find((focus) => focus.id === interview.categoryId)?.label || 'Complete mixed interview',
           question: DEPUTY_PRESIDENT_QUESTIONS.find((item) => item.id === interview.questionIds[interview.index])?.question || '',
           questionPool: interview.questionIds.slice(interview.index, interview.index + 12).map((questionId) => {
             const item = DEPUTY_PRESIDENT_QUESTIONS.find((questionEntry) => questionEntry.id === questionId);
@@ -638,34 +658,49 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
         },
       });
       if (invokeError) throw invokeError;
+      if (typeof data?.assistantMessage !== 'string' || !data.assistantMessage.trim()) {
+        throw new Error('The interview service returned an empty interviewer response.');
+      }
       const nextMessage = { role: 'assistant', content: data.assistantMessage };
       const nextMessages = [...interview.messages, ...(response ? [{ role: 'candidate', content: response }] : []), nextMessage];
-      const nextInterview = { ...interview, messages: nextMessages };
+      const nextIndex = !isStart && !retrying ? interview.index + 1 : interview.index;
+      const nextInterview = { ...interview, index: nextIndex, currentPromptStartedAt: new Date().toISOString(), messages: nextMessages };
       persistLocal({ profile, progress, roadmap, sessions: history, activeInterview: nextInterview });
-      setActiveInterview((previous) => previous?.id === interview.id ? {
-        ...previous,
-        messages: nextMessages,
-      } : previous);
+      setActiveInterview((previous) => previous?.id === interview.id ? nextInterview : previous);
       setTurnFeedback(data.feedback || null);
       setAiState({ status: 'ready', error: null });
+      setSessionNotice('AI interviewer connected. Your replies are driving the next question.');
       if (data.ended) window.setTimeout(() => completeInterview(false, nextInterview), 0);
+      else if (nextIndex >= nextInterview.questionIds.length) window.setTimeout(() => completeInterview(false, nextInterview), 0);
       return data;
     } catch (requestError) {
-      const detail = requestError.message || 'The secure AI interviewer is unavailable.';
+      const status = requestError.context?.status;
+      const responseMessage = await getFunctionErrorMessage(requestError);
+      const detail = status === 404
+          ? 'The Deputy President AI function is not deployed to this Supabase project yet.'
+          : status === 401
+            ? 'Supabase rejected the visitor session. Refresh the page and start again.'
+          : status === 429
+            ? 'The AI request limit was reached. Wait a few minutes, then retry.'
+              : responseMessage;
       setAiState({ status: 'unavailable', error: detail });
-      setSessionNotice(`AI follow-up is unavailable: ${detail}. The answer is retained locally; use the question bank’s suggested follow-ups.`);
-      if (!isStart) {
-        const localQuestion = DEPUTY_PRESIDENT_QUESTIONS.find((item) => item.id === interview.questionIds[interview.index]);
+      setSessionNotice(`AI interview could not respond: ${detail} Your answers remain saved on this device. Retry AI or continue with guided local practice.`);
+      if (!isStart || !interview.messages.length) {
+        const fallbackIndex = !isStart && !retrying ? Math.min(interview.index + 1, interview.questionIds.length - 1) : interview.index;
+        const localQuestion = DEPUTY_PRESIDENT_QUESTIONS.find((item) => item.id === interview.questionIds[fallbackIndex]);
         const nextMessage = {
           role: 'assistant',
-          content: localQuestion?.followUpQuestions?.[0] || 'Could you give a specific example to support your answer?',
+          content: `AI interviewer is temporarily unavailable. ${localQuestion ? `Practice prompt: ${localQuestion.question}` : 'Please introduce yourself briefly.'}`,
         };
-        const nextInterview = { ...interview, messages: [...interview.messages, { role: 'candidate', content: response }, nextMessage] };
+        const nextMessages = [...interview.messages, ...(response ? [{ role: 'candidate', content: response }] : []), nextMessage];
+        const nextInterview = {
+          ...interview,
+          index: fallbackIndex,
+          currentPromptStartedAt: new Date().toISOString(),
+          messages: nextMessages,
+        };
         persistLocal({ profile, progress, roadmap, sessions: history, activeInterview: nextInterview });
-        setActiveInterview((previous) => previous?.id === interview.id ? {
-          ...previous,
-          messages: nextInterview.messages,
-        } : previous);
+        setActiveInterview((previous) => previous?.id === interview.id ? nextInterview : previous);
       }
       return null;
     }
@@ -705,7 +740,7 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
         if (insertError) setSessionNotice(`Answer is retained in this session, but account history could not save it: ${insertError.message}`);
       }
     }
-    if (activeInterview.aiEnabled && activeInterview.accountPersisted) {
+    if (activeInterview.aiEnabled) {
       await requestAiTurn(updated, responseText);
     } else {
       advanceInterview(updated);
@@ -764,13 +799,13 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
         if (updateError) setSessionNotice(`Interview finished, but account history could not be updated: ${updateError.message}`);
       }
     }
-    if (completed.aiEnabled && completed.accountPersisted && supabase) {
+    if (completed.aiEnabled && supabase && isSupabaseConfigured) {
       try {
         const { data, error: invokeError } = await supabase.functions.invoke('deputy-president-interview', {
           body: {
             action: 'finish',
-            sessionId: completed.id,
-            localReport: report,
+            history: completed.messages,
+            responses: completed.responses.map((item) => ({ question: item.question, answer: item.answer })),
             consentToAiProcessing: true,
           },
         });
@@ -780,7 +815,7 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
         setHistory((previous) => previous.map((item) => item.id === completed.id ? { ...item, feedback: withAi } : item));
         persistLocal({ profile, progress, roadmap, sessions: updatedHistory.map((item) => item.id === completed.id ? { ...item, feedback: withAi } : item) });
       } catch (feedbackError) {
-        setSessionNotice(`The interview is complete, but AI feedback could not be generated: ${feedbackError.message}. The local coaching report is available.`);
+        setSessionNotice(`The interview is complete, but AI feedback could not be generated: ${await getFunctionErrorMessage(feedbackError)}. The local coaching report is available.`);
       }
     }
   }
@@ -977,6 +1012,7 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
     <div className="mx-auto max-w-4xl space-y-6">
       <Panel title="Configure your practice interview" icon={Clock3}>
         <p className="text-sm leading-6 text-slate-400">These are FaujPrep simulation settings, not official ISSB interview durations. The question bank is educational and does not predict selection.</p>
+        <p className="rounded-xl border border-sky-500/20 bg-sky-950/20 p-4 text-sm leading-6 text-sky-100">For a real conversational simulation, choose Complete Interview and enable AI consent. The AI connection requires the Supabase Edge Function and server-side provider configuration. If it is unavailable, the session will show the reason and offer retry or guided local practice.</p>
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="text-sm text-slate-300">Practice format
             <select value={sessionMode} onChange={(event) => setSessionMode(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-white"><option value="complete">Complete Interview</option><option value="rapid">Rapid-Fire Interview</option></select>
@@ -994,11 +1030,11 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
             <select value={service} onChange={(event) => setService(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-white">{SERVICES.map((item) => <option key={item}>{item}</option>)}</select>
           </label>
         </div>
-        <label className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+        {sessionMode === 'complete' ? <label className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
           <input type="checkbox" checked={consentToAi} onChange={(event) => setConsentToAi(event.target.checked)} className="mt-1 accent-amber-400" />
-          <span><strong className="text-slate-100">Optional AI processing consent.</strong> If enabled and the secure service is deployed, the interview responses and selected profile details may be sent to the configured AI provider for follow-up and coaching. Do not include sensitive information. You can practise without AI.</span>
-        </label>
-        <button type="button" onClick={startInterview} className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950"><Play className="h-4 w-4" /> Start {sessionMode === 'rapid' ? 'rapid-fire' : 'interview'}</button>
+          <span><strong className="text-slate-100">Use the conversational AI interviewer.</strong> Your answers and selected profile details are sent to FaujPrep’s configured AI provider for follow-up and coaching. Do not include sensitive information. You can continue with the guided local simulation without AI.</span>
+        </label> : <p className="rounded-xl border border-slate-700 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">Rapid-fire mode uses short local prompts and does not send responses to an AI provider.</p>}
+        <button type="button" onClick={startInterview} className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950"><Play className="h-4 w-4" /> Start {sessionMode === 'rapid' ? 'rapid-fire' : consentToAi ? 'AI interview' : 'guided interview'}</button>
       </Panel>
     </div>
   );
@@ -1014,10 +1050,10 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
             <div><p className="text-xs text-slate-400">{activeInterview.service} · {activeInterview.mode === 'rapid' ? 'Rapid-fire practice' : 'FaujPrep simulation'}</p><p className="mt-1 text-lg font-bold text-white">Time left {formatClock(remainingSeconds)}</p></div>
             <div className="text-right text-xs text-slate-400"><p>Question {Math.min(activeInterview.index + 1, activeInterview.questionIds.length)} of {activeInterview.questionIds.length}</p><p>{askedCount} responses recorded</p></div>
           </div>
-          {activeInterview.aiEnabled ? <p className="text-xs text-slate-400">{aiState.status === 'loading' ? 'AI interviewer is considering your response…' : aiState.status === 'ready' ? 'AI interviewer connected.' : aiState.error || 'AI interviewer is not connected.'}</p> : null}
+          {activeInterview.aiEnabled ? <p role="status" className={`text-xs ${aiState.status === 'unavailable' ? 'text-amber-200' : 'text-slate-400'}`}>{aiState.status === 'loading' ? 'AI interviewer is considering your response…' : aiState.status === 'ready' ? 'AI interviewer connected. Your replies are driving the next question.' : aiState.error || 'Connecting to the AI interviewer…'}</p> : null}
           {currentQuestion ? <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 sm:p-7">
             <p className="text-xs font-mono uppercase text-amber-300">{currentQuestion.category}</p>
-            {!activeInterview.aiEnabled ? <h2 className="mt-2 text-xl font-bold leading-8 text-white">{currentQuestion.question}</h2> : <p className="mt-2 text-sm text-slate-300">Mixed interview prompts · the interviewer will guide the conversation one question at a time.</p>}
+            {!activeInterview.aiEnabled ? <h2 className="mt-2 text-xl font-bold leading-8 text-white">{currentQuestion.question}</h2> : <p className="mt-2 text-sm text-slate-300">{activeInterview.messages.length ? 'The interviewer will adapt follow-up questions to your answer.' : 'Connecting you with the interviewer. Your opening question will appear here.'}</p>}
           </div> : null}
           {activeMessage ? <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4"><p className="text-[10px] font-mono uppercase text-emerald-300">Interviewer</p><p className="mt-2 text-sm leading-6 text-slate-200">{activeMessage.content}</p></div> : null}
           {currentFeedback ? <FeedbackCard feedback={currentFeedback} /> : null}
@@ -1026,11 +1062,26 @@ export default function DeputyPresidentInterviewModule({ routeSuffix = '', onNav
             <textarea value={candidateAnswer} onChange={(event) => setCandidateAnswer(event.target.value)} rows={5} maxLength={2500} placeholder="Answer in your own words. Use genuine examples and say when you are unsure." className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-white placeholder:text-slate-500" />
           </label>
           <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={!candidateAnswer.trim() || aiState.status === 'loading'} onClick={submitInterviewAnswer} className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">Submit answer</button>
+            <button type="button" disabled={!candidateAnswer.trim() || aiState.status === 'loading' || (activeInterview.aiEnabled && !activeInterview.messages.length)} onClick={submitInterviewAnswer} className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">Submit answer</button>
             {!activeInterview.aiEnabled ? <button type="button" onClick={advanceInterview} className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200">Skip to next question</button> : null}
             <button type="button" onClick={() => completeInterview(false)} className="rounded-xl border border-rose-500/30 px-4 py-2.5 text-sm font-semibold text-rose-200">End interview and review</button>
           </div>
-          {activeInterview.aiEnabled && aiState.status === 'unavailable' ? <p className="text-xs text-amber-200">Fallback mode is visible: AI is unavailable, so the bank’s practice follow-up and local heuristic feedback are used instead.</p> : null}
+          {activeInterview.aiEnabled && aiState.status === 'unavailable' ? <div className="flex flex-wrap gap-3 rounded-xl border border-amber-500/20 bg-amber-950/20 p-3">
+            <button type="button" onClick={() => {
+              const last = activeInterview.messages.at(-1);
+              const retryInterview = last?.content.startsWith('AI interviewer is temporarily unavailable.')
+                ? { ...activeInterview, messages: activeInterview.messages.slice(0, -1) }
+                : activeInterview;
+              requestAiTurn(retryInterview, '', false, true);
+            }} className="rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950">Retry AI interviewer</button>
+            <button type="button" onClick={() => {
+              const localInterview = { ...activeInterview, aiEnabled: false };
+              setActiveInterview(localInterview);
+              persistLocal({ profile, progress, roadmap, sessions: history, activeInterview: localInterview });
+              setAiState({ status: 'idle', error: null });
+              setSessionNotice('Continuing with guided local practice. Answers stay on this device unless account sync is configured.');
+            }} className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200">Continue without AI</button>
+          </div> : null}
         </Panel>
         <Panel title="Conversation so far" icon={History}>
           {activeInterview.messages.length ? <div className="max-h-80 space-y-3 overflow-y-auto">{activeInterview.messages.map((message, index) => <div key={`${message.role}-${index}`} className={`rounded-xl p-3 ${message.role === 'assistant' ? 'bg-slate-950' : 'bg-amber-950/20'}`}><p className="text-[10px] uppercase text-slate-500">{message.role === 'assistant' ? 'Interviewer' : 'Candidate'}</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-200">{message.content}</p></div>)}</div> : <p className="text-sm text-slate-500">Your interview conversation will appear here.</p>}

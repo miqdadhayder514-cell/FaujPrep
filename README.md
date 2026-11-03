@@ -22,12 +22,12 @@ The separate `/issb/deputy-president-interview` module includes the supplied 180
 
 To enable account sync and AI practice:
 
-1. Apply `supabase/migrations/061_deputy_president_interview.sql` after the existing migrations, including migration 060 (the AI request limiter). This migration adds private, RLS-protected candidate data and verification/interview-guidance columns to `current_affairs`.
+1. Apply `supabase/migrations/060_issb_psychological_interview.sql` if it is not already applied; the AI function uses its server-side request limiter. Apply `supabase/migrations/061_deputy_president_interview.sql` for cross-device profile, progress, and interview-history sync and the `current_affairs` verification fields. The AI conversation itself is sent as consented, bounded request context and does not require the 061 session tables.
 2. Deploy the Edge Function with `supabase functions deploy deputy-president-interview`.
 3. Configure the function secrets in Supabase: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`. Optionally set `OPENAI_MODEL` and comma-separated `DEPUTY_INTERVIEW_ALLOWED_ORIGINS`. Never put the service-role or provider key in a `VITE_` variable or browser code.
 4. Populate current-affairs source and verification details in the existing admin editor. These entries are not automatically fact-checked; editors should maintain the source and as-of date.
 
-Without the migration and function deployment, the page still works in device-local mode and AI practice reports its configuration error explicitly.
+Without migration 061, the page keeps profile, progress, and session history on the device. AI practice still needs the deployed function, configured server-side secrets, and migration 060 for rate limiting; the interface reports a clear connection error if the AI function is unavailable.
 
 Run the focused content/integration assertions with `node --test scripts/deputy-president-interview.test.mjs` from `my-app`; `npm run lint` and `npm run build` validate the app.
 
