@@ -47,4 +47,40 @@ export const PICTURE_STORIES = [
     image: '/images/issb/picture-stories/picture-story-8.png',
     sampleAnswer: 'Usman was a university student returning from his morning walk when he noticed a wallet lying on the footpath. He picked it up and checked for identification so that he could return it to its owner. Fortunately, the wallet contained an identity card and a contact number. Usman called the number and informed the owner about his discovery. Shortly afterwards, an elderly man arrived at the park and identified the wallet. Usman returned it without removing anything. The elderly man thanked him and appreciated his honesty. Usman felt satisfied because he had fulfilled his moral responsibility. He believed that honesty was essential for building trust in society.',
   },
+  {
+    id: '9',
+    title: 'Picture Story Test 9',
+    image: '/images/issb/picture-stories/picture-story-9.png',
+    sampleAnswer: 'Sara was a hardworking university student who wanted to perform well in her examinations. During her preparation, she found a difficult subject challenging and became worried about completing the syllabus on time. One afternoon, her classmate Ahmed noticed her struggling in the library. He approached her and offered his assistance. After understanding her difficulties, he explained the difficult concepts and suggested a proper study plan. Sara followed his guidance and started practising questions regularly. They also discussed important topics together and helped each other improve. With consistent effort and proper planning, Sara gained confidence and performed well in her examinations.',
+  },
+  {
+    id: '10',
+    title: 'Picture Story Test 10',
+    image: '/images/issb/picture-stories/picture-story-10.png',
+    sampleAnswer: 'Ali was a university student who enjoyed spending time in the park. One morning, he noticed a small bird sitting on the ground with an injured wing. He carefully approached it and placed it in a small box to prevent further injury. He took the bird to a nearby animal shelter. The caretaker examined the bird and provided the necessary treatment. Ali visited the shelter regularly and helped with its care. After a few days, the bird recovered and was released into the open sky. Ali felt happy that his timely action had saved a life.',
+  },
+  {
+    id: '11',
+    title: 'Picture Story Test 11',
+    image: '/images/issb/picture-stories/picture-story-11.png',
+    sampleAnswer: 'Usman was returning home after attending his classes when he noticed a wallet lying on the footpath. He picked it up and checked its contents to find the owner’s identification. Fortunately, it contained an identity card and a contact number. Usman immediately called the owner and informed him about the wallet. He arranged to meet him at a nearby public place. The elderly owner arrived and verified his identity before receiving the wallet. He thanked Usman for his honesty. Usman refused any reward and continued his journey with satisfaction.',
+  },
+  {
+    id: '12',
+    title: 'Picture Story Test 12',
+    image: '/images/issb/picture-stories/picture-story-12.png',
+    sampleAnswer: 'Bilal was an enthusiastic member of his university’s hiking club. During a planned mountain expedition, one of his teammates struggled to climb a steep section of the trail. Bilal stopped and assessed the situation carefully. He secured his own position and extended his hand to help his teammate. With proper coordination, they safely reached a stable area. Bilal encouraged the group to take a short rest and check their equipment. After discussing the safest route, the team continued its journey together. They eventually reached their destination safely. The experience strengthened their confidence and teamwork.',
+  },
+  {
+    id: '13',
+    title: 'Picture Story Test 13',
+    image: '/images/issb/picture-stories/picture-story-13.png',
+    sampleAnswer: 'Hamza was a university student who believed that environmental cleanliness was everyone’s responsibility. During a visit to a local park, he noticed litter scattered around the walking paths. He decided to organize a small cleanliness campaign. He gathered some children and explained the importance of keeping public places clean. He arranged gloves, garbage bags and waste bins. Everyone participated by collecting plastic bottles and other waste. Hamza also contacted the local administration to arrange regular waste collection. The park became cleaner, and more residents joined the campaign. His initiative encouraged the community to maintain a healthy environment.',
+  },
+  {
+    id: '14',
+    title: 'Picture Story Test 14',
+    image: '/images/issb/picture-stories/picture-story-14.png',
+    sampleAnswer: 'Saad was a hardworking university student who wanted to achieve excellent academic results. During the semester, he realized that he was weak in some important subjects. Instead of losing confidence, he prepared a daily study timetable. He divided difficult topics into smaller sections and practiced questions regularly. He also consulted his teachers whenever he faced difficulties. Saad reduced unnecessary activities and used his time effectively. Despite occasional challenges, he remained consistent with his studies. At the end of the semester, his hard work resulted in excellent grades. He decided to maintain the same discipline in his future goals.',
+  },
 ];

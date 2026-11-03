@@ -1412,6 +1412,12 @@ export default function App() {
     setPictureStorySession((previous) => ({ ...previous, sampleAnswerVisible: !previous.sampleAnswerVisible }));
   };
 
+  const completePictureStoryTest = () => {
+    setPictureStorySession((previous) => previous.response.trim()
+      ? { ...previous, now: Date.now(), completed: true }
+      : previous);
+  };
+
   const startMechanicalAptitudeTest = (testId) => {
     const now = Date.now();
     setMechanicalAptitudeSession({ testId, questionIndex: 0, selectedOption: '', startedAt: now, now, completed: false, score: 0 });
@@ -4312,7 +4318,7 @@ export default function App() {
       <section className="rounded-3xl border border-amber-500/30 bg-slate-900 p-8 sm:p-10 space-y-4">
         <span className="text-xs font-mono uppercase tracking-widest text-amber-400">ISSB · Free practice</span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100">Picture Story Tests</h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Choose one of eight picture prompts. Each test gives you 2 minutes 30 seconds to study the picture and write your story. The sample answer stays hidden until the timer ends and you choose to view it.</p>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300">Choose one of {PICTURE_STORIES.length} picture prompts. Each test gives you 2 minutes 30 seconds to study the picture and write your story. Finish early or wait for the timer; the sample answer stays hidden until you complete your story and choose to view it.</p>
       </section>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {PICTURE_STORIES.map((story) => (
@@ -4320,7 +4326,7 @@ export default function App() {
             <div className="space-y-2">
               <span className="text-xs font-mono text-amber-400">FREE · 2:30</span>
               <h2 className="text-xl font-bold text-slate-100">{story.title}</h2>
-              <p className="text-sm text-slate-400">One picture · One timed story · Sample answer after completion</p>
+              <p className="text-sm text-slate-400">One picture · 2 minutes 30 seconds · Sample answer after completion</p>
             </div>
             <button type="button" onClick={() => startPictureStoryTest(story.id)} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-400">Open test</button>
           </article>
@@ -4383,7 +4389,10 @@ export default function App() {
             />
           </label>
           {!pictureStorySession.completed ? (
-            <p className="text-sm text-slate-400">The test will finish automatically when the 2 minutes 30 seconds are up. Your writing stays on this page and is not submitted to a server.</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-slate-400">Finish when your story is ready, or use the full 2 minutes 30 seconds. Your writing stays on this page and is not submitted to a server.</p>
+              <button type="button" onClick={completePictureStoryTest} disabled={!pictureStorySession.response.trim()} className="shrink-0 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50">Finish story</button>
+            </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-emerald-300">Test complete. Review your story first, then choose whether to view the sample answer.</p>
