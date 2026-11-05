@@ -53,7 +53,7 @@ test('paid interview PDF is linked from the interview hub and requires approved 
   assert.match(paidNotesSource, /pricePkr: 150/);
   assert.match(appSource, /Crack Interview · PKR 150/);
   assert.match(appSource, /requests\.some\(\(request\) => request\.test_slug === product\.id && request\.status === 'APPROVED'\)/);
-  assert.match(appSource, /PAID_NOTE_PRODUCTS\.filter\(\(product\) => !product\.interviewResource\)/);
+  assert.match(appSource, /PAID_NOTE_PRODUCTS\.filter\(\(product\) => !product\.interviewResource && !product\.isEbook\)/);
   assert.match(subscriptionsSource, /'pma-long-course-159-interview-fully-cracked': 'pma-long-course-159-interview-fully-cracked\.pdf\.pdf'/);
   assert.match(paidInterviewMigrationSource, /test_slug = 'pma-long-course-159-interview-fully-cracked' and amount_pkr = 150/);
   assert.match(paidInterviewMigrationSource, /purchase\.test_slug = 'pma-long-course-159-interview-fully-cracked' and p_object_name = 'pma-long-course-159-interview-fully-cracked\.pdf'/);

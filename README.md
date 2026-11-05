@@ -16,6 +16,10 @@ Personal, academic, general-knowledge, current-affairs, defense, rapid-fire, and
 
 Each practice answer leads to a category-specific interviewer follow-up and a 10-point coaching rubric. After submission, candidates see a curated, question-specific sample answer to learn from and personalize honestly. Scores are generated locally; they are not AI-generated and do not verify factual accuracy.
 
+## Paid PMA e-book
+
+The E-books page offers `../e-books/PMA Long Course 160 Preparation.pdf` for PKR 350 and displays the cover in `public/images/pma-lc160-preparation-book-cover.png`. Apply `supabase/migrations/062_pma_lc160_preparation_ebook.sql` after the earlier payment and paid-note migrations. Upload the PDF to the private `paid-notes` bucket by running `npm run upload:paid-notes -- --product=pma-lc160-preparation-book` from `my-app` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set in the local environment. The e-book download requires an admin-approved purchase for the book, including for Pro/Premium subscribers; payment screenshots continue to use the existing manual-review workflow.
+
 ## ISSB Deputy President Interview Preparation
 
 The separate `/issb/deputy-president-interview` module includes the supplied 180-question learning bank, candidate-owned learning progress/profile/roadmap, current-affairs preparation sourced from administrator-maintained entries, and timed practice simulations. Practice sessions can use local coaching without AI; optional per-answer AI coaching and AI interviewing both require explicit consent. The AI is a practice facilitator, not an ISSB official, and its coaching is not an official assessment.

@@ -1,5 +1,17 @@
 export const PAID_NOTE_PRODUCTS = [
   {
+    id: 'pma-lc160-preparation-book',
+    title: 'PMA Long Course 160 Preparation Book',
+    description: 'A downloadable preparation book covering verbal and non-verbal intelligence, academic subjects, mock tests, solved examples, and detailed answers.',
+    sourceDirectory: 'e-books',
+    sourceFile: 'PMA Long Course 160 Preparation.pdf',
+    downloadPath: 'pma-lc160-preparation-book.pdf',
+    coverImage: '/images/pma-lc160-preparation-book-cover.png',
+    pricePkr: 350,
+    isNote: true,
+    isEbook: true,
+  },
+  {
     id: 'pma-academic-notes',
     title: 'PMA Academic Notes',
     sourceFile: 'PMA_Academic_Notes.pdf',

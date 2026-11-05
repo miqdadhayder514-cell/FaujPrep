@@ -8,18 +8,39 @@ const lc160Migration = await readFile(new URL('../supabase/migrations/057_paid_p
 const lc160ContentMigration = await readFile(new URL('../supabase/migrations/058_pma_lc160_notes_in_database.sql', import.meta.url), 'utf8');
 const interviewMigration = await readFile(new URL('../supabase/migrations/042_paid_interview_preparation_pdf.sql', import.meta.url), 'utf8');
 const doubleExtensionMigration = await readFile(new URL('../supabase/migrations/043_paid_interview_pdf_double_extension.sql', import.meta.url), 'utf8');
+const ebookMigration = await readFile(new URL('../supabase/migrations/062_pma_lc160_preparation_ebook.sql', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const subscriptionsSource = await readFile(new URL('../src/lib/subscriptions.js', import.meta.url), 'utf8');
 
 test('existing paid notes retain their products and prices', () => {
-  const pmaNotes = PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource && !product.collection);
+  const pmaNotes = PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource && !product.collection && !product.isEbook);
   const interviewNotes = PAID_NOTE_PRODUCTS.filter((product) => product.interviewResource);
   assert.equal(pmaNotes.length, 4);
   assert.ok(pmaNotes.every((product) => product.pricePkr === 30 && product.isNote));
   assert.equal(interviewNotes.length, 1);
   assert.equal(interviewNotes[0].pricePkr, 150);
   assert.ok(PAID_NOTE_PRODUCTS.every((product) => product.isNote));
-  assert.equal(new Set(PAID_NOTE_PRODUCTS.map((product) => product.id)).size, 15);
+  assert.equal(new Set(PAID_NOTE_PRODUCTS.map((product) => product.id)).size, 16);
+});
+
+test('PMA LC 160 e-book is listed at PKR 350 and only approved purchases unlock the private PDF', async () => {
+  const product = PAID_NOTE_PRODUCTS.find((item) => item.isEbook);
+  assert.ok(product);
+  assert.equal(product.id, 'pma-lc160-preparation-book');
+  assert.equal(product.pricePkr, 350);
+  assert.equal(product.sourceFile, 'PMA Long Course 160 Preparation.pdf');
+  assert.equal(product.downloadPath, 'pma-lc160-preparation-book.pdf');
+  assert.ok(product.coverImage);
+  const pdf = await readFile(new URL(`../../e-books/${product.sourceFile}`, import.meta.url));
+  assert.match(pdf.toString('ascii', 0, 8), /^%PDF-1\./);
+  assert.match(appSource, /PAID_NOTE_PRODUCTS\.filter\(\(product\) => product\.isEbook\)/);
+  assert.match(appSource, /request\?\.status === 'APPROVED'/);
+  assert.match(ebookMigration, /p_ebook_slug <> 'pma-lc160-preparation-book'/);
+  assert.match(ebookMigration, /amount_pkr = 350/);
+  assert.match(ebookMigration, /p_object_name <> 'pma-lc160-preparation-book\.pdf'/);
+  assert.match(ebookMigration, /purchase\.test_slug = 'pma-lc160-preparation-book' and p_object_name = 'pma-lc160-preparation-book\.pdf'/);
+  assert.match(subscriptionsSource, /submit_paid_ebook_payment_proof/);
+  assert.match(subscriptionsSource, /get_admin_ebook_purchase_queue/);
 });
 
 test('ten researched LC 160 guides cover the requested sections and generate private PDFs', async () => {
@@ -78,7 +99,7 @@ test('note purchases are fixed at PKR 14 and private files require the matching 
   assert.match(migration, /insert into storage\.buckets[\s\S]*?'paid-notes', 'paid-notes', false/);
   assert.match(migration, /create policy paid_notes_approved_purchase_read[\s\S]*?can_download_paid_note\(storage\.objects\.name\)/);
   assert.match(migration, /function public\.can_download_paid_note[\s\S]*?security definer[\s\S]*?purchase\.status = 'APPROVED'/);
-  for (const product of PAID_NOTE_PRODUCTS.filter((item) => !item.interviewResource && !item.collection)) {
+  for (const product of PAID_NOTE_PRODUCTS.filter((item) => !item.interviewResource && !item.collection && !item.isEbook)) {
     assert.ok(migration.includes(`purchase.test_slug = '${product.id}' and p_object_name = '${product.downloadPath}'`));
     assert.ok(migration.includes(`when '${product.id}' then '${product.title}'`));
   }

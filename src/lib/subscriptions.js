@@ -201,8 +201,11 @@ export async function submitPaidNotePaymentProof(payload) {
   }
 
   const screenshotPath = await uploadPaymentScreenshot(payload.userId, payload.paymentScreenshot);
-  const { data, error } = await supabase.rpc('submit_paid_note_payment_proof', {
-    p_note_slug: payload.noteSlug,
+  const isEbook = payload.noteSlug === 'pma-lc160-preparation-book';
+  const rpcName = isEbook ? 'submit_paid_ebook_payment_proof' : 'submit_paid_note_payment_proof';
+  const slugParameter = isEbook ? 'p_ebook_slug' : 'p_note_slug';
+  const { data, error } = await supabase.rpc(rpcName, {
+    [slugParameter]: payload.noteSlug,
     p_sender_name: payload.senderName,
     p_sender_phone: payload.senderPhone,
     p_payment_date: payload.paymentDate,
@@ -223,6 +226,7 @@ export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
   }
 
   const allowedPaths = {
+    'pma-lc160-preparation-book': 'pma-lc160-preparation-book.pdf',
     'pma-academic-notes': 'pma-academic-notes.pdf',
     'pma-academic-tests-notes': 'pma-academic-tests-notes.pdf',
     'pma-non-verbal-intelligence-notes': 'pma-non-verbal-intelligence-notes.pdf',
@@ -361,16 +365,19 @@ export async function getAdminPaymentQueue() {
     return [];
   }
 
-  const [planQueue, mockTestQueue, noteQueue] = await Promise.all([
+  const [planQueue, mockTestQueue, noteQueue, ebookQueue] = await Promise.all([
     supabase.rpc('get_admin_payment_queue'),
     supabase.rpc('get_admin_mock_test_purchase_queue'),
     supabase.rpc('get_admin_paid_note_purchase_queue'),
+    supabase.rpc('get_admin_ebook_purchase_queue'),
   ]);
   if (planQueue.error) throw planQueue.error;
   if (mockTestQueue.error) throw mockTestQueue.error;
   if (noteQueue.error) throw noteQueue.error;
+  if (ebookQueue.error) throw ebookQueue.error;
   const noteSlugs = new Set([
     'pma-academic-notes',
+    'pma-lc160-preparation-book',
     'pa-academic-notes',
     'pma-academic-tests-notes',
     'pma-non-verbal-intelligence-notes',
@@ -381,6 +388,7 @@ export async function getAdminPaymentQueue() {
     ...(Array.isArray(planQueue.data) ? planQueue.data : []).map((payment) => ({ ...payment, purchase_type: 'PLAN' })),
     ...(Array.isArray(mockTestQueue.data) ? mockTestQueue.data : []).filter((payment) => !noteSlugs.has(payment.test_slug)),
     ...(Array.isArray(noteQueue.data) ? noteQueue.data : []),
+    ...(Array.isArray(ebookQueue.data) ? ebookQueue.data : []),
   ];
   return Promise.all(payments.map(async (payment) => {
     const screenshotPath = payment.payment_screenshot_url;

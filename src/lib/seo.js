@@ -105,6 +105,9 @@ export function getPageSeo({
   } else if (currentPage === 'study-materials') {
     title = 'Study Materials | FaujPrep';
     description = 'Browse published preparation notes, guides and study materials for Pakistan Army, PAF, Navy and ISSB tests.';
+  } else if (currentPage === 'ebooks') {
+    title = 'E-books | FaujPrep';
+    description = 'Browse downloadable FaujPrep preparation e-books. Paid downloads are protected and unlock after payment review.';
   } else if (currentPage === 'study-material-detail') {
     indexable = Boolean(studyMaterial && !studyMaterial.is_premium);
     if (studyMaterial) {

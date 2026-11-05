@@ -1177,7 +1177,7 @@ export default function App() {
   }, [backendConfigured]);
 
   useEffect(() => {
-    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'paid-note-viewer', 'interview', 'interview-live', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock'].includes(currentPage)) return;
+    if (!['practice', 'mock-tests', 'mock-payment', 'practice-payment', 'resources', 'ebooks', 'paid-note-viewer', 'interview', 'interview-live', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock'].includes(currentPage)) return;
     refreshMockTestPurchases();
   }, [currentPage, refreshMockTestPurchases, session?.user?.id]);
 
@@ -1214,7 +1214,7 @@ export default function App() {
       try {
         const currentSession = await ensureAnonymousSession();
         const requests = await getMyMockTestPurchases();
-        if (!canAccessPremiumResources && !requests.some((request) => (
+        if ((product.isEbook || !canAccessPremiumResources) && !requests.some((request) => (
           (request.test_slug === product.id || (product.id === 'pma-academic-notes' && request.test_slug === 'pa-academic-notes'))
           && request.status === 'APPROVED'
         ))) {
@@ -1333,6 +1333,7 @@ export default function App() {
       'srt-test': value !== null ? `/issb/srt/${encodeURIComponent(value)}` : '/issb/srt',
       'issb-detail': value ? `/issb/${encodeURIComponent(value)}` : '/issb',
       resources: '/resources',
+      ebooks: '/ebooks',
       'paid-note-viewer': value ? `/notes/${encodeURIComponent(value)}` : '/resources',
       'study-materials': '/study-materials',
       'study-material-detail': value ? `/study-materials/${encodeURIComponent(value)}` : '/study-materials',
@@ -1635,6 +1636,7 @@ export default function App() {
       if (normalizedPath.startsWith('/issb/')) { setCurrentPage('issb-detail'); setSelectedForceId(decodeSlug(path.slice('/issb/'.length))); return; }
       if (normalizedPath === '/study-materials') { setCurrentPage('study-materials'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/study-materials/')) { setCurrentPage('study-material-detail'); setSelectedForceId(decodeSlug(path.slice('/study-materials/'.length))); return; }
+      if (normalizedPath === '/ebooks') { setCurrentPage('ebooks'); setSelectedForceId(null); return; }
       if (normalizedPath.startsWith('/notes/')) { setCurrentPage('paid-note-viewer'); setSelectedForceId(decodeSlug(path.slice('/notes/'.length))); return; }
       const practicePaymentPath = path.match(/^\/practice-tests\/([^/]+)\/payment$/i);
       if (practicePaymentPath) { setCurrentPage('practice-payment'); setSelectedForceId(decodeSlug(practicePaymentPath[1])); return; }
@@ -2149,7 +2151,7 @@ export default function App() {
       const currentSession = await ensureAnonymousSession();
       const requests = await getMyMockTestPurchases();
       setMockTestPurchaseState({ loading: false, requests, userId: currentSession.user.id });
-      const hasApprovedPurchase = canAccessPremiumResources || requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
+      const hasApprovedPurchase = (!product.isEbook && canAccessPremiumResources) || requests.some((request) => request.test_slug === product.id && request.status === 'APPROVED');
       if (!hasApprovedPurchase) {
         if (product.practiceOnly) navigateTo('practice-payment', product.id);
         else navigateTo('mock-payment', product.id);
@@ -2934,10 +2936,10 @@ export default function App() {
             Notes
           </button>
           <button
-            onClick={() => navigateTo('study-materials')}
-            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'study-materials' || currentPage === 'study-material-detail' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
+            onClick={() => navigateTo('ebooks')}
+            className={`primary-nav-link px-2.5 py-2 rounded-lg transition ${currentPage === 'ebooks' ? 'text-emerald-300 bg-emerald-950/45 border border-emerald-500/25' : 'hover:text-white hover:bg-slate-900'}`}
           >
-            Study Materials
+            E-books
           </button>
           <button
             onClick={() => navigateTo('pricing')}
@@ -3003,7 +3005,7 @@ export default function App() {
                 {renderMobileNavLink('mock-tests', 'Full Mock Tests', ['mock-tests', 'mock-detail'])}
                 {renderMobileNavLink('interview', 'Interviews', ['interview', 'interview-personal', 'interview-academic', 'interview-general-knowledge', 'interview-current-affairs', 'interview-defense', 'interview-rapid-fire', 'interview-mock', 'interview-tips', 'interview-progress'])}
                 {renderMobileNavLink('resources', 'Notes')}
-                {renderMobileNavLink('study-materials', 'Study Materials', ['study-materials', 'study-material-detail'])}
+                {renderMobileNavLink('ebooks', 'E-books')}
                 {renderMobileNavLink('current-affairs', 'Current Affairs', ['current-affairs', 'current-affairs-detail'])}
               </section>
 
@@ -5173,27 +5175,27 @@ export default function App() {
     if (!product) return render404Page();
     const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
     const latestRequest = purchaseStateMatchesUser ? mockTestPurchaseState.requests.find((request) => request.test_slug === product.id) : null;
-    const hasAccess = canAccessPremiumResources || latestRequest?.status === 'APPROVED';
+    const hasAccess = (!product.isEbook && canAccessPremiumResources) || latestRequest?.status === 'APPROVED';
     const paymentBlocked = !backendConfigured || mockTestPaymentState.loading || latestRequest?.status === 'PENDING';
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.isInterviewPractice ? getInterviewPageKeyForCategory(product.interviewCategory) : product.interviewResource ? 'interview' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
-          Back to {product.isLiveInterview ? 'Live Interview' : product.isInterviewPractice ? product.title : product.interviewResource ? 'Interview Preparation' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
+        <button type="button" onClick={() => navigateTo(product.isLiveInterview ? 'interview-live' : product.isInterviewPractice ? getInterviewPageKeyForCategory(product.interviewCategory) : product.interviewResource ? 'interview' : product.isEbook ? 'ebooks' : product.isNote ? 'resources' : product.practiceOnly ? 'practice' : 'mock-tests')} className="text-xs text-emerald-400 hover:underline">
+          Back to {product.isLiveInterview ? 'Live Interview' : product.isInterviewPractice ? product.title : product.interviewResource ? 'Interview Preparation' : product.isEbook ? 'E-books' : product.isNote ? 'Notes' : product.practiceOnly ? 'Practice Tests' : 'Mock Tests'}
         </button>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
             <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · {product.isLiveInterview ? 'Video upload after approval' : 'Permanent access after approval'}</p>
-            <h1 className="text-3xl font-extrabold text-slate-100">{product.isLiveInterview ? 'Pay for Live Interview Assessment' : product.isInterviewPractice ? 'Unlock Interview Practice' : 'How to Pay'}</h1>
+            <h1 className="text-3xl font-extrabold text-slate-100">{product.isLiveInterview ? 'Pay for Live Interview Assessment' : product.isInterviewPractice ? 'Unlock Interview Practice' : product.isEbook ? 'Buy this e-book' : 'How to Pay'}</h1>
             <p className="text-sm text-slate-400">{product.title}</p>
             <p className="text-2xl font-bold text-emerald-300">{product.isLiveInterview ? 'PKR 250' : formatPKR(product.pricePkr)}</p>
           </div>
 
           {hasAccess ? (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
-              <p className="font-semibold text-emerald-200">{product.isLiveInterview ? 'Your live interview assessment is approved.' : product.isInterviewPractice ? 'This interview category is unlocked on your account.' : product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
+              <p className="font-semibold text-emerald-200">{product.isLiveInterview ? 'Your live interview assessment is approved.' : product.isInterviewPractice ? 'This interview category is unlocked on your account.' : product.isEbook ? 'This e-book is unlocked on your account.' : product.isNote ? 'This note is already unlocked on your account.' : 'This test is already unlocked on your account.'}</p>
               <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">
-                {paidMockTestLoading ? product.isNote ? 'Opening notes...' : product.isLiveInterview || product.isInterviewPractice ? 'Opening interview...' : 'Loading test...' : product.isNote ? 'View Notes' : product.isLiveInterview ? 'Continue to interview' : product.isInterviewPractice ? 'Open Interview Practice' : 'Start Test'}
+                {paidMockTestLoading ? product.isNote ? 'Preparing download...' : product.isLiveInterview || product.isInterviewPractice ? 'Opening interview...' : 'Loading test...' : product.isEbook ? 'Download e-book' : product.isNote ? 'View Notes' : product.isLiveInterview ? 'Continue to interview' : product.isInterviewPractice ? 'Open Interview Practice' : 'Start Test'}
               </button>
             </div>
           ) : latestRequest?.status === 'PENDING' ? (
@@ -5474,6 +5476,52 @@ export default function App() {
     );
   };
 
+  const renderEbooksPage = () => (
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+      <header className="space-y-3">
+        <p className="text-xs font-mono uppercase tracking-[0.18em] text-emerald-300">Downloadable preparation resources</p>
+        <h1 className="text-3xl font-extrabold text-slate-100">E-books</h1>
+        <p className="max-w-3xl text-sm leading-6 text-slate-400">Browse downloadable preparation books. Paid downloads are protected and unlock after payment proof is reviewed and approved.</p>
+      </header>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {PAID_NOTE_PRODUCTS.filter((product) => product.isEbook).map((product) => {
+          const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
+          const request = purchaseStateMatchesUser
+            ? mockTestPurchaseState.requests.find((item) => item.test_slug === product.id)
+            : null;
+          const hasAccess = request?.status === 'APPROVED';
+
+          return (
+            <article key={product.id} className="flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+              <img src={product.coverImage} alt={`${product.title} cover`} className="aspect-[3/4] w-full object-cover" />
+              <div className="flex flex-1 flex-col gap-5 p-5">
+                <div className="space-y-3">
+                  <span className="inline-flex rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-300">PDF e-book</span>
+                  <h2 className="text-xl font-bold leading-snug text-slate-100">{product.title}</h2>
+                  <p className="text-sm leading-6 text-slate-400">{product.description}</p>
+                  <p className="text-lg font-bold text-emerald-300">{formatPKR(product.pricePkr)} <span className="text-xs font-normal text-slate-400">one-time</span></p>
+                </div>
+                {hasAccess ? (
+                  <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="mt-auto min-h-11 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">
+                    {paidMockTestLoading ? 'Preparing download...' : 'Download e-book'}
+                  </button>
+                ) : request?.status === 'PENDING' ? (
+                  <button type="button" disabled className="mt-auto min-h-11 w-full rounded-lg border border-amber-500/30 bg-amber-950/40 px-4 py-2.5 text-sm font-bold text-amber-200">Payment Pending Approval</button>
+                ) : mockTestPurchaseState.loading ? (
+                  <button type="button" disabled className="mt-auto min-h-11 w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-400">Checking Access...</button>
+                ) : (
+                  <button type="button" onClick={() => navigateTo('mock-payment', product.id)} className="mt-auto min-h-11 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-400">
+                    {request?.status === 'REJECTED' ? 'Resubmit Payment' : 'Buy e-book'} · {formatPKR(product.pricePkr)}
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const renderResourcesPage = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
       <div className="space-y-2">
@@ -5482,7 +5530,7 @@ export default function App() {
         <p className="max-w-3xl text-xs leading-5 text-slate-500">Preparation resources can help you study, but no notes can guarantee selection. Always follow the latest official instructions for your course.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource).map((product) => {
+        {PAID_NOTE_PRODUCTS.filter((product) => !product.interviewResource && !product.isEbook).map((product) => {
           const purchaseStateMatchesUser = Boolean(session?.user?.id && mockTestPurchaseState.userId === session.user.id);
           const request = purchaseStateMatchesUser
             ? mockTestPurchaseState.requests.find((item) => (
@@ -5520,7 +5568,7 @@ export default function App() {
     const product = PAID_NOTE_PRODUCTS.find((item) => item.id === selectedForceId);
     return (
       <div className="max-w-7xl mx-auto space-y-5 px-4 py-8 sm:px-6 lg:px-8">
-        <button type="button" onClick={() => navigateTo(product?.interviewResource ? 'interview' : 'resources')} className="text-sm font-semibold text-emerald-400 hover:text-emerald-300">Back to {product?.interviewResource ? 'Interview Preparation' : 'Notes'}</button>
+        <button type="button" onClick={() => navigateTo(product?.isEbook ? 'ebooks' : product?.interviewResource ? 'interview' : 'resources')} className="text-sm font-semibold text-emerald-400 hover:text-emerald-300">Back to {product?.isEbook ? 'E-books' : product?.interviewResource ? 'Interview Preparation' : 'Notes'}</button>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold text-slate-100">{product?.title || 'View Notes'}</h1>
           <span className="text-xs font-mono text-slate-400">{product?.collection === 'pma-lc160' ? 'PMA Long Course 160 Preparation' : 'Purchased note'}</span>
@@ -5530,15 +5578,22 @@ export default function App() {
         {paidNoteViewerState.error && (
           <div role="alert" className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-xl border border-rose-500/30 bg-rose-950/20 p-6 text-center">
             <p className="text-sm text-rose-200">{paidNoteViewerState.error}</p>
-            <button type="button" onClick={() => navigateTo('resources')} className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-100">Back to Notes</button>
+            <button type="button" onClick={() => navigateTo(product?.isEbook ? 'ebooks' : 'resources')} className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-100">Back to {product?.isEbook ? 'E-books' : 'Notes'}</button>
           </div>
         )}
         {paidNoteViewerState.url && (
-          <iframe
-            title={product?.title || 'Purchased notes'}
-            src={paidNoteViewerState.url}
-            className="h-[75dvh] min-h-[480px] w-full rounded-xl border border-slate-800 bg-white"
-          />
+          <>
+            {product?.isEbook && (
+              <a href={paidNoteViewerState.url} download={product.downloadPath} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950">
+                <Download className="h-4 w-4" /> Download e-book PDF
+              </a>
+            )}
+            <iframe
+              title={product?.title || 'Purchased notes'}
+              src={paidNoteViewerState.url}
+              className="h-[75dvh] min-h-[480px] w-full rounded-xl border border-slate-800 bg-white"
+            />
+          </>
         )}
         {paidNoteViewerState.content && (
           <article className="mx-auto max-w-4xl space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6 sm:p-9">
@@ -7120,6 +7175,8 @@ export default function App() {
         return renderQuestionPracticePage();
       case 'resources':
         return renderResourcesPage();
+      case 'ebooks':
+        return renderEbooksPage();
       case 'paid-note-viewer':
         return renderPaidNoteViewerPage();
       case 'study-materials':
