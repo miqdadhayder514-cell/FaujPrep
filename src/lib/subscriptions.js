@@ -247,9 +247,27 @@ export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
     throw new Error('This paid note download is not available.');
   }
 
-  const { data, error } = await supabase.storage.from('paid-notes').download(downloadPath);
-  if (error) throw error;
-  return URL.createObjectURL(data);
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from('paid-notes')
+    .createSignedUrl(downloadPath, 60 * 60);
+
+  if (signedUrlError) {
+    const { data, error } = await supabase.storage.from('paid-notes').download(downloadPath);
+    if (error) throw error;
+    return URL.createObjectURL(data);
+  }
+
+  const response = await fetch(signedUrlData.signedUrl, {
+    method: 'GET',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to load the paid note PDF (${response.status}: ${response.statusText}).`);
+  }
+
+  const pdfBlob = await response.blob();
+  return URL.createObjectURL(pdfBlob);
 }
 
 export async function getPaidNoteContent(noteSlug) {
