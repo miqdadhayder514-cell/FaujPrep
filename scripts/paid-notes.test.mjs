@@ -39,6 +39,8 @@ test('PMA LC 160 e-book is listed at PKR 350 and only approved purchases unlock 
   assert.match(appSource, /product\.originalPricePkr/);
   assert.match(appSource, /product\.discountPercent}% OFF/);
   assert.match(appSource, /animate-pulse rounded-full bg-gradient-to-r/);
+  assert.match(appSource, /Your purchase is approved, but the e-book is not available in secure storage yet\./);
+  assert.match(appSource, /Your purchase is still recorded—please contact support and do not pay again\./);
   assert.match(appSource, /request\?\.status === 'APPROVED'/);
   assert.match(ebookMigration, /p_ebook_slug <> 'pma-lc160-preparation-book'/);
   assert.match(ebookMigration, /amount_pkr = 350/);
