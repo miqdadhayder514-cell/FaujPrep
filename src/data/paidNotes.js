@@ -8,6 +8,8 @@ export const PAID_NOTE_PRODUCTS = [
     downloadPath: 'pma-lc160-preparation-book.pdf',
     coverImage: '/images/pma-lc160-preparation-book-cover.png',
     pricePkr: 350,
+    originalPricePkr: 500,
+    discountPercent: 30,
     isNote: true,
     isEbook: true,
   },

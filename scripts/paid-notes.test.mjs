@@ -28,12 +28,17 @@ test('PMA LC 160 e-book is listed at PKR 350 and only approved purchases unlock 
   assert.ok(product);
   assert.equal(product.id, 'pma-lc160-preparation-book');
   assert.equal(product.pricePkr, 350);
+  assert.equal(product.originalPricePkr, 500);
+  assert.equal(product.discountPercent, 30);
   assert.equal(product.sourceFile, 'PMA Long Course 160 Preparation.pdf');
   assert.equal(product.downloadPath, 'pma-lc160-preparation-book.pdf');
   assert.ok(product.coverImage);
   const pdf = await readFile(new URL(`../../e-books/${product.sourceFile}`, import.meta.url));
   assert.match(pdf.toString('ascii', 0, 8), /^%PDF-1\./);
   assert.match(appSource, /PAID_NOTE_PRODUCTS\.filter\(\(product\) => product\.isEbook\)/);
+  assert.match(appSource, /product\.originalPricePkr/);
+  assert.match(appSource, /product\.discountPercent}% OFF/);
+  assert.match(appSource, /animate-pulse rounded-full bg-gradient-to-r/);
   assert.match(appSource, /request\?\.status === 'APPROVED'/);
   assert.match(ebookMigration, /p_ebook_slug <> 'pma-lc160-preparation-book'/);
   assert.match(ebookMigration, /amount_pkr = 350/);

@@ -5188,7 +5188,15 @@ export default function App() {
             <p className="text-xs font-mono uppercase text-emerald-400">One-time payment · {product.isLiveInterview ? 'Video upload after approval' : 'Permanent access after approval'}</p>
             <h1 className="text-3xl font-extrabold text-slate-100">{product.isLiveInterview ? 'Pay for Live Interview Assessment' : product.isInterviewPractice ? 'Unlock Interview Practice' : product.isEbook ? 'Buy this e-book' : 'How to Pay'}</h1>
             <p className="text-sm text-slate-400">{product.title}</p>
-            <p className="text-2xl font-bold text-emerald-300">{product.isLiveInterview ? 'PKR 250' : formatPKR(product.pricePkr)}</p>
+            {product.isEbook ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2" aria-label={`Was ${formatPKR(product.originalPricePkr)}, now ${formatPKR(product.pricePkr)}, ${product.discountPercent}% off`}>
+                <span className="text-base text-slate-400 line-through decoration-rose-400 decoration-2">{formatPKR(product.originalPricePkr)}</span>
+                <span className="text-3xl font-extrabold text-emerald-300">{formatPKR(product.pricePkr)}</span>
+                <span className="animate-pulse rounded-full bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 px-3 py-1 text-xs font-extrabold tracking-wide text-slate-950 shadow-lg shadow-orange-500/25">{product.discountPercent}% OFF</span>
+              </div>
+            ) : (
+              <p className="text-2xl font-bold text-emerald-300">{product.isLiveInterview ? 'PKR 250' : formatPKR(product.pricePkr)}</p>
+            )}
           </div>
 
           {hasAccess ? (
@@ -5499,7 +5507,12 @@ export default function App() {
                   <span className="inline-flex rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-300">PDF e-book</span>
                   <h2 className="text-xl font-bold leading-snug text-slate-100">{product.title}</h2>
                   <p className="text-sm leading-6 text-slate-400">{product.description}</p>
-                  <p className="text-lg font-bold text-emerald-300">{formatPKR(product.pricePkr)} <span className="text-xs font-normal text-slate-400">one-time</span></p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1" aria-label={`Was ${formatPKR(product.originalPricePkr)}, now ${formatPKR(product.pricePkr)}, ${product.discountPercent}% off`}>
+                    <span className="text-sm text-slate-400 line-through decoration-rose-400 decoration-2">{formatPKR(product.originalPricePkr)}</span>
+                    <span className="text-xl font-extrabold text-emerald-300">{formatPKR(product.pricePkr)}</span>
+                    <span className="animate-pulse rounded-full bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 px-2.5 py-1 text-[10px] font-extrabold tracking-wide text-slate-950 shadow-lg shadow-orange-500/25">{product.discountPercent}% OFF</span>
+                    <span className="text-xs font-normal text-slate-400">one-time</span>
+                  </div>
                 </div>
                 {hasAccess ? (
                   <button type="button" onClick={() => startPaidMockTest(product)} disabled={paidMockTestLoading} className="mt-auto min-h-11 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">
