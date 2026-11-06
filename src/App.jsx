@@ -2090,7 +2090,7 @@ export default function App() {
         userId: user.id,
       };
       const response = product.isNote
-        ? await submitPaidNotePaymentProof({ ...paymentPayload, noteSlug: product.id })
+        ? await submitPaidNotePaymentProof({ ...paymentPayload, noteSlug: product.id, isEbook: product.isEbook })
         : await submitMockTestPaymentProof({ ...paymentPayload, testSlug: product.id });
       setMockTestPaymentState({ loading: false, error: null, result: response });
       setMockTestPaymentForm({ senderName: '', senderPhone: '', paymentDate: '', paymentTime: '', notes: '', paymentScreenshot: null });
@@ -5509,6 +5509,7 @@ export default function App() {
                   <span className="inline-flex rounded border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-xs font-mono uppercase text-emerald-300">PDF e-book</span>
                   <h2 className="text-xl font-bold leading-snug text-slate-100">{product.title}</h2>
                   <p className="text-sm leading-6 text-slate-400">{product.description}</p>
+                  {product.pageCount && <p className="text-xs font-medium text-slate-300">{product.pageCount} pages</p>}
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1" aria-label={`Was ${formatPKR(product.originalPricePkr)}, now ${formatPKR(product.pricePkr)}, ${product.discountPercent}% off`}>
                     <span className="text-sm text-slate-400 line-through decoration-rose-400 decoration-2">{formatPKR(product.originalPricePkr)}</span>
                     <span className="text-xl font-extrabold text-emerald-300">{formatPKR(product.pricePkr)}</span>

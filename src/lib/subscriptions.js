@@ -201,7 +201,7 @@ export async function submitPaidNotePaymentProof(payload) {
   }
 
   const screenshotPath = await uploadPaymentScreenshot(payload.userId, payload.paymentScreenshot);
-  const isEbook = payload.noteSlug === 'pma-lc160-preparation-book';
+  const isEbook = payload.isEbook === true;
   const rpcName = isEbook ? 'submit_paid_ebook_payment_proof' : 'submit_paid_note_payment_proof';
   const slugParameter = isEbook ? 'p_ebook_slug' : 'p_note_slug';
   const { data, error } = await supabase.rpc(rpcName, {
@@ -227,6 +227,8 @@ export async function getPaidNoteViewerUrl(noteSlug, downloadPath) {
 
   const allowedPaths = {
     'pma-lc160-preparation-book': 'pma-lc160-preparation-book.pdf',
+    'pma-lc160-preparation-book-dogars': 'pma-lc160-preparation-book-dogars.pdf',
+    'pma-lc160-preparation-book-faujprep': 'pma-lc160-preparation-book-faujprep.pdf',
     'pma-academic-notes': 'pma-academic-notes.pdf',
     'pma-academic-tests-notes': 'pma-academic-tests-notes.pdf',
     'pma-non-verbal-intelligence-notes': 'pma-non-verbal-intelligence-notes.pdf',
@@ -396,6 +398,8 @@ export async function getAdminPaymentQueue() {
   const noteSlugs = new Set([
     'pma-academic-notes',
     'pma-lc160-preparation-book',
+    'pma-lc160-preparation-book-dogars',
+    'pma-lc160-preparation-book-faujprep',
     'pa-academic-notes',
     'pma-academic-tests-notes',
     'pma-non-verbal-intelligence-notes',

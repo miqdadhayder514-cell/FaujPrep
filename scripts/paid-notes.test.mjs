@@ -9,6 +9,7 @@ const lc160ContentMigration = await readFile(new URL('../supabase/migrations/058
 const interviewMigration = await readFile(new URL('../supabase/migrations/042_paid_interview_preparation_pdf.sql', import.meta.url), 'utf8');
 const doubleExtensionMigration = await readFile(new URL('../supabase/migrations/043_paid_interview_pdf_double_extension.sql', import.meta.url), 'utf8');
 const ebookMigration = await readFile(new URL('../supabase/migrations/062_pma_lc160_preparation_ebook.sql', import.meta.url), 'utf8');
+const additionalEbooksMigration = await readFile(new URL('../supabase/migrations/063_paid_lc160_ebooks.sql', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const subscriptionsSource = await readFile(new URL('../src/lib/subscriptions.js', import.meta.url), 'utf8');
 
@@ -20,7 +21,7 @@ test('existing paid notes retain their products and prices', () => {
   assert.equal(interviewNotes.length, 1);
   assert.equal(interviewNotes[0].pricePkr, 150);
   assert.ok(PAID_NOTE_PRODUCTS.every((product) => product.isNote));
-  assert.equal(new Set(PAID_NOTE_PRODUCTS.map((product) => product.id)).size, 16);
+  assert.equal(new Set(PAID_NOTE_PRODUCTS.map((product) => product.id)).size, 18);
 });
 
 test('PMA LC 160 e-book is listed at PKR 350 and only approved purchases unlock the private PDF', async () => {
@@ -33,8 +34,6 @@ test('PMA LC 160 e-book is listed at PKR 350 and only approved purchases unlock 
   assert.equal(product.sourceFile, 'PMA Long Course 160 Preparation.pdf');
   assert.equal(product.downloadPath, 'pma-lc160-preparation-book.pdf');
   assert.ok(product.coverImage);
-  const pdf = await readFile(new URL(`../../e-books/${product.sourceFile}`, import.meta.url));
-  assert.match(pdf.toString('ascii', 0, 8), /^%PDF-1\./);
   assert.match(appSource, /PAID_NOTE_PRODUCTS\.filter\(\(product\) => product\.isEbook\)/);
   assert.match(appSource, /product\.originalPricePkr/);
   assert.match(appSource, /product\.discountPercent}% OFF/);
@@ -48,6 +47,56 @@ test('PMA LC 160 e-book is listed at PKR 350 and only approved purchases unlock 
   assert.match(ebookMigration, /purchase\.test_slug = 'pma-lc160-preparation-book' and p_object_name = 'pma-lc160-preparation-book\.pdf'/);
   assert.match(subscriptionsSource, /submit_paid_ebook_payment_proof/);
   assert.match(subscriptionsSource, /get_admin_ebook_purchase_queue/);
+});
+
+test('Dogars and FaujPrep e-books use the supplied PDFs, covers, prices, and approved-download paths', async () => {
+  const expectedProducts = [
+    {
+      id: 'pma-lc160-preparation-book-dogars',
+      sourceFile: 'PMA Long Course 160 Preparation by Dogars.pdf',
+      downloadPath: 'pma-lc160-preparation-book-dogars.pdf',
+      coverImage: '/images/pma-lc160-preparation-book-dogars-cover.png',
+      pricePkr: 450,
+      originalPricePkr: 650,
+      discountPercent: 31,
+      pageCount: 334,
+    },
+    {
+      id: 'pma-lc160-preparation-book-faujprep',
+      sourceFile: 'PMA Long Course 160 Preparation by FaujPrep.pdf',
+      downloadPath: 'pma-lc160-preparation-book-faujprep.pdf',
+      coverImage: '/images/pma-lc160-preparation-book-faujprep-cover.png',
+      pricePkr: 430,
+      originalPricePkr: 630,
+      discountPercent: 32,
+      pageCount: 309,
+    },
+  ];
+
+  for (const expected of expectedProducts) {
+    const product = PAID_NOTE_PRODUCTS.find((item) => item.id === expected.id);
+    assert.ok(product);
+    assert.equal(product.isEbook, true);
+    assert.equal(product.isNote, true);
+    assert.equal(product.sourceDirectory, 'e-books');
+    for (const [field, value] of Object.entries(expected)) {
+      assert.equal(product[field], value, `${product.id} ${field}`);
+    }
+
+    const pdf = await readFile(new URL(`../../e-books/${product.sourceFile}`, import.meta.url));
+    const cover = await readFile(new URL(`../public${product.coverImage}`, import.meta.url));
+    assert.match(pdf.toString('ascii', 0, 8), /^%PDF-1\./);
+    assert.deepEqual([...cover.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    assert.ok(additionalEbooksMigration.includes(`'${product.id}'`));
+    assert.ok(additionalEbooksMigration.includes(`'${product.downloadPath}'`));
+    assert.ok(subscriptionsSource.includes(`'${product.id}': '${product.downloadPath}'`));
+  }
+
+  assert.match(appSource, /noteSlug: product\.id, isEbook: product\.isEbook/);
+  assert.match(appSource, /product\.pageCount} pages/);
+  assert.match(additionalEbooksMigration, /amount_pkr = 450/);
+  assert.match(additionalEbooksMigration, /amount_pkr = 430/);
+  assert.match(additionalEbooksMigration, /purchase\.status = 'APPROVED'/);
 });
 
 test('ten researched LC 160 guides cover the requested sections and generate private PDFs', async () => {

@@ -16,9 +16,25 @@ Personal, academic, general-knowledge, current-affairs, defense, rapid-fire, and
 
 Each practice answer leads to a category-specific interviewer follow-up and a 10-point coaching rubric. After submission, candidates see a curated, question-specific sample answer to learn from and personalize honestly. Scores are generated locally; they are not AI-generated and do not verify factual accuracy.
 
-## Paid PMA e-book
+## Paid PMA e-books
 
-The E-books page offers `../e-books/PMA Long Course 160 Preparation.pdf` for a discounted PKR 350 (regular price PKR 500, 30% off) and displays the cover in `public/images/pma-lc160-preparation-book-cover.png`. Apply `supabase/migrations/062_pma_lc160_preparation_ebook.sql` after the earlier payment and paid-note migrations. Upload the PDF to the private `paid-notes` bucket by running `npm run upload:paid-notes -- --product=pma-lc160-preparation-book` from `my-app` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set in the local environment. The e-book download requires an admin-approved purchase for the book, including for Pro/Premium subscribers; payment screenshots continue to use the existing manual-review workflow.
+The E-books page offers three private PDF downloads. Apply `supabase/migrations/062_pma_lc160_preparation_ebook.sql` followed by `supabase/migrations/063_paid_lc160_ebooks.sql` after the earlier payment and paid-note migrations.
+
+| Book | Price | Regular price | Discount | Pages | Storage object |
+| --- | ---: | ---: | ---: | ---: | --- |
+| PMA Long Course 160 Preparation Book | PKR 350 | PKR 500 | 30% | — | `pma-lc160-preparation-book.pdf` |
+| PMA Long Course 160 Preparation by Dogars | PKR 450 | PKR 650 | 31% | 334 | `pma-lc160-preparation-book-dogars.pdf` |
+| PMA Long Course 160 Preparation by FaujPrep | PKR 430 | PKR 630 | 32% | 309 | `pma-lc160-preparation-book-faujprep.pdf` |
+
+Upload each source PDF from the repository's `e-books` folder to the private `paid-notes` bucket by running its matching command from `my-app`, with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set in the local environment:
+
+```powershell
+npm run upload:paid-notes -- --product=pma-lc160-preparation-book
+npm run upload:paid-notes -- --product=pma-lc160-preparation-book-dogars
+npm run upload:paid-notes -- --product=pma-lc160-preparation-book-faujprep
+```
+
+The e-book downloads require an admin-approved purchase for each book, including for Pro/Premium subscribers; payment screenshots continue to use the existing manual-review workflow.
 
 If an approved buyer sees an unavailable-PDF message, verify both that migration 062 is applied to the same Supabase project used by the website and that `pma-lc160-preparation-book.pdf` exists in the private `paid-notes` bucket. Storage intentionally hides unauthorized objects, so the browser may report an object as missing if the migration's approved-purchase policy is not active. The approved purchase remains recorded; the candidate should not pay again.
 
